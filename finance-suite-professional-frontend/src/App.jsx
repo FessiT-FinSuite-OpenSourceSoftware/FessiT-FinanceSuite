@@ -26,7 +26,7 @@ const FinanceSuiteDashboard = () => {
     { id: 'expenses', label: 'Expenses', icon: Receipt },
     { id: 'gst', label: 'GST Compliance', icon: IndianRupee },
     { id: 'tds', label: 'TDS Compliance', icon: Receipt },
-    { id: 'clients', label: 'Clients', icon: Users },
+    { id: 'cutomers', label: 'Customers', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -39,29 +39,30 @@ const FinanceSuiteDashboard = () => {
     }
   };
 
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex bg-gray-50">
       {/* Sidebar */}
       <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden`}>
         <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-indigo-600">FinanceOS</h1>
-          <p className="text-sm text-gray-500 mt-1">India Edition</p>
+          <h1 className="text-2xl font-bold text-indigo-600">Finance Suite</h1>
+          <p className="text-sm text-gray-500 mt-1">Professional</p>
         </div>
         <nav className="p-4 space-y-2">
-          {navigation.map((item) => {
+          {navigation?.map((item) => {
             const Icon = item.icon;
             return (
               <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                key={item?.id}
+                onClick={() => setActiveTab(item?.id)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  activeTab === item.id
+                  activeTab === item?.id
                     ? 'bg-indigo-50 text-indigo-600 font-medium'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 <Icon size={20} />
-                <span>{item.label}</span>
+                <span>{item?.label}</span>
               </button>
             );
           })}
@@ -78,7 +79,7 @@ const FinanceSuiteDashboard = () => {
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                {sidebarOpen ? <X size={20}  strokeWidth={1} /> : <Menu size={20} strokeWidth={1} />}
               </button>
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
@@ -87,7 +88,7 @@ const FinanceSuiteDashboard = () => {
             </div>
             <div className="flex items-center space-x-3">
               <button className="p-2 hover:bg-gray-100 rounded-lg relative">
-                <Bell size={20} />
+                <Bell size={20} strokeWidth={1}/>
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
               <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
@@ -101,29 +102,29 @@ const FinanceSuiteDashboard = () => {
         <main className="flex-1 overflow-y-auto p-6">
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            {stats.map((stat, idx) => {
-              const Icon = stat.icon;
+            {stats?.map((stat, idx) => {
+              const Icon = stat?.icon;
               return (
                 <div key={idx} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-4">
                     <div className={`p-3 rounded-lg ${
-                      stat.trend === 'up' ? 'bg-green-50' : 
-                      stat.trend === 'warning' ? 'bg-orange-50' : 'bg-blue-50'
+                      stat?.trend === 'up' ? 'bg-green-50' : 
+                      stat?.trend === 'warning' ? 'bg-orange-50' : 'bg-blue-50'
                     }`}>
                       <Icon className={`${
-                        stat.trend === 'up' ? 'text-green-600' : 
-                        stat.trend === 'warning' ? 'text-orange-600' : 'text-blue-600'
+                        stat?.trend === 'up' ? 'text-green-600' : 
+                        stat?.trend === 'warning' ? 'text-orange-600' : 'text-blue-600'
                       }`} size={24} />
                     </div>
                     <span className={`text-sm font-medium ${
-                      stat.trend === 'up' ? 'text-green-600' : 
-                      stat.trend === 'warning' ? 'text-orange-600' : 'text-gray-600'
+                      stat?.trend === 'up' ? 'text-green-600' : 
+                      stat?.trend === 'warning' ? 'text-orange-600' : 'text-gray-600'
                     }`}>
-                      {stat.change}
+                      {stat?.change}
                     </span>
                   </div>
-                  <h3 className="text-gray-500 text-sm font-medium mb-1">{stat.label}</h3>
-                  <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
+                  <h3 className="text-gray-500 text-sm font-medium mb-1">{stat?.label}</h3>
+                  <p className="text-2xl font-bold text-gray-800">{stat?.value}</p>
                 </div>
               );
             })}
@@ -139,7 +140,7 @@ const FinanceSuiteDashboard = () => {
               </button>
               <button className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
                 <Plus className="text-indigo-600 mb-2" size={24} />
-                <span className="text-sm font-medium text-gray-700">Add Expense</span>
+                <span className="text-sm font-medium text-gray-700">Add Customer</span>
               </button>
               <button className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
                 <Plus className="text-indigo-600 mb-2" size={24} />
@@ -190,15 +191,15 @@ const FinanceSuiteDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {recentInvoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice.id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{invoice.client}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">₹{invoice.amount.toLocaleString('en-IN')}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">₹{invoice.gst.toLocaleString('en-IN')}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{invoice.date}</td>
+                  {recentInvoices?.map((invoice) => (
+                    <tr key={invoice?.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice?.id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{invoice?.client}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">₹{invoice?.amount.toLocaleString('en-IN')}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">₹{invoice?.gst.toLocaleString('en-IN')}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{invoice?.date}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(invoice.status)}`}>
+                        <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(invoice?.status)}`}>
                           {invoice.status}
                         </span>
                       </td>
