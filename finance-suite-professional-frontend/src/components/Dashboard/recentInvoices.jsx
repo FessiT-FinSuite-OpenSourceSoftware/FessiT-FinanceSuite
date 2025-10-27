@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { Filter, Search } from "lucide-react";
 
-export default function RecentInvoices() {
-  const recentInvoices = [
+
+ const recentInvoices = [
     {
       id: "INV-2024-001",
       client: "Acme Corp Pvt Ltd",
@@ -37,6 +37,13 @@ export default function RecentInvoices() {
     },
   ];
 
+
+export default function RecentInvoices() {
+  const [filteredInvoices, setFilteredInvoices] = useState(recentInvoices);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debounceTimer = useRef(null)
+ 
+
   const getStatusColor = (status) => {
     switch (status) {
       case "Paid":
@@ -49,6 +56,27 @@ export default function RecentInvoices() {
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
+
+ const handleSearch =useCallback((query)=>{
+  // console.log("first")
+   const filtered = recentInvoices?.filter((invoice) => invoice?.client.toLowerCase().includes(query.toLowerCase())
+  // || invoice?.status.toLowerCase().includes(query.toLowerCase())
+  );
+   setFilteredInvoices(filtered);
+   
+ },[])
+
+  const handleChange = (e) => {
+    setSearchTerm(e.target.value);
+    if(debounceTimer.current){
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => 
+      handleSearch(e.target.value), 1000);
+    
+    }
+  
+  
 
   return (
     <div>
@@ -71,6 +99,8 @@ export default function RecentInvoices() {
               <input
                 type="text"
                 placeholder="Search invoices..."
+                onChange={handleChange}
+                value={searchTerm}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
@@ -108,7 +138,7 @@ export default function RecentInvoices() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {recentInvoices?.map((invoice) => (
+              {filteredInvoices?.map((invoice) => (
                 <tr
                   key={invoice?.id}
                   className="hover:bg-gray-50 transition-colors"
