@@ -66,7 +66,7 @@ export default function SideBar({ component }) {
     }
   };
 
-  // Click outside to close modal (ignore bell clicks)
+ 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
