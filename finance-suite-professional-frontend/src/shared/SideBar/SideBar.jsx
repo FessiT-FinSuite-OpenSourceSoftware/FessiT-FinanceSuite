@@ -92,6 +92,7 @@ export default function SideBar({ component }) {
                     Welcome back! Here's your business overview.
                   </p>
                 </div>
+                
               </div>
               <div className="flex items-center space-x-3">
                 <button className="p-2 hover:bg-gray-100 rounded-lg relative">
