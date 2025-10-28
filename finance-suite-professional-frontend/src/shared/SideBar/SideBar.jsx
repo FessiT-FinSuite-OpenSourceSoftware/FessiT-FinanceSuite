@@ -82,7 +82,7 @@ export default function SideBar({ component }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Toggle modal when clicking the bell
+  
   const toggleNotifications = () => setShowNotifications((prev) => !prev);
 
   return (
