@@ -16,7 +16,7 @@ export default function App() {
     <div>
       <Suspense
         fallback={
-          <div>
+          <div className=" flex justify-center items-center h-screen w-screen">
             <Loader />
           </div>
         }

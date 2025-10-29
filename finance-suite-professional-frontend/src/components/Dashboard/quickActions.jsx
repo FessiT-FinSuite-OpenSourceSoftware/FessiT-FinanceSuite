@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus, Download } from "lucide-react";
+import {NavLink} from "react-router-dom"
 
 export default function QuickActions() {
   return (
@@ -9,24 +10,28 @@ export default function QuickActions() {
           Quick Actions
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+          <NavLink 
+           to={'/invoices'}
+          className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
             <Plus className="text-indigo-600 mb-2" size={24} />
             <span className="text-sm font-medium text-gray-700">
               New Invoice
             </span>
-          </button>
-          <button className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+          </NavLink>
+          <NavLink 
+           to={'/cutomers'} className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
             <Plus className="text-indigo-600 mb-2" size={24} />
             <span className="text-sm font-medium text-gray-700">
               Add Customer
             </span>
-          </button>
-          <button className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+          </NavLink>
+          <NavLink 
+           to={'/purchases'} className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
             <Plus className="text-indigo-600 mb-2" size={24} />
             <span className="text-sm font-medium text-gray-700">
               Purchase Order
             </span>
-          </button>
+          </NavLink>
           <button className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
             <Download className="text-indigo-600 mb-2" size={24} />
             <span className="text-sm font-medium text-gray-700">

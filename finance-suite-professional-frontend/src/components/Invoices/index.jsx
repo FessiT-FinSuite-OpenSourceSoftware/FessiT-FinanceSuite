@@ -1,11 +1,10 @@
 import React from 'react'
-import Stats from '../Dashboard/stats'
+import Invoice from './inoice'
 
 export default function Index() {
   return (
     <div>
-      <Stats/>
-      Invoices
+      <Invoice/>
     </div>
   )
 }

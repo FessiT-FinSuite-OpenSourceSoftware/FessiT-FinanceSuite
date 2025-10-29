@@ -106,7 +106,7 @@ export default function SideBar({ component }) {
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${location.pathname.includes(`/${item.id}`)
                     ? "bg-indigo-50 text-indigo-600 font-medium"
                     : "text-gray-700 hover:bg-gray-50"
-                  }`}
+                  } sider-button`}
               >
                 <Icon size={20} />
                 <span>{item.label}</span>
@@ -124,7 +124,7 @@ export default function SideBar({ component }) {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors sider-button"
                 >
                   {sidebarOpen ? (
                     <X size={20} strokeWidth={1} />
@@ -147,7 +147,7 @@ export default function SideBar({ component }) {
                 <button
                   ref={bellRef}
                   onClick={toggleNotifications}
-                  className="p-2 hover:bg-gray-100 rounded-lg relative"
+                  className="sider-button p-2 hover:bg-gray-100 rounded-lg relative"
                 >
                   <Bell size={20} strokeWidth={1} />
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
