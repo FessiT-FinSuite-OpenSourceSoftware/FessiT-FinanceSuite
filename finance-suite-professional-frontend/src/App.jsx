@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import Loader from "./shared/Loader/loader";
 
+// lazy imports
 const SideBar = lazy(() => import("./shared/SideBar/SideBar"));
 const StatsGrid = lazy(() => import("./components/Dashboard"));
 const Invoices = lazy(() => import("./components/Invoices/index"));
@@ -11,16 +12,18 @@ const GstCompliance = lazy(() => import("./pages/GstComplainces"));
 const TdsCompliance = lazy(() => import("./pages/Tds"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Settings = lazy(() => import("./shared/Settings/settings"));
+
 export default function App() {
   return (
     <div>
       <Suspense
         fallback={
-          <div className=" flex justify-center items-center h-screen w-screen">
+          <div className="flex justify-center items-center h-screen w-screen">
             <Loader />
           </div>
         }
       >
+    
         <SideBar
           component={
             <Routes>
@@ -33,11 +36,6 @@ export default function App() {
               <Route path="/tds" element={<TdsCompliance />} />
               <Route path="/cutomers" element={<Customers />} />
               <Route path="/settings" element={<Settings />} />
-
-
-
-
-
             </Routes>
           }
         />

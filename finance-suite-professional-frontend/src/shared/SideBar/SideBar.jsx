@@ -156,7 +156,7 @@ export default function SideBar({ component }) {
                 {/* Notification Modal */}
                 <div
                   ref={modalRef}
-                  className={`fixed right-6 top-16 z-9999 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${showNotifications
+                  className={`fixed right-6 top-16 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${showNotifications
                       ? "opacity-100 scale-100 translate-y-2"
                       : "opacity-0 scale-90 -translate-y-3 pointer-events-none"
                     }`}
