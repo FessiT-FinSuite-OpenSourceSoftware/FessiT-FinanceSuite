@@ -19,7 +19,7 @@ export default function QuickActions() {
             </span>
           </NavLink>
           <NavLink 
-           to={'/cutomers'} className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+           to={'/customers'} className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
             <Plus className="text-indigo-600 mb-2" size={24} />
             <span className="text-sm font-medium text-gray-700">
               Add Customer

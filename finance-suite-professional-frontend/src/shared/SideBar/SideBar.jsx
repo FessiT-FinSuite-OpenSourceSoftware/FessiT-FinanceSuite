@@ -32,7 +32,7 @@ export default function SideBar({ component }) {
     { id: "expenses", label: "Expenses", icon: Receipt },
     { id: "gst", label: "GST Compliance", icon: IndianRupee },
     { id: "tds", label: "TDS Compliance", icon: Receipt },
-    { id: "cutomers", label: "Customers", icon: Users },
+    { id: "customers", label: "Customers", icon: Users },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -92,7 +92,7 @@ export default function SideBar({ component }) {
         className={`${sidebarOpen ? "w-64" : "w-0"
           } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden`}
       >
-        <div className="p-4  border-b border-gray-200 h-20">
+        <div className="p-4  border-b border-gray-200 h-22">
           <h1 className="text-2xl font-bold text-indigo-600">Finance Suite</h1>
           <p className="text-sm text-gray-500 mt-1">Professional</p>
         </div>
@@ -119,7 +119,7 @@ export default function SideBar({ component }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="overflow-y-auto">
-          <header className="bg-white border-b border-gray-200 px-6 h-20 py-3 sticky z-10 top-0 right-0">
+          <header className="bg-white border-b border-gray-200 px-6 h-22 py-4 sticky z-10 top-0 right-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <button
@@ -132,11 +132,25 @@ export default function SideBar({ component }) {
                     <Menu size={20} strokeWidth={1} />
                   )}
                 </button>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 capitalize mb-1">
-                    Dashboard
+                <div className="mb-4">
+                  <h2 className="relative text-2xl font-bold text-gray-800 capitalize ">
+                    {location.pathname.includes('/dashboard')&& (<p>Dashboard</p>)}
+                    {location.pathname.includes('/invoices')&& (<p>Invoices</p>)}
+                    {location.pathname.includes('/purchases')&& (<p>Purchases</p>)}
+                    {location.pathname.includes('/expenses')&& (<p>Expenses</p>)}
+                    {location.pathname.includes('/gst')&& (<p>GST Complainces</p>)}
+                    {location.pathname.includes('/tds')&& (<p>TDS Complainces</p>)}
+                    {location.pathname.includes('/customers')&& (<p>Customers</p>)}
+                    {location.pathname.includes('/settings')&& (<p>Settings</p>)}
+
+
+
+
+
+
+
                   </h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm absolute text-gray-500">
                     Welcome back! Here's your business overview.
                   </p>
                 </div>
