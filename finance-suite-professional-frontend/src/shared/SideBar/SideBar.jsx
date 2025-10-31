@@ -92,7 +92,7 @@ export default function SideBar({ component }) {
         className={`${sidebarOpen ? "w-64" : "w-0"
           } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden`}
       >
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-4  border-b border-gray-200 h-20">
           <h1 className="text-2xl font-bold text-indigo-600">Finance Suite</h1>
           <p className="text-sm text-gray-500 mt-1">Professional</p>
         </div>
@@ -119,7 +119,7 @@ export default function SideBar({ component }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="overflow-y-auto">
-          <header className="bg-white border-b border-gray-200 px-6 py-4 sticky z-10 top-0 right-0">
+          <header className="bg-white border-b border-gray-200 px-6 h-20 py-3 sticky z-10 top-0 right-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <button
@@ -133,7 +133,7 @@ export default function SideBar({ component }) {
                   )}
                 </button>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-800 capitalize">
+                  <h2 className="text-2xl font-bold text-gray-800 capitalize mb-1">
                     Dashboard
                   </h2>
                   <p className="text-sm text-gray-500">

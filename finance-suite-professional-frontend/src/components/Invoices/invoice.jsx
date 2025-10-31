@@ -108,13 +108,20 @@ export default function Invoice() {
 
 
   const handlePhoneChange = (e) => {
-    let { value } = e.target;
+    let { name , value } = e.target;
 
     // Allow only numbers — remove anything else
     value = value.replace(/\D/g, "");
 
     setInvoiceData((prev) => ({ ...prev, company_phone: value }));
     validateField("company_phone", value);
+      if (inputErrors[name]) {
+      setInputErrors((prevErrors) => {
+        const updated = { ...prevErrors };
+        delete updated[name];
+        return updated;
+      });
+    }
   };
 
   const handleItemChange = (index, e) => {
@@ -208,9 +215,9 @@ export default function Invoice() {
   console.log(selectedCountry);
   return (
     <div>
-      <div className="sticky top-20 z-10">
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-800">Invoice Generator</h1>
+      <div className="fixed right-0 top-23 z-10 mr-6 w-[50vw]">
+        <div className=" rounded-lg p-4 mb-6 flex justify-end">
+    
           <div className="flex space-x-2">
             <button
               className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -231,7 +238,7 @@ export default function Invoice() {
         </div>
       </div>
       <div>
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="bg-white rounded-lg shadow-lg p-8 pb-6 mt-15">
           {/* <!-- Company Details --> */}
           {/* <form> */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
