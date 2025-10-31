@@ -5,13 +5,13 @@ import Loader from "./shared/Loader/loader";
 // lazy imports
 const SideBar = lazy(() => import("./shared/SideBar/SideBar"));
 const StatsGrid = lazy(() => import("./components/Dashboard"));
-const Invoices = lazy(() => import("./components/Invoices/index"));
+const Invoices = lazy(() => import("./components/Invoices"));
 const PurchaseOrders = lazy(() => import("./pages/PurchaseOrders"));
-const Expenses = lazy(() => import("./pages/Expenses"));
 const GstCompliance = lazy(() => import("./pages/GstComplainces"));
 const TdsCompliance = lazy(() => import("./pages/Tds"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Settings = lazy(() => import("./shared/Settings/settings"));
+const Expenses = lazy(() => import("./components/Expenses")); // 👈 new line added
 
 export default function App() {
   return (
@@ -23,7 +23,6 @@ export default function App() {
           </div>
         }
       >
-    
         <SideBar
           component={
             <Routes>
@@ -31,10 +30,10 @@ export default function App() {
               <Route path="/dashboard" element={<StatsGrid />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/purchases" element={<PurchaseOrders />} />
-              <Route path="/expenses" element={<Expenses />} />
+              <Route path="/expenses" element={<Expenses />} /> {/* ✅ fixed */}
               <Route path="/gst" element={<GstCompliance />} />
               <Route path="/tds" element={<TdsCompliance />} />
-              <Route path="/cutomers" element={<Customers />} />
+              <Route path="/customers" element={<Customers />} /> {/* fixed typo */}
               <Route path="/settings" element={<Settings />} />
             </Routes>
           }
