@@ -86,7 +86,7 @@ export default function RecentInvoices() {
             <h3 className="text-lg font-semibold text-gray-800">
               Recent Invoices
             </h3>
-            <button className="text-indigo-600 hover:text-indigo-700 text-sm font-medium">
+            <button className="text-indigo-600 hover:text-indigo-700 text-sm cursor-pointer font-medium">
               View All
             </button>
           </div>
@@ -168,7 +168,7 @@ export default function RecentInvoices() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button className="text-indigo-600 hover:text-indigo-800 font-medium">
+                    <button className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer">
                       View
                     </button>
                   </td>
