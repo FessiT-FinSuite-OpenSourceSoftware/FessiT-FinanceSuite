@@ -214,31 +214,32 @@ export default function Invoice() {
   };
   console.log(selectedCountry);
   return (
-    <div>
-      <div className="fixed right-0 top-23 z-10 mr-6 w-[50vw]">
-        <div className=" rounded-lg p-4 mb-6 flex justify-end">
-    
-          <div className="flex space-x-2">
-            <button
-              className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              onClick={invoiceDataSubmit}
-            >
-              💾 Save
-            </button>
-            <button className=" cursor-pointer px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-              ⬇️ Download
-            </button>
-            <button className="cursor-pointer px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-              🖨️ Print
-            </button>
-            <button className="cursor-pointer px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-              ✉️ Email
-            </button>
-          </div>
-        </div>
-      </div>
+    <div className="relative">
+    {/* Fixed Buttons at Top */}
+		<div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
+  <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[80%] xl:max-w-6xl mx-auto">
+    <div className="flex flex-wrap justify-end gap-2">
+      <button
+        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+        onClick={invoiceDataSubmit}
+      >
+        💾 Save
+      </button>
+      <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
+        ⬇️ Download
+      </button>
+      <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto">
+        🖨️ Print
+      </button>
+      <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto">
+        ✉️ Email
+      </button>
+    </div>
+  </div>
+</div>
+	
       <div>
-        <div className="bg-white rounded-lg shadow-lg p-8 pb-6 mt-15">
+        <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
           {/* <!-- Company Details --> */}
           {/* <form> */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
