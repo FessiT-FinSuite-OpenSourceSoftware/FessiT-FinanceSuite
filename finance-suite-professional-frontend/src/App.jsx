@@ -6,10 +6,10 @@ import Loader from "./shared/Loader/loader";
 const SideBar = lazy(() => import("./shared/SideBar/SideBar"));
 const StatsGrid = lazy(() => import("./components/Dashboard"));
 const Invoices = lazy(() => import("./components/Invoices"));
+const Customers = lazy(() => import("./components/Customers"));
 const PurchaseOrders = lazy(() => import("./pages/PurchaseOrders"));
 const GstCompliance = lazy(() => import("./pages/GstComplainces"));
 const TdsCompliance = lazy(() => import("./pages/Tds"));
-const Customers = lazy(() => import("./pages/Customers"));
 const Settings = lazy(() => import("./shared/Settings/settings"));
 const Expenses = lazy(() => import("./components/Expenses")); // 👈 new line added
 
@@ -29,7 +29,7 @@ export default function App() {
               <Route path="/" element={<StatsGrid />} />
               <Route path="/dashboard" element={<StatsGrid />} />
               <Route path="/invoices" element={<Invoices />} />
-              <Route path="/purchases" element={<PurchaseOrders />} />
+			  <Route path="/purchases" element={<PurchaseOrders />} />
               <Route path="/expenses" element={<Expenses />} /> {/* ✅ fixed */}
               <Route path="/gst" element={<GstCompliance />} />
               <Route path="/tds" element={<TdsCompliance />} />
