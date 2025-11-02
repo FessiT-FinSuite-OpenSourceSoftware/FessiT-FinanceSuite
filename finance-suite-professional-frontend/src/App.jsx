@@ -10,8 +10,8 @@ const Customers = lazy(() => import("./components/Customers"));
 const PurchaseOrders = lazy(() => import("./pages/PurchaseOrders"));
 const GstCompliance = lazy(() => import("./pages/GstComplainces"));
 const TdsCompliance = lazy(() => import("./pages/Tds"));
-const Settings = lazy(() => import("./shared/Settings/settings"));
 const Expenses = lazy(() => import("./components/Expenses")); // 👈 new line added
+const Settings = lazy(() => import("./components/Settings")); // 👈 new line added
 
 export default function App() {
   return (
