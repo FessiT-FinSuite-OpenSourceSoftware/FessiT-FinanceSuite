@@ -87,11 +87,11 @@ export default function SettingsCreation() {
     <>
       {/* Fixed Buttons at Top */}
       <div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
-        <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[98%] xl:max-w-7xl mx-auto">
+        <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[98%] xl:max-w-8xl mx-auto">
           {/* Settings Tabs and Buttons Row */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-0">
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-0">
             {/* Settings Tabs - Left Aligned */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 flex-none border-b border-gray-200 pb-0">
               <button
                 onClick={() => setActiveTab("organization")}
                 className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
@@ -145,7 +145,7 @@ export default function SettingsCreation() {
             </div>
 
             {/* Action Buttons - Right Aligned */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 pb-3">
               <button
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
                 onClick={handleSubmit}
