@@ -8,10 +8,10 @@ const StatsGrid = lazy(() => import("./components/Dashboard"));
 const Invoices = lazy(() => import("./components/Invoices"));
 const Customers = lazy(() => import("./components/Customers"));
 const PurchaseOrders = lazy(() => import("./pages/PurchaseOrders"));
-const GstCompliance = lazy(() => import("./pages/GstComplainces"));
 const TdsCompliance = lazy(() => import("./pages/Tds"));
 const Expenses = lazy(() => import("./components/Expenses")); // 👈 new line added
 const Settings = lazy(() => import("./components/Settings")); // 👈 new line added
+const GSTCompliance = lazy(() => import("./components/GSTCompliance"));
 
 export default function App() {
   return (
@@ -29,12 +29,12 @@ export default function App() {
               <Route path="/" element={<StatsGrid />} />
               <Route path="/dashboard" element={<StatsGrid />} />
               <Route path="/invoices" element={<Invoices />} />
-			  <Route path="/purchases" element={<PurchaseOrders />} />
+			        <Route path="/purchases" element={<PurchaseOrders />} />
               <Route path="/expenses" element={<Expenses />} /> {/* ✅ fixed */}
-              <Route path="/gst" element={<GstCompliance />} />
               <Route path="/tds" element={<TdsCompliance />} />
               <Route path="/customers" element={<Customers />} /> {/* fixed typo */}
               <Route path="/settings" element={<Settings />} />
+              <Route path="/gstcompliance" element={<GSTCompliance />} />
             </Routes>
           }
         />

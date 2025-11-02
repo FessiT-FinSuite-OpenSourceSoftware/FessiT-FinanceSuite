@@ -30,7 +30,7 @@ export default function SideBar({ component }) {
     { id: "invoices", label: "Invoices", icon: FileText },
     { id: "purchases", label: "Purchase Orders", icon: ShoppingCart },
     { id: "expenses", label: "Expenses", icon: Receipt },
-    { id: "gst", label: "GST Compliance", icon: IndianRupee },
+    { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee },
     { id: "tds", label: "TDS Compliance", icon: Receipt },
     { id: "customers", label: "Customers", icon: Users },
     { id: "settings", label: "Settings", icon: Settings },
