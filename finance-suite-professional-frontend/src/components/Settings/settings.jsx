@@ -87,81 +87,84 @@ export default function SettingsCreation() {
     <>
       {/* Fixed Buttons at Top */}
       <div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
-        <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[80%] xl:max-w-6xl mx-auto">
-          {/* Settings Tabs */}
-          <div className="flex flex-wrap gap-2 mb-4 border-b border-gray-200 pb-3">
-            <button
-              onClick={() => setActiveTab("organization")}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                activeTab === "organization"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              🏢 Organization
-            </button>
-            <button
-              onClick={() => setActiveTab("invoice")}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                activeTab === "invoice"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              🧾 Invoice Settings
-            </button>
-            <button
-              onClick={() => setActiveTab("tax")}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                activeTab === "tax"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              💰 Tax Settings
-            </button>
-            <button
-              onClick={() => setActiveTab("payment")}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                activeTab === "payment"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              💳 Payment Methods
-            </button>
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                activeTab === "users"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              👥 Users & Roles
-            </button>
-          </div>
+        <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[98%] xl:max-w-7xl mx-auto">
+          {/* Settings Tabs and Buttons Row */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-0">
+            {/* Settings Tabs - Left Aligned */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setActiveTab("organization")}
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                  activeTab === "organization"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                🏢 Organization
+              </button>
+              <button
+                onClick={() => setActiveTab("invoice")}
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                  activeTab === "invoice"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                🧾 Invoice Settings
+              </button>
+              <button
+                onClick={() => setActiveTab("tax")}
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                  activeTab === "tax"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                💰 Tax Settings
+              </button>
+              <button
+                onClick={() => setActiveTab("payment")}
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                  activeTab === "payment"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                💳 Payment Methods
+              </button>
+              <button
+                onClick={() => setActiveTab("users")}
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                  activeTab === "users"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                👥 Users & Roles
+              </button>
+            </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap justify-end gap-2">
-            <button
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
-              onClick={handleSubmit}
-            >
-              💾 Save
-            </button>
-            <button 
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"
-              onClick={() => alert('Edit mode activated')}
-            >
-              ⬇️ Edit
-            </button>
-            <button
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto"
-              onClick={handleReset}
-            >
-              🔄 Reset
-            </button>
+            {/* Action Buttons - Right Aligned */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+                onClick={handleSubmit}
+              >
+                💾 Save
+              </button>
+              <button 
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"
+                onClick={() => alert('Edit mode activated')}
+              >
+                ⬇️ Edit
+              </button>
+              <button
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto"
+                onClick={handleReset}
+              >
+                🔄 Reset
+              </button>
+            </div>
           </div>
         </div>
       </div>
