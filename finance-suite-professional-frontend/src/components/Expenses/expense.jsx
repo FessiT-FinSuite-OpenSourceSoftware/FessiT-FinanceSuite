@@ -152,14 +152,14 @@ export default function Expense() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mt-8">
+        {/* <div className="flex justify-end gap-3 mt-8">
           <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Save Expense
           </button>
           <button className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
             Cancel
           </button>
-        </div>
+        </div> */}
       </div>
     </>
   );

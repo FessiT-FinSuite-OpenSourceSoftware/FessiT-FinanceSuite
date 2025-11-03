@@ -4,15 +4,39 @@ import { CircleMinus } from "lucide-react";
 import { toast } from "react-toastify";
 import { countries } from "../../shared/countries";
 import { ChevronDown } from "lucide-react";
+import { MoveLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { formatNumber } from "../../utils/formatNumber";
+// const initialInvoiceData = {
+//   company_name: "",
+//   gstIN: "",
+//   company_address: "",
+//   company_phone: "",
+//   company_email: "",
+//   invoice_number: "",
+//   invoice_date: "",
+//   invoice_dueDate: "",
+//   invoice_terms: "Due on receipt",
+//   po_number: "",
+//   place_of_supply: "",
+//   billcustomer_name: "",
+//   billcustomer_address: "",
+//   billcustomer_gstin: "",
+//   shipcustomer_name: "",
+//   shipcustomer_address: "",
+//   shipcustomer_gstin: "",
+//   subject: "",
+//   items: [
+//     { description: "", hours: "", rate: "", cgst: "", sgst: "", itemTotal: "" },
+//   ],
+//   notes: "",
+//   subTotal: "",
+//   totalcgst: "",
+//   totalsgst: "",
+//   total: "",
+// };
 
-// const countries = [
-//   { code: "+91", name: "India", flag: "🇮🇳" },
-//   { code: "+1", name: "United States", flag: "🇺🇸" },
-//   { code: "+44", name: "United Kingdom", flag: "🇬🇧" },
-//   { code: "+61", name: "Australia", flag: "🇦🇺" },
-//   { code: "+49", name: "Germany", flag: "🇩🇪" },
-//   { code: "+33", name: "France", flag: "🇫🇷" },
-// ];
 const initialInvoiceData = {
   company_name: "",
   gstIN: "",
@@ -32,20 +56,62 @@ const initialInvoiceData = {
   shipcustomer_address: "",
   shipcustomer_gstin: "",
   subject: "",
-  items: [{ description: "", hours: "", rate: "", cgst: "", sgst: "" }],
+  items: [
+    {
+      description: "",
+      hours: "",
+      rate: "",
+      cgst: { cgstPercent: "", cgstAmount: "" },
+      sgst: { sgstPercent: "", sgstAmount: "" },
+      itemTotal: "",
+    },
+  ],
   notes: "",
   subTotal: "",
   totalcgst: "",
   totalsgst: "",
   total: "",
 };
-export default function Invoice() {
+
+export default function EditInvoice() {
   const [invoiceData, setInvoiceData] = useState(initialInvoiceData);
   const [inputErrors, setInputErrors] = useState({});
   const [errors, setErrors] = useState({});
   const [selectedCountry, setSelectedCountry] = useState(countries[0]);
-  // const selected = countries.find((c) => c.code === selectedCountry);
-  // console.log(selected)
+  const nav = useNavigate();
+
+  useEffect(() => {
+    // 1. Calculate subtotal
+    const subTotal = invoiceData.items.reduce(
+      (sum, item) => sum + (parseFloat(item.itemTotal) || 0),
+      0
+    );
+
+    // 2. Group CGST and SGST by percent
+    const grouped = groupTaxValues(invoiceData.items);
+
+    // 3. Calculate total CGST and SGST values
+    const totalCgst = Object.values(grouped.cgst).reduce(
+      (sum, val) => sum + val,
+      0
+    );
+    const totalSgst = Object.values(grouped.sgst).reduce(
+      (sum, val) => sum + val,
+      0
+    );
+
+    // 4. Calculate final total
+    const total = subTotal + totalCgst + totalSgst;
+
+    // 5. Update state
+    setInvoiceData((prev) => ({
+      ...prev,
+      subTotal: subTotal.toFixed(2),
+      totalcgst: totalCgst.toFixed(2),
+      totalsgst: totalSgst.toFixed(2),
+      total: total.toFixed(2),
+    }));
+  }, [invoiceData.items]);
 
   const handleSelect = (e) => {
     const selected = countries.find((c) => c.code === e.target.value);
@@ -106,16 +172,15 @@ export default function Invoice() {
     }
   };
 
-
   const handlePhoneChange = (e) => {
-    let { name , value } = e.target;
+    let { name, value } = e.target;
 
     // Allow only numbers — remove anything else
     value = value.replace(/\D/g, "");
 
     setInvoiceData((prev) => ({ ...prev, company_phone: value }));
     validateField("company_phone", value);
-      if (inputErrors[name]) {
+    if (inputErrors[name]) {
       setInputErrors((prevErrors) => {
         const updated = { ...prevErrors };
         delete updated[name];
@@ -127,26 +192,75 @@ export default function Invoice() {
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const updatedItems = [...invoiceData.items];
+    const item = updatedItems[index];
 
-    if (["hours", "rate", "cgst", "sgst"].includes(name)) {
+    // Numeric validation
+    if (
+      [
+        "hours",
+        "rate",
+        "cgstPercent",
+        "cgstAmount",
+        "sgstPercent",
+        "sgstAmount",
+        "itemTotal",
+      ].includes(name)
+    ) {
       if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
-        updatedItems[index][name] = value;
+        if (name.startsWith("cgst")) {
+          item.cgst[name] = value;
+        } else if (name.startsWith("sgst")) {
+          item.sgst[name] = value;
+        } else {
+          item[name] = value;
+        }
       }
     } else {
-      updatedItems[index][name] = value;
+      item[name] = value;
     }
+
+    // Compute subtotal
+    const hours = parseFloat(item.hours) || 0;
+    const rate = parseFloat(item.rate) || 0;
+    const subTotal = hours * rate;
+
+    // Calculate or preserve CGST/SGST amounts
+    const cgstPercent = parseFloat(item.cgst.cgstPercent) || 0;
+    const sgstPercent = parseFloat(item.sgst.sgstPercent) || 0;
+
+    if (name === "cgstPercent") {
+      item.cgst.cgstAmount = ((subTotal * cgstPercent) / 100).toFixed(2);
+    }
+    if (name === "sgstPercent") {
+      item.sgst.sgstAmount = ((subTotal * sgstPercent) / 100).toFixed(2);
+    }
+
+    // Always update total
+    const total =
+      subTotal +
+      (parseFloat(item.cgst.cgstAmount) || 0) +
+      (parseFloat(item.sgst.sgstAmount) || 0);
+
+    item.itemTotal = total.toFixed(2);
 
     setInvoiceData({ ...invoiceData, items: updatedItems });
   };
 
   const addItem = () => {
-    setInvoiceData({
-      ...invoiceData,
+    setInvoiceData((prev) => ({
+      ...prev,
       items: [
-        ...invoiceData.items,
-        { description: "", hours: "", cgst: "", sgst: "" },
+        ...prev.items,
+        {
+          description: "",
+          hours: "",
+          rate: "",
+          cgst: { cgstPercent: "", cgstAmount: "" },
+          sgst: { sgstPercent: "", sgstAmount: "" },
+          itemTotal: "",
+        },
       ],
-    });
+    }));
   };
 
   const removeItem = (index) => {
@@ -210,40 +324,81 @@ export default function Invoice() {
     setInputErrors({});
 
     console.log(invoiceData);
-    setInvoiceData(initialInvoiceData);
+    setInvoiceData({
+      ...initialInvoiceData,
+    });
   };
-  console.log(selectedCountry);
+
+  const goBackToInvoices = () => {
+    nav("/invoices");
+  };
+
+  const groupTaxValues = (items = []) => {
+    const grouped = { cgst: {}, sgst: {} };
+
+    items.forEach((item) => {
+      const hours = parseFloat(item.hours || 1);
+      const rate = parseFloat(item.rate || 0);
+      const baseAmount = hours * rate;
+
+      // ✅ Correctly extract nested values
+      const cgstPercent = parseFloat(item.cgst?.cgstPercent || 0);
+      const sgstPercent = parseFloat(item.sgst?.sgstPercent || 0);
+
+      const cgstValue = (baseAmount * cgstPercent) / 100;
+      const sgstValue = (baseAmount * sgstPercent) / 100;
+
+      // ✅ Group properly
+      grouped.cgst[cgstPercent] = (grouped.cgst[cgstPercent] || 0) + cgstValue;
+
+      grouped.sgst[sgstPercent] = (grouped.sgst[sgstPercent] || 0) + sgstValue;
+    });
+
+    return grouped;
+  };
+
   return (
     <div className="relative">
-    {/* Fixed Buttons at Top */}
-		<div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
-  <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[80%] xl:max-w-6xl mx-auto">
-    <div className="flex flex-wrap justify-end gap-2 -mr-27">
-      <button
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
-        onClick={invoiceDataSubmit}
-      >
-        💾 Save
-      </button>
-      <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
-        ⬇️ Download
-      </button>
-      <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto">
-        🖨️ Print
-      </button>
-      <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto">
-        ✉️ Email
-      </button>
-    </div>
-  </div>
-</div>
-	
+      {/* Fixed Buttons at Top */}
+     <div className="sticky top-[88px]
+      w-full sm:w-[90%] md:w-full lg:w-full 
+      z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
+        <div className="">
+          <div className="flex justify-between">
+            <div className="px-4 py-2">
+              <ArrowLeft
+                strokeWidth={1}
+                onClick={goBackToInvoices}
+                className=" cursor-pointer"
+              />
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 mr-5">
+              <button
+                className="px-4 py-2 bg-blue-600 cursor-pointer text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+                onClick={invoiceDataSubmit}
+              >
+                💾 Save
+              </button>
+              <button className="px-4 py-2 cursor-pointer bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
+                ⬇️ Download
+              </button>
+              <button className="px-4 py-2 cursor-pointer bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto">
+                🖨️ Print
+              </button>
+              <button className="px-4 py-2 cursor-pointer bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto">
+                ✉️ Email
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div>
         <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
           {/* <!-- Company Details --> */}
           {/* <form> */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
-            Company Details
+            Organization Details
           </h2>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="relative">
@@ -348,19 +503,17 @@ export default function Invoice() {
                     name="company_phone"
                   />
                 </div>
-
-                
               </div>
               {inputErrors?.company_phone && (
-                  <p className="absolute text-[13px] text-[#f10404]">
-                    {inputErrors?.company_phone}
-                  </p>
-                )}
-                {errors?.company_phone && (
-                  <p className="absolute text-[13px] text-[#f10404]">
-                    {errors.company_phone}
-                  </p>
-                )}
+                <p className="absolute text-[13px] text-[#f10404]">
+                  {inputErrors?.company_phone}
+                </p>
+              )}
+              {errors?.company_phone && (
+                <p className="absolute text-[13px] text-[#f10404]">
+                  {errors.company_phone}
+                </p>
+              )}
             </div>
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -656,130 +809,158 @@ export default function Invoice() {
             Items
           </h2>
           <div>
-            <table className="w-full border-collapse border border-gray-300 text-sm mb-6">
+            <table className="w-full border border-gray-300 border-collapse text-sm">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="border border-gray-300 px-3 py-2">Sl No</th>
-                  <th className="border border-gray-300 px-3 py-2">
-                    Description
+                  <th
+                    rowSpan="2"
+                    className="border border-gray-300 px-3 py-2 text-center"
+                  >
+                    Sl No
                   </th>
-                  <th className="border border-gray-300 px-3 py-2">Hours</th>
-                  <th className="border border-gray-300 px-3 py-2">Rate</th>
-                  <th className="border border-gray-300 px-3 py-2">CGST %</th>
-                  <th className="border border-gray-300 px-3 py-2">SGST %</th>
-                  <th className="border border-gray-300 px-3 py-2">Action</th>
+                  <th
+                    rowSpan="2"
+                    className="border border-gray-300 px-3 py-2 text-left"
+                  >
+                    Item & Description
+                  </th>
+                  <th
+                    rowSpan="2"
+                    className="border border-gray-300 px-3 py-2 text-center"
+                  >
+                    Hour
+                  </th>
+                  <th
+                    rowSpan="2"
+                    className="border border-gray-300 px-3 py-2 text-center"
+                  >
+                    Rate
+                  </th>
+                  <th
+                    colSpan="2"
+                    className="border border-gray-300 px-3 py-2 text-center"
+                  >
+                    CGST
+                  </th>
+                  <th
+                    colSpan="2"
+                    className="border border-gray-300 px-3 py-2 text-center"
+                  >
+                    SGST
+                  </th>
+                  <th
+                    rowSpan="2"
+                    className="border border-gray-300 px-3 py-2 text-center"
+                  >
+                    Amount
+                  </th>
+                  <th
+                    rowSpan="2"
+                    className="border border-gray-300 px-3 py-2 text-center"
+                  >
+                    Action
+                  </th>
+                </tr>
+                <tr>
+                  <th className="border border-gray-300 px-3 py-2 text-center">
+                    %
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-center">
+                    Amt
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-center">
+                    %
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-center">
+                    Amt
+                  </th>
                 </tr>
               </thead>
+
               <tbody>
-                {invoiceData?.items?.map((item, index) => (
-                  <tr key={index}>
-                    <td
-                      className="border border-gray-300
-                   px-3 py-2 text-center text-gray-700"
-                    >
+                {invoiceData.items.map((item, index) => (
+                  <tr key={index} className="hover:bg-gray-50 transition">
+                    <td className="border border-gray-300 px-3 py-2 text-center">
                       {index + 1}
                     </td>
                     <td className="border border-gray-300 px-3 py-2">
                       <input
                         type="text"
-                        placeholder="Enter description"
-                        className="border
-                       border-gray-300 rounded 
-                       px-2 py-1 w-full text-gray-700 
-                       transform transition-all duration-300 ease-in-out
-                       placeholder:text-gray-400"
-                        value={item?.description}
                         name="description"
+                        value={item.description}
                         onChange={(e) => handleItemChange(index, e)}
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700 placeholder:text-gray-400"
+                        placeholder="Enter description"
                       />
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       <input
                         type="number"
-                        placeholder="hours"
-                        className="border
-                       border-gray-300 
-                       rounded px-2 py-1 
-                       w-20 text-right text-gray-700
-                       placeholder:text-gray-400"
-                        value={item.hours}
                         name="hours"
+                        value={item.hours}
                         onChange={(e) => handleItemChange(index, e)}
+                        className="w-20 border border-gray-300 rounded px-2 py-1 text-right text-gray-700"
+                        placeholder="Hour"
                       />
                     </td>
-                    <td className="border border-gray-300 px-3 py-2 text-right">
+                    <td className="border border-gray-300 px-3 py-2 text-center">
                       <input
                         type="number"
-                        placeholder="rate"
-                        className="border
-                       border-gray-300
-                       text-gray-700
-                        rounded px-2 py-1 w-24 
-                        text-center placeholder:text-gray-400"
-                        value={item.rate}
                         name="rate"
+                        value={item.rate}
                         onChange={(e) => handleItemChange(index, e)}
+                        className="w-24 border border-gray-300 rounded px-2 py-1 text-right text-gray-700"
+                        placeholder="Rate"
                       />
                     </td>
+
+                    {/* CGST */}
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       <input
                         type="number"
-                        placeholder="cgst"
-                        className="border
-                       border-gray-300 
-                       rounded px-2 py-1 w-16 
-                       text-center text-gray-700 placeholder:text-gray-400"
-                        value={item.cgst}
-                        name="cgst"
+                        value={item?.cgst?.cgstPercent}
+                        name="cgstPercent"
                         onChange={(e) => handleItemChange(index, e)}
+                        className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
+                        placeholder="%"
                       />
                     </td>
+                    <td className="border border-gray-300 px-3 py-2 text-right text-gray-700">
+                      {item.cgst?.cgstAmount || "0.00"}
+                    </td>
+
+                    {/* SGST */}
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       <input
                         type="number"
-                        placeholder="sgst"
-                        className="border
-                       border-gray-300 
-                       rounded px-2 py-1 w-16 
-                       text-center text-gray-700 placeholder:text-gray-400"
-                        value={item.sgst}
-                        name="sgst"
+                        value={item?.sgst?.sgstPercent}
+                        name="sgstPercent"
                         onChange={(e) => handleItemChange(index, e)}
+                        className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
+                        placeholder="%"
                       />
                     </td>
+                    <td className="border border-gray-300 px-3 py-2 text-right text-gray-700">
+                      {item.sgst?.sgstAmount || "0.00"}
+                    </td>
+
+                    <td className="border border-gray-300 px-3 py-2 text-right font-semibold text-gray-800">
+                      {item.itemTotal || "0.00"}
+                    </td>
+
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       {index === invoiceData.items.length - 1 ? (
-                        <div className="relative group flex justify-center">
-                          <CirclePlus
-                            strokeWidth={1}
-                            className=" text-[#0d0d0d] cursor-pointer"
-                            onClick={addItem}
-                          />
-                          <span
-                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1
-               hidden group-hover:block 
-               bg-gray-800 text-white text-xs rounded py-1 px-2
-               whitespace-nowrap shadow-md"
-                          >
-                            Add new item
-                          </span>
-                        </div>
+                        <CirclePlus
+                          strokeWidth={1}
+                          className="text-green-600 cursor-pointer"
+                          onClick={addItem}
+                        />
                       ) : (
-                        <div className="relative group flex justify-center">
-                          <CircleMinus
-                            strokeWidth={1}
-                            className="text-[#f10404] cursor-pointer"
-                            onClick={() => removeItem(index)}
-                          />
-                          <span
-                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1
-               hidden group-hover:block 
-               bg-gray-800 text-white text-xs rounded py-1 px-2
-               whitespace-nowrap shadow-md"
-                          >
-                            Remove item
-                          </span>
-                        </div>
+                        <CircleMinus
+                          strokeWidth={1}
+                          className="text-red-500 cursor-pointer"
+                          onClick={() => removeItem(index)}
+                        />
                       )}
                     </td>
                   </tr>
@@ -792,47 +973,76 @@ export default function Invoice() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
             Totals
           </h2>
+
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div></div>
             <div className="space-y-2">
+              {/* Sub Total */}
               <div className="flex justify-between">
                 <span className="font-semibold text-gray-700">Sub Total</span>
                 <input
                   type="text"
                   className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                  value={invoiceData.subTotal}
-                  name="total"
+                  value={formatNumber(invoiceData.subTotal)}
                   disabled
                 />
               </div>
-              <div className="flex justify-between">
-                <span className="font-semibold text-gray-700">CGST (9%)</span>
-                <input
-                  type="text"
-                  className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                  value={invoiceData.totalcgst}
-                  name="total"
-                  disabled
-                />
-              </div>
-              <div className="flex justify-between">
-                <span className="font-semibold text-gray-700">SGST (9%)</span>
-                <input
-                  type="text"
-                  className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                  value={invoiceData.totalsgst}
-                  name="total"
-                  disabled
-                />
-              </div>
+
+              {(() => {
+                const grouped = groupTaxValues(invoiceData?.items || []);
+
+                return (
+                  <>
+                    {/* CGST */}
+                    {Object.entries(grouped.cgst)
+                      .filter(([percent, value]) => parseFloat(percent) > 0)
+                      .map(([percent, value]) => (
+                        <div
+                          key={`cgst-${percent}`}
+                          className="flex justify-between"
+                        >
+                          <span className="font-semibold text-gray-700">
+                            CGST ({percent}%)
+                          </span>
+                          <input
+                            type="text"
+                            className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                            value={formatNumber(value.toFixed(2))}
+                            disabled
+                          />
+                        </div>
+                      ))}
+
+                    {/* SGST */}
+                    {Object.entries(grouped.sgst)
+                      .filter(([percent, value]) => parseFloat(percent) > 0)
+                      .map(([percent, value]) => (
+                        <div
+                          key={`sgst-${percent}`}
+                          className="flex justify-between"
+                        >
+                          <span className="font-semibold text-gray-700">
+                            SGST ({percent}%)
+                          </span>
+                          <input
+                            type="text"
+                            className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                            value={formatNumber(value.toFixed(2))}
+                            disabled
+                          />
+                        </div>
+                      ))}
+                  </>
+                );
+              })()}
+
+              {/* Total */}
               <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">
                 <span>Total</span>
                 <input
                   type="text"
-                  className="border border-gray-300 rounded px-2 py-1 w-32 
-             text-right font-bold text-indigo-700"
-                  value={invoiceData.total}
-                  name="total"
+                  className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-bold text-indigo-700"
+                  value={formatNumber(invoiceData.total) || 0}
                   disabled
                 />
               </div>
