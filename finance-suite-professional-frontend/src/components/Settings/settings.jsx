@@ -36,6 +36,40 @@ const initialSettings = {
   requireHSN: "yes",
   roundingRule: "nearest",
   taxNotes: "",
+
+  // --- Users & Roles ---
+  newUserName: "",
+  newUserEmail: "",
+  newUserRole: "Viewer",
+  newUserStatus: "Active",
+  permissions: {
+    Admin: { view: true, edit: true, delete: true, export: true },
+    Manager: { view: true, edit: true, delete: false, export: true },
+    Accountant: { view: true, edit: true, delete: false, export: true },
+    Viewer: { view: true, edit: false, delete: false, export: false },
+    Custom: { view: false, edit: false, delete: false, export: false },
+  },
+
+  // --- Payment Methods ---
+  enabledMethods: {
+    bankTransfer: true,
+    upi: true,
+    card: false,
+    paypal: false,
+    cash: true,
+  },
+  paymentBankName: "",
+  paymentAccountNo: "",
+  paymentIFSC: "",
+  paymentAccountHolder: "",
+  paymentUpiId: "",
+  paypalEmail: "",
+  paypalClientId: "",
+  cardProvider: "",
+  cardApiKey: "",
+  cashInstructions: "",
+  customPaymentName: "",
+
 };
 
 export default function SettingsCreation() {
@@ -782,17 +816,294 @@ export default function SettingsCreation() {
 
 
         {activeTab === "payment" && (
-          <>
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
-              Payment Methods
-            </h2>
-            <div className="text-center py-12 text-gray-500">
-              <p className="text-lg">💳 Payment Methods Configuration</p>
-              <p className="text-sm mt-2">Set up payment gateways and bank accounts</p>
-            </div>
-          </>
-        )}
+        <>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+            Payment Methods
+          </h2>
 
+          <div className="space-y-8">
+            {/* Available Payment Methods */}
+            <div>
+              <h3 className="text-md font-semibold text-gray-700 mb-3">
+                Supported Payment Options
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { name: "Bank Transfer", key: "bankTransfer" },
+                  { name: "UPI / QR Code", key: "upi" },
+                  { name: "Credit / Debit Card", key: "card" },
+                  { name: "PayPal", key: "paypal" },
+                  { name: "Cash", key: "cash" },
+                ].map((method) => (
+                  <div
+                    key={method.key}
+                    className="flex items-center justify-between border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
+                  >
+                    <span className="text-gray-700 font-medium">
+                      {method.name}
+                    </span>
+                    <label className="flex items-center cursor-pointer">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={settings.enabledMethods?.[method.key] || false}
+                          onChange={() => {
+                            const updated = { ...settings.enabledMethods };
+                            updated[method.key] = !updated[method.key];
+                            setSettings({ ...settings, enabledMethods: updated });
+                          }}
+                        />
+                        <div
+                          className={`block w-12 h-6 rounded-full transition ${
+                            settings.enabledMethods?.[method.key]
+                              ? "bg-blue-600"
+                              : "bg-gray-300"
+                          }`}
+                        ></div>
+                        <div
+                          className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${
+                            settings.enabledMethods?.[method.key]
+                              ? "transform translate-x-6"
+                              : ""
+                          }`}
+                        ></div>
+                      </div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bank Transfer Details */}
+            {settings.enabledMethods?.bankTransfer && (
+              <div>
+                <h3 className="text-md font-semibold text-gray-700 mb-3 border-b border-gray-300 pb-1">
+                  Bank Transfer Details
+                </h3>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      name="paymentBankName"
+                      value={settings.paymentBankName || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., HDFC Bank"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      name="paymentAccountNo"
+                      value={settings.paymentAccountNo || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., 1234567890"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      name="paymentIFSC"
+                      value={settings.paymentIFSC || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., HDFC0001234"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      Account Holder Name
+                    </label>
+                    <input
+                      type="text"
+                      name="paymentAccountHolder"
+                      value={settings.paymentAccountHolder || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., ABC Pvt Ltd"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* UPI / QR Details */}
+            {settings.enabledMethods?.upi && (
+              <div>
+                <h3 className="text-md font-semibold text-gray-700 mb-3 border-b border-gray-300 pb-1">
+                  UPI / QR Code Details
+                </h3>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      UPI ID
+                    </label>
+                    <input
+                      type="text"
+                      name="paymentUpiId"
+                      value={settings.paymentUpiId || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., business@okaxis"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      QR Code Image
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) =>
+                        toast.info(`QR image uploaded: ${e.target.files[0]?.name}`)
+                      }
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full bg-gray-50 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PayPal Details */}
+            {settings.enabledMethods?.paypal && (
+              <div>
+                <h3 className="text-md font-semibold text-gray-700 mb-3 border-b border-gray-300 pb-1">
+                  PayPal Configuration
+                </h3>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      PayPal Email
+                    </label>
+                    <input
+                      type="email"
+                      name="paypalEmail"
+                      value={settings.paypalEmail || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., paypal@yourcompany.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      PayPal Client ID
+                    </label>
+                    <input
+                      type="text"
+                      name="paypalClientId"
+                      value={settings.paypalClientId || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="Enter your PayPal Client ID"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Credit/Debit Card */}
+            {settings.enabledMethods?.card && (
+              <div>
+                <h3 className="text-md font-semibold text-gray-700 mb-3 border-b border-gray-300 pb-1">
+                  Card Payment Gateway
+                </h3>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      Provider Name
+                    </label>
+                    <input
+                      type="text"
+                      name="cardProvider"
+                      value={settings.cardProvider || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., Stripe / Razorpay"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">
+                      API Key / Merchant ID
+                    </label>
+                    <input
+                      type="text"
+                      name="cardApiKey"
+                      value={settings.cardApiKey || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="Enter API key or Merchant ID"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Cash Instructions */}
+            {settings.enabledMethods?.cash && (
+              <div>
+                <h3 className="text-md font-semibold text-gray-700 mb-3 border-b border-gray-300 pb-1">
+                  Cash Payment Instructions
+                </h3>
+                <textarea
+                  name="cashInstructions"
+                  value={settings.cashInstructions || ""}
+                  onChange={handleChange}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500 h-20"
+                  placeholder="e.g., Accept cash payments at the billing counter only."
+                />
+              </div>
+            )}
+
+            {/* Add Custom Payment Method */}
+            <div>
+              <h3 className="text-md font-semibold text-gray-700 mb-3 border-b border-gray-300 pb-1">
+                Add Custom Payment Method
+              </h3>
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  name="customPaymentName"
+                  value={settings.customPaymentName || ""}
+                  onChange={handleChange}
+                  className="border border-gray-300 rounded-md px-3 py-2 flex-1 focus:ring-1 focus:ring-blue-500"
+                  placeholder="e.g., Crypto Wallet, Cheque, etc."
+                />
+                <button
+                  onClick={() => {
+                    if (settings.customPaymentName?.trim()) {
+                      const updated = {
+                        ...settings.enabledMethods,
+                        [settings.customPaymentName]: true,
+                      };
+                      setSettings({
+                        ...settings,
+                        enabledMethods: updated,
+                        customPaymentName: "",
+                      });
+                      toast.success("Custom payment method added!");
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  ➕ Add
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
         {activeTab === "users" && (
         <>
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
