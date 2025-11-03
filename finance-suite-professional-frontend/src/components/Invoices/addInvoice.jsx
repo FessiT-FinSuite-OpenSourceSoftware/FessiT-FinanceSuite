@@ -332,9 +332,11 @@ export default function AddInvoice() {
   return (
     <div className="relative">
       {/* Fixed Buttons at Top */}
-      <div className="sticky top-[88px]
+      <div
+        className="sticky top-[88px]
       w-full sm:w-[90%] md:w-full lg:w-full 
-      z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
+      z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm"
+      >
         <div className="">
           <div className="flex justify-between">
             <div className="px-4 py-2">
@@ -959,51 +961,54 @@ export default function AddInvoice() {
                   disabled
                 />
               </div>
-
               {(() => {
                 const grouped = groupTaxValues(invoiceData?.items || []);
 
+                // Combine CGST and SGST entries into a single list
+                const merged = Object.keys({
+                  ...grouped.cgst,
+                  ...grouped.sgst,
+                }).filter((percent) => parseFloat(percent) > 0);
+
                 return (
                   <>
-                    {/* CGST */}
-                    {Object.entries(grouped.cgst)
-                      .filter(([percent, value]) => parseFloat(percent) > 0)
-                      .map(([percent, value]) => (
-                        <div
-                          key={`cgst-${percent}`}
-                          className="flex justify-between"
-                        >
-                          <span className="font-semibold text-gray-700">
-                            CGST ({percent}%)
-                          </span>
-                          <input
-                            type="text"
-                            className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                            value={formatNumber(value.toFixed(2))}
-                            disabled
-                          />
-                        </div>
-                      ))}
+                    {merged.map((percent) => (
+                      <React.Fragment key={percent}>
+                        {/* CGST */}
+                        {grouped.cgst[percent] !== undefined && (
+                          <div className="flex justify-between">
+                            <span className="font-semibold text-gray-700">
+                              CGST ({percent}%)
+                            </span>
+                            <input
+                              type="text"
+                              className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                              value={formatNumber(
+                                grouped.cgst[percent]?.toFixed(2)
+                              )}
+                              disabled
+                            />
+                          </div>
+                        )}
 
-                    {/* SGST */}
-                    {Object.entries(grouped.sgst)
-                      .filter(([percent, value]) => parseFloat(percent) > 0)
-                      .map(([percent, value]) => (
-                        <div
-                          key={`sgst-${percent}`}
-                          className="flex justify-between"
-                        >
-                          <span className="font-semibold text-gray-700">
-                            SGST ({percent}%)
-                          </span>
-                          <input
-                            type="text"
-                            className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                            value={formatNumber(value.toFixed(2))}
-                            disabled
-                          />
-                        </div>
-                      ))}
+                        {/* SGST */}
+                        {grouped.sgst[percent] !== undefined && (
+                          <div className="flex justify-between">
+                            <span className="font-semibold text-gray-700">
+                              SGST ({percent}%)
+                            </span>
+                            <input
+                              type="text"
+                              className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                              value={formatNumber(
+                                grouped.sgst[percent]?.toFixed(2)
+                              )}
+                              disabled
+                            />
+                          </div>
+                        )}
+                      </React.Fragment>
+                    ))}
                   </>
                 );
               })()}

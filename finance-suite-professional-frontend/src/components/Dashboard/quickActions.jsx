@@ -11,7 +11,7 @@ export default function QuickActions() {
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <NavLink 
-           to={'/invoices'}
+           to={'/invoices/addInvoice'}
           className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
             <Plus className="text-indigo-600 mb-2" size={24} />
             <span className="text-sm font-medium text-gray-700">

@@ -1,32 +1,107 @@
 import React, { useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
+const initialExpenseData = {
+  expenseCategory: "",
+  projectCostCenter: "",
+  expenseTitle: "",
+  expenseDate: "",
+  currency: "",
+  amount: "",
+  comment: "",
+  receipt: "",
+};
 export default function Expense() {
+  const [expenseData, setExpenseData] = useState(initialExpenseData);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [inputErrors, setInputErrors] = useState({});
+
+  const nav = useNavigate();
+
+  const onExpenseDataChange = (e) => {
+    const { name, value } = e.target;
+    setExpenseData({ ...expenseData, [name]: value });
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file ? file.name : null);
+    setExpenseData({ ...expenseData, receipt: file });
+  };
+
+  const onExpenseDataSubmit = (e) => {
+    e.preventDefault();
+    const newErrors = {};
+    if (!expenseData.expenseCategory?.trim())
+      newErrors.expenseCategory = "Category is required";
+    if (!expenseData.projectCostCenter?.trim())
+      newErrors.projectCostCenter = "Project / Cost center is required";
+    if (!expenseData.expenseTitle?.trim())
+      newErrors.expenseTitle = "Title is required";
+    if (!expenseData.expenseDate?.trim())
+      newErrors.expenseDate = "Date is required";
+    if (!expenseData.currency?.trim())
+      newErrors.currency = "Currency is required";
+    if (!expenseData.amount?.trim()) newErrors.amount = "Amount is required";
+    if (!expenseData.receipt) newErrors.receipt = "Receipt is required";
+
+    if (Object.keys(newErrors).length > 0) {
+      setInputErrors(newErrors);
+      const firstErrorKey = Object.keys(newErrors)[0];
+      const el = document.querySelector(`[name="${firstErrorKey}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      }
+      return;
+    }
+    setInputErrors({});
+
+    console.log(expenseData);
+    setExpenseData({ ...initialExpenseData });
+    setSelectedFile("");
+  };
+
+  const goBackToExpenses = () => {
+    nav("/expenses");
   };
 
   return (
     <>
       {/* Action Bar */}
-      <div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
-        <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[80%] xl:max-w-6xl mx-auto">
-		<div className="flex flex-wrap justify-end gap-2">
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            💾 Save
-          </button>
-          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-            ⬇️ Download
-          </button>
-          <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-            🖨️ Print
-          </button>
-          <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-            ✉️ Email
-          </button>
-		  </div>
+      <div
+        className="sticky top-[88px]
+          w-full sm:w-[90%] md:w-full lg:w-full 
+          z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm"
+      >
+        <div className="">
+          <div className="flex justify-between">
+            <div className="px-4 py-2">
+              <ArrowLeft
+                strokeWidth={1}
+                onClick={goBackToExpenses}
+                className=" cursor-pointer"
+              />
+            </div>
+            <div className="flex flex-wrap justify-end  mr-5 gap-2 ">
+              <button
+                className="px-4 py-2 bg-blue-600 cursor-pointer text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+                onClick={onExpenseDataSubmit}
+              >
+                💾 Save
+              </button>
+              <button className="px-4 py-2 cursor-pointer bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
+                ⬇️ Download
+              </button>
+              <button className="px-4 py-2 cursor-pointer bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto">
+                🖨️ Print
+              </button>
+              <button className="px-4 py-2 cursor-pointer bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto">
+                ✉️ Email
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -38,105 +113,162 @@ export default function Expense() {
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           {/* Expense Category */}
-          <div>
+          <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Expense Category
+              Expense Category *
             </label>
-            <select className="border border-gray-300 rounded px-3 py-2 w-full text-sm">
+            <select
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+              name="expenseCategory"
+              value={expenseData.expenseCategory}
+              onChange={onExpenseDataChange}
+            >
               <option value="">Select a category</option>
-              <option>Travel</option>
-              <option>Meals</option>
-              <option>Supplies</option>
-              <option>Software</option>
-              <option>Other</option>
+              <option value="Travel">Travel</option>
+              <option value="Meals">Meals</option>
+              <option value="Supplies">Supplies</option>
+              <option value="Software">Software</option>
+              <option value="Other">Other</option>
             </select>
+            {inputErrors?.expenseCategory && (
+              <p className="absolute text-[13px] top-15 text-[#f10404]">
+                {inputErrors?.expenseCategory}
+              </p>
+            )}
           </div>
 
           {/* Project / Cost Center */}
-          <div>
+          <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Project / Cost Center
+              Project / Cost Center *
             </label>
             <input
               type="text"
-              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+              value={expenseData.projectCostCenter}
+              name="projectCostCenter"
+              onChange={onExpenseDataChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm placeholder:text-gray-400"
               placeholder="Enter project or cost center"
             />
+            {inputErrors?.projectCostCenter && (
+              <p className="absolute text-[13px] top-15 text-[#f10404]">
+                {inputErrors?.projectCostCenter}
+              </p>
+            )}
           </div>
 
           {/* Expense Title */}
-          <div>
+          <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Expense Title
+              Expense Title *
             </label>
             <input
               type="text"
-              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+              value={expenseData.expenseTitle}
+              name="expenseTitle"
+              onChange={onExpenseDataChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm placeholder:text-gray-400"
               placeholder="Short description"
             />
+            {inputErrors?.expenseTitle && (
+              <p className="absolute text-[13px] top-15 text-[#f10404]">
+                {inputErrors?.expenseTitle}
+              </p>
+            )}
           </div>
 
           {/* Expense Date */}
-          <div>
+          <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Expense Date
+              Expense Date *
             </label>
             <input
               type="date"
-              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+              value={expenseData.expenseDate}
+              name="expenseDate"
+              onChange={onExpenseDataChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm placeholder:text-gray-400"
             />
+            {inputErrors?.expenseDate && (
+              <p className="absolute text-[13px] top-15 text-[#f10404]">
+                {inputErrors?.expenseDate}
+              </p>
+            )}
           </div>
 
           {/* Currency */}
-          <div>
+          <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Currency
+              Currency *
             </label>
-            <select className="border border-gray-300 rounded px-3 py-2 w-full text-sm">
+            <select
+              value={expenseData.currency}
+              name="currency"
+              onChange={onExpenseDataChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+            >
               <option value="">Select a currency</option>
-              <option>INR</option>
-              <option>USD</option>
-              <option>EUR</option>
-              <option>GBP</option>
-              <option>JPY</option>
+              <option value="INR">INR</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="JPY">JPY</option>
             </select>
+            {inputErrors?.currency && (
+              <p className="absolute text-[13px] top-15 text-[#f10404]">
+                {inputErrors?.currency}
+              </p>
+            )}
           </div>
 
           {/* Amount */}
-          <div>
+          <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Amount
+              Amount *
             </label>
             <input
               type="number"
-              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+              value={expenseData.amount}
+              name="amount"
+              onChange={onExpenseDataChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm placeholder:text-gray-400"
               placeholder="Enter amount"
             />
             <p className="text-xs text-gray-600 mt-1">Payable Amount = INR</p>
+            {inputErrors?.amount && (
+              <p className="absolute text-[13px] top-16 ml-32 text-[#f10404]">
+                {inputErrors?.amount}
+              </p>
+            )}
           </div>
         </div>
 
         {/* Comment */}
         <div className="mb-6">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Comment
+            Comment (optional)
           </label>
           <textarea
-            className="border border-gray-300 rounded px-3 py-2 w-full text-sm h-20"
+            value={expenseData.comment}
+            name="comment"
+            onChange={onExpenseDataChange}
+            className="border border-gray-300 rounded px-3 py-2 w-full text-sm h-20 placeholder:text-gray-400"
             placeholder="Add remarks or justification for this expense"
           ></textarea>
         </div>
 
         {/* Upload Receipt */}
-        <div className="mb-6">
+        <div className="mb-6 relative">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Upload Receipt
+            Upload Receipt *
           </label>
           <div className="flex items-center space-x-3">
             <input
               type="file"
               id="receiptUpload"
               className="hidden"
+              name="receipt"
+              // value={expenseData.receipt}
               onChange={handleFileChange}
             />
             <label
@@ -149,17 +281,12 @@ export default function Expense() {
               {selectedFile ? selectedFile : "No file chosen"}
             </span>
           </div>
+          {inputErrors?.receipt && (
+            <p className="absolute text-[13px] top-15 text-[#f10404]">
+              {inputErrors?.receipt}
+            </p>
+          )}
         </div>
-
-        {/* Action Buttons */}
-        {/* <div className="flex justify-end gap-3 mt-8">
-          <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Save Expense
-          </button>
-          <button className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-            Cancel
-          </button>
-        </div> */}
       </div>
     </>
   );
