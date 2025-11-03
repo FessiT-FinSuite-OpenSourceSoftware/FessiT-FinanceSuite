@@ -218,7 +218,7 @@ export default function Invoice() {
     {/* Fixed Buttons at Top */}
 		<div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
   <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[80%] xl:max-w-6xl mx-auto">
-    <div className="flex flex-wrap justify-end gap-2">
+    <div className="flex flex-wrap justify-end gap-2 -mr-27">
       <button
         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
         onClick={invoiceDataSubmit}
