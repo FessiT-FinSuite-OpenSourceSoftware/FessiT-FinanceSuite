@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { countries } from "../../shared/countries";
+import { Pencil, Save } from "lucide-react"; // 🖊️ and 💾 icons
 
 const initialCustomer = {
   customerName: "",
   companyName: "",
   gstIN: "",
-  addresses: [""], // supports multiple addresses
+  addresses: [{ label: "Primary Address", value: "", isEditing: false }],
   country: countries[0].cname,
   phone: "",
   email: "",
@@ -28,10 +29,25 @@ export default function CustomerCreation() {
     setCustomer({ ...customer, [name]: value });
   };
 
-  // Handle address changes
-  const handleAddressChange = (e, index) => {
+  // Toggle edit mode for address label
+  const toggleEditLabel = (index, save = false) => {
     const updated = [...customer.addresses];
-    updated[index] = e.target.value;
+    updated[index].isEditing = !save && !updated[index].isEditing;
+    if (save) updated[index].isEditing = false;
+    setCustomer({ ...customer, addresses: updated });
+  };
+
+  // Handle label change while editing
+  const handleAddressLabelChange = (e, index) => {
+    const updated = [...customer.addresses];
+    updated[index].label = e.target.value;
+    setCustomer({ ...customer, addresses: updated });
+  };
+
+  // Handle address value change
+  const handleAddressValueChange = (e, index) => {
+    const updated = [...customer.addresses];
+    updated[index].value = e.target.value;
     setCustomer({ ...customer, addresses: updated });
   };
 
@@ -39,11 +55,18 @@ export default function CustomerCreation() {
   const addAddress = () => {
     setCustomer((prev) => ({
       ...prev,
-      addresses: [...prev.addresses, ""],
+      addresses: [
+        ...prev.addresses,
+        {
+          label: `Address ${prev.addresses.length + 1}`,
+          value: "",
+          isEditing: false,
+        },
+      ],
     }));
   };
 
-  // Remove an address
+  // Remove address
   const removeAddress = (index) => {
     setCustomer((prev) => ({
       ...prev,
@@ -59,7 +82,7 @@ export default function CustomerCreation() {
     if (!customer.companyName.trim())
       newErrors.companyName = "Company name is required";
     if (!customer.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
-    if (customer.addresses.every((addr) => !addr.trim()))
+    if (customer.addresses.every((addr) => !addr.value.trim()))
       newErrors.address = "At least one address is required";
     if (!customer.phone.trim()) newErrors.phone = "Phone number is required";
     if (!customer.email.trim()) newErrors.email = "Email is required";
@@ -80,36 +103,35 @@ export default function CustomerCreation() {
 
   return (
     <div className="relative">
-      {/* Fixed Buttons at Top */}
-		<div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
-  <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[80%] xl:max-w-6xl mx-auto">
-    <div className="flex flex-wrap justify-end gap-2">
-      <button
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
-        onClick={handleSubmit}
-      >
-        💾 Save
-      </button>
-      <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
-        ⬇️ Edit
-      </button>
-      <button
-		className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
-        onClick={handleSubmit}
-	  >
-        ✉️ Create
-      </button>
-    </div>
-  </div>
-</div>
+      {/* Fixed Buttons */}
+      <div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
+        <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[80%] xl:max-w-6xl mx-auto">
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+              onClick={handleSubmit}
+            >
+              💾 Save
+            </button>
+            <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
+              ⬇️ Edit
+            </button>
+            <button
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+              onClick={handleSubmit}
+            >
+              ✉️ Create
+            </button>
+          </div>
+        </div>
+      </div>
 
-      {/* Customer Form Section */}
-      <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10 ">
+      {/* Form Section */}
+      <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
         <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
           Customer Details
         </h2>
 
-        {/* Form Grid */}
         <div className="grid grid-cols-2 gap-6 text-sm">
           {/* Customer Name */}
           <div className="relative">
@@ -163,17 +185,13 @@ export default function CustomerCreation() {
               placeholder="Enter GSTIN"
             />
             {errors.gstIN && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {errors.gstIN}
-              </p>
+              <p className="absolute text-[13px] text-[#f10404]">{errors.gstIN}</p>
             )}
           </div>
 
           {/* Country */}
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              Country *
-            </label>
+            <label className="block text-gray-700 font-medium mb-1">Country *</label>
             <select
               onChange={handleSelect}
               value={countries.find((c) => c.cname === customer.country)?.code}
@@ -187,11 +205,9 @@ export default function CustomerCreation() {
             </select>
           </div>
 
-		{/* Phone */}
+          {/* Phone */}
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              Phone Number *
-            </label>
+            <label className="block text-gray-700 font-medium mb-1">Phone Number *</label>
             <input
               type="text"
               name="phone"
@@ -207,12 +223,10 @@ export default function CustomerCreation() {
               <p className="absolute text-[13px] text-[#f10404]">{errors.phone}</p>
             )}
           </div>
-		  
-		{/* Email */}
+
+          {/* Email */}
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              Email *
-            </label>
+            <label className="block text-gray-700 font-medium mb-1">Email *</label>
             <input
               type="email"
               name="email"
@@ -225,57 +239,86 @@ export default function CustomerCreation() {
               <p className="absolute text-[13px] text-[#f10404]">{errors.email}</p>
             )}
           </div>
-		  
-          {/* Addresses Section */}
-			<div className="relative col-span-2">
-			  <label className="block text-gray-700 font-medium mb-1">
-				Addresses *
-			  </label>
 
-			  {customer.addresses.map((addr, index) => (
-				<div key={index} className="mb-4 relative border border-gray-200 rounded-lg p-3">
-				  <div className="flex justify-between items-center mb-2">
-					<h4 className="text-sm font-semibold text-gray-600">
-					  Address {index + 1}
-					</h4>
-					{index > 0 && (
-					  <button
-						type="button"
-						onClick={() => removeAddress(index)}
-						className="text-red-600 text-sm hover:text-red-800"
-					  >
-						✖ Remove
-					  </button>
-					)}
-				  </div>
+          {/* Addresses */}
+          <div className="relative col-span-2">
+            <label className="block text-gray-700 font-medium mb-1">Addresses *</label>
 
-				  <textarea
-					name={`address_${index}`}
-					value={addr}
-					onChange={(e) => handleAddressChange(e, index)}
-					className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500 h-20"
-					placeholder="Enter address"
-				  />
-				</div>
-			  ))}
+            {customer.addresses.map((addr, index) => (
+              <div
+                key={index}
+                className="mb-4 relative border border-gray-200 rounded-lg p-3 bg-gray-50"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  {/* Label display / edit */}
+                  <div className="flex items-center gap-2">
+                    {!addr.isEditing ? (
+                      <>
+                        <h4 className="text-sm font-semibold text-gray-700">
+                          {addr.label}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => toggleEditLabel(index)}
+                          className="text-gray-500 hover:text-blue-600"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          value={addr.label}
+                          onChange={(e) => handleAddressLabelChange(e, index)}
+                          className="text-sm border-b border-gray-400 focus:border-blue-500 outline-none bg-transparent"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => toggleEditLabel(index, true)}
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          <Save size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
 
-			  <button
-				type="button"
-				onClick={addAddress}
-				className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:text-blue-800 mt-2"
-			  >
-				➕ Add another address
-			  </button>
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => removeAddress(index)}
+                      className="text-red-600 text-sm hover:text-red-800"
+                    >
+                      ✖ Remove
+                    </button>
+                  )}
+                </div>
 
-			  {errors.address && (
-				<p className="absolute text-[13px] text-[#f10404] mt-1">
-				  {errors.address}
-				</p>
-			  )}
-			</div>
-          
+                {/* Address textarea */}
+                <textarea
+                  name={`address_${index}`}
+                  value={addr.value}
+                  onChange={(e) => handleAddressValueChange(e, index)}
+                  className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500 h-20"
+                  placeholder={`Enter ${addr.label.toLowerCase()}`}
+                />
+              </div>
+            ))}
 
-          
+            <button
+              type="button"
+              onClick={addAddress}
+              className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:text-blue-800 mt-2"
+            >
+              ➕ Add another address
+            </button>
+
+            {errors.address && (
+              <p className="absolute text-[13px] text-[#f10404] mt-1">{errors.address}</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
