@@ -12,7 +12,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 
 // Sample invoice data - replace with your actual data/API call
-const sampleInvoices = [
+const sampleCustomers= [
   {
     id: 1,
     invoice_number: "INV-2024-001",
@@ -21,7 +21,7 @@ const sampleInvoices = [
     invoice_date: "2024-01-15",
     due_date: "2024-02-15",
     total: 15000,
-    status: "Paid",
+    status: "Active",
   },
   {
     id: 2,
@@ -41,7 +41,7 @@ const sampleInvoices = [
     invoice_date: "2024-01-25",
     due_date: "2024-02-25",
     total: 18500,
-    status: "Overdue",
+    status: "Active",
   },
   {
     id: 4,
@@ -51,7 +51,7 @@ const sampleInvoices = [
     invoice_date: "2024-02-01",
     due_date: "2024-03-01",
     total: 32000,
-    status: "Paid",
+    status: "Active",
   },
   {
     id: 5,
@@ -71,7 +71,7 @@ const sampleInvoices = [
     invoice_date: "2024-02-15",
     due_date: "2024-03-15",
     total: 45000,
-    status: "Draft",
+    status: "Pending",
   },
   {
     id: 7,
@@ -91,12 +91,12 @@ const sampleInvoices = [
     invoice_date: "2024-02-25",
     due_date: "2024-03-25",
     total: 19500,
-    status: "Paid",
+    status: "New",
   },
 ];
 
-export default function InvoiceList() {
-  const [invoices] = useState(sampleInvoices);
+export default function CustomerList() {
+  const [cutomers] = useState(sampleCustomers);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
@@ -104,7 +104,7 @@ export default function InvoiceList() {
   const nav = useNavigate();
   const itemsPerPage = 5;
 
-  const filteredInvoices = invoices.filter((invoice) => {
+  const filteredInvoices = cutomers.filter((invoice) => {
     const matchesSearch =
       invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -126,11 +126,11 @@ export default function InvoiceList() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Paid":
+      case "Active":
         return "bg-green-100 text-green-800";
       case "Pending":
         return "bg-yellow-100 text-yellow-800";
-      case "Overdue":
+      case "New":
         return "bg-red-100 text-red-800";
       case "Draft":
         return "bg-gray-100 text-gray-800";
@@ -140,11 +140,11 @@ export default function InvoiceList() {
   };
 
   const onCreateNew = () => {
-    nav("/invoices/addInvoice");
+    nav("/customers/addCustomer");
   };
 
   const onEdit = (id) => {
-    nav(`/invoices/editInvoice/${id}`);
+    nav(`/customers/editCustomer/${id}`);
   };
 
   const handleDelete = (id) => {
@@ -164,7 +164,7 @@ export default function InvoiceList() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search by invoice number, customer, or company..."
+                placeholder="Search by customer, or company..."
                 className="w-full ml-2 pl-10 pr-4 py-2 border border-gray-700 rounded-lg"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -181,10 +181,10 @@ export default function InvoiceList() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <option value="All">All Status</option>
-                  <option value="Draft">Draft</option>
+                  <option value="Active">Active</option>
                   <option value="Pending">Pending</option>
-                  <option value="Paid">Paid</option>
-                  <option value="Overdue">Overdue</option>
+                  
+                  
                 </select>
               </div>
 
@@ -194,7 +194,7 @@ export default function InvoiceList() {
                 className="flex cursor-pointer items-center mr-2 gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Create Invoice</span>
+                <span className="hidden sm:inline">Create Customer</span>
               </button>
             </div>
           </div>
@@ -203,27 +203,27 @@ export default function InvoiceList() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
           <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Total Invoices</p>
+            <p className="text-sm text-gray-600 mb-1">Total Customers</p>
             <p className="text-2xl font-bold text-gray-900">
-              {invoices.length}
+              {cutomers.length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Paid</p>
+            <p className="text-sm text-gray-600 mb-1">Active</p>
             <p className="text-2xl font-bold text-green-600">
-              {invoices.filter((i) => i.status === "Paid").length}
+              {cutomers.filter((i) => i.status === "Active").length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Pending</p>
             <p className="text-2xl font-bold text-yellow-600">
-              {invoices.filter((i) => i.status === "Pending").length}
+              {cutomers.filter((i) => i.status === "Pending").length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Overdue</p>
+            <p className="text-sm text-gray-600 mb-1">New Entry</p>
             <p className="text-2xl font-bold text-red-600">
-              {invoices.filter((i) => i.status === "Overdue").length}
+              {cutomers.filter((i) => i.status === "New").length}
             </p>
           </div>
         </div>
@@ -243,7 +243,7 @@ export default function InvoiceList() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
                     Company
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+                  {/* <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
                     Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
@@ -251,7 +251,7 @@ export default function InvoiceList() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Amount
-                  </th>
+                  </th> */}
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Status
                   </th>
@@ -279,7 +279,7 @@ export default function InvoiceList() {
                       <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                         {invoice.company_name}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                      {/* <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                         {invoice.invoice_date}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
@@ -287,7 +287,7 @@ export default function InvoiceList() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap font-semibold">
                         ₹{invoice.total.toLocaleString()}
-                      </td>
+                      </td> */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(

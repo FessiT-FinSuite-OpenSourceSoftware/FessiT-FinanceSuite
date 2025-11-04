@@ -1,10 +1,9 @@
 import React from 'react'
-import Customers from './customers'
-
+import CustomerList from './customerList'
 export default function Index() {
   return (
     <div>
-      <Customers/>
+      <CustomerList/>
     </div>
   )
 }

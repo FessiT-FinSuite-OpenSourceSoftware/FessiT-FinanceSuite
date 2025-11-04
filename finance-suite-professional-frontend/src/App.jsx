@@ -11,6 +11,8 @@ const EditInvoices = lazy(() => import("./components/Invoices/editInvoice"));
 
 
 const Customers = lazy(() => import("./components/Customers"));
+const CustomerCreation = lazy(() => import("./components/Customers/cutsomerCreation"));
+const EditCustomer = lazy(() => import("./components/Customers/editCustomer"));
 const PurchaseOrders = lazy(() => import("./pages/PurchaseOrders"));
 const Expenses = lazy(() => import("./components/Expenses")); // 👈 new line added
 const Settings = lazy(() => import("./components/Settings")); // 👈 new line added
@@ -40,7 +42,11 @@ export default function App() {
 			        <Route path="/purchases" element={<PurchaseOrders />} />
               <Route path="/expenses" element={<Expenses />} /> {/* ✅ fixed */}
               <Route path="/tdscompliance" element={<TDSCompliance />} />
-              <Route path="/customers" element={<Customers />} /> {/* fixed typo */}
+              <Route path="/customers" element={<Customers />} />
+              <Route path="/customers/addCustomer" element={<CustomerCreation />} /> {/* fixed typo */}
+              <Route path="/customers/editCustomer/:id" element={<EditCustomer />} />
+               
+               {/* fixed typo */}
               <Route path="/settings" element={<Settings />} />
               <Route path="/gstcompliance" element={<GSTCompliance />} />
             </Routes>
