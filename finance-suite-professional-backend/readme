@@ -1,0 +1,445 @@
+================================================================================
+                    RUST SOURCE FILES - WHAT EACH FILE DOES
+================================================================================
+
+PROJECT: Finance Suite Professional Backend
+LANGUAGE: Rust
+DATABASE: MongoDB
+FRAMEWORK: Actix-web
+
+================================================================================
+                            FILE STRUCTURE OVERVIEW
+================================================================================
+
+finance-suite-professional-backend/
+├── Cargo.toml                           (Project configuration & dependencies)
+├── .env                                 (Environment variables)
+└── src/                                 (Source code folder)
+    ├── main.rs
+    ├── db.rs
+    ├── error.rs
+    ├── models/
+    │   ├── mod.rs
+    │   ├── customer.rs
+    │   └── address.rs
+    ├── repository/
+    │   ├── mod.rs
+    │   └── customer_repository.rs
+    ├── services/
+    │   ├── mod.rs
+    │   └── customer_service.rs
+    ├── handlers/
+    │   ├── mod.rs
+    │   └── customer_handler.rs
+    └── utils/
+        ├── mod.rs
+        └── validation.rs
+
+================================================================================
+                        MAIN APPLICATION FILES (3 FILES)
+================================================================================
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/main.rs                                                │
+│ TYPE        │ Application Entry Point                                    │
+│ PURPOSE     │ Starts the HTTP server and initializes all components     │
+│ DOES        │ - Loads environment variables from .env                    │
+│             │ - Connects to MongoDB database                             │
+│             │ - Sets up CORS (allows React frontend to call API)        │
+│             │ - Creates API routes                                       │
+│             │ - Starts server on port 8080                               │
+│             │ - Provides /health endpoint for testing                    │
+│ RUNS ON     │ Startup (cargo run)                                        │
+│ LINES       │ ~80 lines                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/db.rs                                                  │
+│ TYPE        │ Database Connection Manager                                │
+│ PURPOSE     │ Handles MongoDB connection and provides database access   │
+│ DOES        │ - Reads MONGODB_URI from .env                             │
+│             │ - Connects to MongoDB                                      │
+│             │ - Pings database to verify connection                      │
+│             │ - Provides access to "customers" collection                │
+│             │ - Logs connection success/failure                          │
+│ USED BY     │ main.rs (on startup)                                       │
+│ LINES       │ ~40 lines                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/error.rs                                               │
+│ TYPE        │ Error Handler                                              │
+│ PURPOSE     │ Defines all error types and formats error responses       │
+│ DOES        │ - Defines custom error types:                             │
+│             │   * DatabaseError (MongoDB issues)                         │
+│             │   * ValidationError (invalid data)                         │
+│             │   * NotFound (customer doesn't exist)                      │
+│             │   * InternalServerError (unexpected errors)                │
+│             │ - Converts errors to JSON responses                        │
+│             │ - Sets proper HTTP status codes                            │
+│ USED BY     │ All other files (for error handling)                      │
+│ LINES       │ ~70 lines                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        DATA MODELS (3 FILES)
+================================================================================
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/models/mod.rs                                          │
+│ TYPE        │ Module Definition                                          │
+│ PURPOSE     │ Makes customer.rs and address.rs available to other files │
+│ DOES        │ - Declares sub-modules (customer, address)                │
+│             │ - Exports types so other files can use them               │
+│ SIZE        │ Small (~6 lines)                                           │
+│ IMPORTANCE  │ Required for Rust module system                           │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/models/customer.rs                                     │
+│ TYPE        │ Data Model / Structure Definition                          │
+│ PURPOSE     │ Defines what a Customer looks like (data structure)       │
+│ DOES        │ - Defines Customer struct with fields:                    │
+│             │   * id (MongoDB _id)                                       │
+│             │   * customerName                                           │
+│             │   * companyName                                            │
+│             │   * gstIN                                                  │
+│             │   * addresses (array)                                      │
+│             │   * country                                                │
+│             │   * phone                                                  │
+│             │   * email                                                  │
+│             │   * createdAt (timestamp)                                  │
+│             │   * updatedAt (timestamp)                                  │
+│             │ - Defines CreateCustomerRequest (for new customers)       │
+│             │ - Defines UpdateCustomerRequest (for editing)             │
+│             │ - Adds validation rules for each field                    │
+│ MATCHES     │ Your React component's customer state                     │
+│ LINES       │ ~120 lines                                                 │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/models/address.rs                                      │
+│ TYPE        │ Data Model / Structure Definition                          │
+│ PURPOSE     │ Defines what an Address looks like                        │
+│ DOES        │ - Defines Address struct with fields:                     │
+│             │   * label (e.g., "Home", "Office", "Billing")             │
+│             │   * value (the actual address text)                        │
+│             │   * isEditing (used by React, ignored by database)        │
+│             │ - Validates address is not empty                          │
+│ MATCHES     │ Your React component's address structure                  │
+│ LINES       │ ~25 lines                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        DATABASE LAYER (2 FILES)
+================================================================================
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/repository/mod.rs                                      │
+│ TYPE        │ Module Definition                                          │
+│ PURPOSE     │ Makes customer_repository.rs available                     │
+│ DOES        │ - Declares repository module                              │
+│             │ - Exports CustomerRepository                               │
+│ SIZE        │ Small (~4 lines)                                           │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/repository/customer_repository.rs                      │
+│ TYPE        │ Database Operations / Data Access Layer                   │
+│ PURPOSE     │ Talks directly to MongoDB - all database operations       │
+│ DOES        │ Implements 6 database operations:                         │
+│             │                                                            │
+│             │ 1. create()                                                │
+│             │    - Inserts new customer into MongoDB                     │
+│             │    - Returns the created customer with ID                  │
+│             │                                                            │
+│             │ 2. find_all()                                              │
+│             │    - Gets all customers from database                      │
+│             │    - Returns array of customers                            │
+│             │                                                            │
+│             │ 3. find_by_id()                                            │
+│             │    - Finds one customer by their ID                        │
+│             │    - Returns customer or None if not found                 │
+│             │                                                            │
+│             │ 4. update()                                                │
+│             │    - Updates customer fields in database                   │
+│             │    - Only updates fields that are provided                 │
+│             │    - Updates "updatedAt" timestamp                         │
+│             │                                                            │
+│             │ 5. delete()                                                │
+│             │    - Removes customer from database                        │
+│             │    - Returns true if deleted, false if not found           │
+│             │                                                            │
+│             │ 6. search()                                                │
+│             │    - Searches customers by name, company, email, GSTIN    │
+│             │    - Case-insensitive search                               │
+│             │    - Returns matching customers                            │
+│             │                                                            │
+│ USED BY     │ customer_service.rs                                        │
+│ LINES       │ ~150 lines                                                 │
+└──────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        BUSINESS LOGIC LAYER (2 FILES)
+================================================================================
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/services/mod.rs                                        │
+│ TYPE        │ Module Definition                                          │
+│ PURPOSE     │ Makes customer_service.rs available                        │
+│ DOES        │ - Declares service module                                 │
+│             │ - Exports CustomerService                                  │
+│ SIZE        │ Small (~4 lines)                                           │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/services/customer_service.rs                           │
+│ TYPE        │ Business Logic / Service Layer                             │
+│ PURPOSE     │ Validates data and applies business rules                 │
+│ DOES        │ Implements 5 service methods:                             │
+│             │                                                            │
+│             │ 1. create_customer()                                       │
+│             │    - Validates all customer data                           │
+│             │    - Ensures at least one address exists                   │
+│             │    - Calls repository to save to database                  │
+│             │                                                            │
+│             │ 2. get_all_customers()                                     │
+│             │    - Gets all customers from repository                    │
+│             │                                                            │
+│             │ 3. get_customer_by_id()                                    │
+│             │    - Gets one customer                                     │
+│             │    - Returns error if not found                            │
+│             │                                                            │
+│             │ 4. update_customer()                                       │
+│             │    - Validates update data                                 │
+│             │    - Checks customer exists                                │
+│             │    - Calls repository to update                            │
+│             │                                                            │
+│             │ 5. delete_customer()                                       │
+│             │    - Checks customer exists first                          │
+│             │    - Calls repository to delete                            │
+│             │                                                            │
+│             │ 6. search_customers()                                      │
+│             │    - Validates search query is not empty                   │
+│             │    - Calls repository to search                            │
+│             │                                                            │
+│ VALIDATION  │ - Email format                                             │
+│             │ - Phone number (10-15 digits)                              │
+│             │ - Required fields not empty                                │
+│             │ - At least one address                                     │
+│             │                                                            │
+│ USED BY     │ customer_handler.rs (API endpoints)                        │
+│ LINES       │ ~100 lines                                                 │
+└──────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        API ENDPOINTS LAYER (2 FILES)
+================================================================================
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/handlers/mod.rs                                        │
+│ TYPE        │ Module Definition                                          │
+│ PURPOSE     │ Makes customer_handler.rs available                        │
+│ DOES        │ - Declares handler module                                 │
+│             │ - Exports configure_routes function                        │
+│ SIZE        │ Small (~4 lines)                                           │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/handlers/customer_handler.rs                           │
+│ TYPE        │ API Endpoints / HTTP Request Handlers                      │
+│ PURPOSE     │ Defines all API routes and handles HTTP requests          │
+│ DOES        │ Implements 6 API endpoints:                               │
+│             │                                                            │
+│             │ 1. POST /customers                                         │
+│             │    - Creates new customer                                  │
+│             │    - Returns 201 Created with customer data                │
+│             │                                                            │
+│             │ 2. GET /customers                                          │
+│             │    - Gets all customers                                    │
+│             │    - Returns 200 OK with array of customers                │
+│             │                                                            │
+│             │ 3. GET /customers/{id}                                     │
+│             │    - Gets one customer by ID                               │
+│             │    - Returns 200 OK or 404 Not Found                       │
+│             │                                                            │
+│             │ 4. PUT /customers/{id}                                     │
+│             │    - Updates customer                                      │
+│             │    - Returns 200 OK with updated customer                  │
+│             │                                                            │
+│             │ 5. DELETE /customers/{id}                                  │
+│             │    - Deletes customer                                      │
+│             │    - Returns 204 No Content or 404 Not Found               │
+│             │                                                            │
+│             │ 6. GET /customers/search?q=query                           │
+│             │    - Searches customers                                    │
+│             │    - Returns 200 OK with matching customers                │
+│             │                                                            │
+│ CALLED BY   │ Your React frontend (fetch/axios calls)                   │
+│ CALLS       │ customer_service.rs for business logic                     │
+│ LINES       │ ~90 lines                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        UTILITY FILES (2 FILES)
+================================================================================
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/utils/mod.rs                                           │
+│ TYPE        │ Module Definition                                          │
+│ PURPOSE     │ Makes validation.rs available                              │
+│ DOES        │ - Declares utils module                                   │
+│             │ - Exports validation utilities                             │
+│ SIZE        │ Small (~2 lines)                                           │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ src/utils/validation.rs                                    │
+│ TYPE        │ Validation Utilities                                       │
+│ PURPOSE     │ Provides validation helpers (currently phone validation)  │
+│ DOES        │ - Defines PHONE_REGEX pattern                             │
+│             │ - Validates phone numbers (10-15 digits only)             │
+│ PATTERN     │ ^\d{10,15}$                                                │
+│ USED BY     │ models/customer.rs (for phone validation)                 │
+│ LINES       │ ~7 lines                                                   │
+└──────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        CONFIGURATION FILES (2 FILES)
+================================================================================
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ Cargo.toml                                                 │
+│ TYPE        │ Project Configuration                                      │
+│ PURPOSE     │ Defines project metadata and dependencies                 │
+│ CONTAINS    │ - Project name: finance-suite-professional-backend        │
+│             │ - Rust edition: 2021                                       │
+│             │ - Dependencies:                                            │
+│             │   * actix-web (web framework)                              │
+│             │   * mongodb (database driver)                              │
+│             │   * serde (JSON serialization)                             │
+│             │   * tokio (async runtime)                                  │
+│             │   * validator (input validation)                           │
+│             │   * chrono (date/time)                                     │
+│             │   * dotenv (environment variables)                         │
+│             │   * and more...                                            │
+│ USED BY     │ Cargo (Rust package manager)                              │
+│ LINES       │ ~35 lines                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ FILE NAME   │ .env                                                       │
+│ TYPE        │ Environment Variables Configuration                        │
+│ PURPOSE     │ Stores configuration settings                              │
+│ CONTAINS    │ - MONGODB_URI=mongodb://localhost:27017                   │
+│             │ - DATABASE_NAME=customer_db                                │
+│             │ - SERVER_HOST=127.0.0.1                                    │
+│             │ - SERVER_PORT=8080                                         │
+│             │ - CORS_ALLOWED_ORIGIN=http://localhost:3000               │
+│             │ - RUST_LOG=info                                            │
+│ REQUIRED    │ YES - Application won't start without it                  │
+│ SECURITY    │ DO NOT commit to Git (contains sensitive data)            │
+│ LINES       │ ~12 lines                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                        DATA FLOW: HOW IT ALL WORKS TOGETHER
+================================================================================
+
+REQUEST FLOW (Creating a Customer):
+───────────────────────────────────────────────────────────────────────────
+
+1. React Frontend
+   └─> Sends: POST http://localhost:8080/customers
+       Body: { customerName: "John", companyName: "Acme", ... }
+
+2. src/handlers/customer_handler.rs (API Layer)
+   └─> Receives HTTP request
+   └─> Extracts JSON data
+   └─> Calls: service.create_customer(data)
+
+3. src/services/customer_service.rs (Business Logic Layer)
+   └─> Validates all fields (email format, phone, required fields)
+   └─> Checks business rules (at least one address)
+   └─> Calls: repository.create(data)
+
+4. src/repository/customer_repository.rs (Database Layer)
+   └─> Converts data to MongoDB format
+   └─> Inserts into "customers" collection
+   └─> Returns created customer with _id
+
+5. Response flows back through the layers:
+   └─> repository → service → handler → React
+   └─> HTTP 201 Created
+   └─> Body: { _id: "...", customerName: "John", ... }
+
+DATABASE OPERATIONS:
+───────────────────────────────────────────────────────────────────────────
+
+models/customer.rs (defines structure)
+          ↓
+repository/customer_repository.rs (talks to MongoDB)
+          ↓
+services/customer_service.rs (validates and applies rules)
+          ↓
+handlers/customer_handler.rs (HTTP endpoints)
+          ↓
+React Frontend (your UI)
+
+ERROR FLOW:
+───────────────────────────────────────────────────────────────────────────
+
+If anything goes wrong at any layer:
+  └─> error.rs catches it
+  └─> Converts to proper HTTP status code
+  └─> Formats as JSON: { "error": "...", "message": "..." }
+  └─> Returns to React frontend
+
+================================================================================
+                        FILE STATISTICS SUMMARY
+================================================================================
+
+Total Rust Source Files (.rs):     14 files
+Total Lines of Code:                ~700 lines
+Configuration Files:                2 files (Cargo.toml, .env)
+Documentation Files:                Multiple .md files
+
+Breakdown by Type:
+  - Application Core:               3 files (main.rs, db.rs, error.rs)
+  - Data Models:                    3 files (mod.rs, customer.rs, address.rs)
+  - Database Layer:                 2 files (mod.rs, customer_repository.rs)
+  - Business Logic:                 2 files (mod.rs, customer_service.rs)
+  - API Endpoints:                  2 files (mod.rs, customer_handler.rs)
+  - Utilities:                      2 files (mod.rs, validation.rs)
+
+================================================================================
+                        QUICK REFERENCE: WHICH FILE TO EDIT
+================================================================================
+
+To Add/Change:                      Edit This File:
+─────────────────────────────────────────────────────────────────────────────
+New customer field                  src/models/customer.rs
+New validation rule                 src/services/customer_service.rs
+New API endpoint                    src/handlers/customer_handler.rs
+New database query                  src/repository/customer_repository.rs
+Database connection settings        .env file
+Add new dependency                  Cargo.toml
+Change port number                  .env file
+Add new error type                  src/error.rs
+Add new validation regex            src/utils/validation.rs
+
+================================================================================
+                        END OF FILE DOCUMENTATION
+================================================================================
+
+Generated for: Finance Suite Professional Backend
+Date: 2025
+Technology Stack: Rust + Actix-web + MongoDB
+Purpose: Customer Management API
+
+For more information, see:
+- README.md (complete documentation)
+- QUICKSTART.md (quick setup guide)
+- INTEGRATION_GUIDE.md (React integration)
+
+================================================================================
