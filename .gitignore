@@ -1,0 +1,39 @@
+cat > .gitignore << EOL
+# Dependencies
+node_modules/
+**/node_modules/
+# Rust build
+/finance-suite-professional-backend/target
+*.pdb
+*.rlib
+# Node build
+/finance-suite-professional-frontend/node_modules
+/finance-suite-professional-frontend/dist
+
+# Build output
+dist/
+build/
+**/dist/
+**/build/
+
+# Environment variables
+.env
+.env.local
+**/.env
+**/.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+
+# Logs
+*.log
+npm-debug.log*
+EOLtarget/
+finance-suite-professional-backend/target/
+finance-suite-professional-frontend/node_modules/
