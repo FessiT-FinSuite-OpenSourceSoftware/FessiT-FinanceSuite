@@ -15,13 +15,12 @@ impl MongoDbClient {
 
         let client = Client::with_uri_str(&mongodb_uri).await?;
         
-        // Ping the database to verify connection
         client
             .database("admin")
             .run_command(mongodb::bson::doc! {"ping": 1}, None)
             .await?;
 
-        log::info!("Successfully connected to MongoDB");
+        log::info!("✅ Successfully connected to MongoDB");
 
         let database = client.database(&database_name);
 

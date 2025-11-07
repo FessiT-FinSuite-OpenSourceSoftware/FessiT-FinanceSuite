@@ -6,7 +6,7 @@ const config = {
 }
 
 const KeyUri = {
-    BACKENDURI:"http://127.0.0.1:8085"
+    BACKENDURI:"http://127.0.0.1:8080/api"
 }
 
 export {config,KeyUri}

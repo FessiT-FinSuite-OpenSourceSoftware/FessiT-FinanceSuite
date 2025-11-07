@@ -9,85 +9,63 @@ use super::address::Address;
 pub struct Customer {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
-    
+
     #[validate(length(min = 1, message = "Customer name is required"))]
     #[serde(rename = "customerName")]
     pub customer_name: String,
-    
+
     #[validate(length(min = 1, message = "Company name is required"))]
     #[serde(rename = "companyName")]
     pub company_name: String,
-    
+
     #[validate(length(min = 1, message = "GSTIN is required"))]
     #[serde(rename = "gstIN")]
     pub gst_in: String,
-    
+
     #[validate(length(min = 1, message = "At least one address is required"))]
     pub addresses: Vec<Address>,
-    
+
     #[validate(length(min = 1, message = "Country is required"))]
     pub country: String,
-    
-    #[validate(length(min = 1, message = "Phone number is required"))]
+
     #[validate(regex(path = "crate::utils::validation::PHONE_REGEX", message = "Invalid phone number"))]
     pub phone: String,
-    
+
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
-    
+
     #[serde(rename = "createdAt")]
     pub created_at: Option<DateTime<Utc>>,
-    
+
     #[serde(rename = "updatedAt")]
     pub updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateCustomerRequest {
-    #[validate(length(min = 1, message = "Customer name is required"))]
     #[serde(rename = "customerName")]
     pub customer_name: String,
-    
-    #[validate(length(min = 1, message = "Company name is required"))]
     #[serde(rename = "companyName")]
     pub company_name: String,
-    
-    #[validate(length(min = 1, message = "GSTIN is required"))]
     #[serde(rename = "gstIN")]
     pub gst_in: String,
-    
-    #[validate(length(min = 1, message = "At least one address is required"))]
     pub addresses: Vec<Address>,
-    
-    #[validate(length(min = 1, message = "Country is required"))]
     pub country: String,
-    
-    #[validate(length(min = 1, message = "Phone number is required"))]
     pub phone: String,
-    
-    #[validate(email(message = "Invalid email format"))]
     pub email: String,
 }
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateCustomerRequest {
-    #[validate(length(min = 1, message = "Customer name is required"))]
     #[serde(rename = "customerName")]
     pub customer_name: Option<String>,
-    
     #[serde(rename = "companyName")]
     pub company_name: Option<String>,
-    
     #[serde(rename = "gstIN")]
     pub gst_in: Option<String>,
-    
     pub addresses: Option<Vec<Address>>,
-    
     pub country: Option<String>,
-    
     pub phone: Option<String>,
-    
-    #[validate(email(message = "Invalid email format"))]
     pub email: Option<String>,
 }
 

@@ -18,34 +18,29 @@ use services::CustomerService;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Load environment variables
     dotenv().ok();
     env_logger::init();
 
-    // Get configuration from environment
     let host = env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("SERVER_PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .expect("Invalid SERVER_PORT");
-    let cors_origin =
-        env::var("CORS_ALLOWED_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
 
-    // Initialize MongoDB connection
+    let cors_origin = env::var("CORS_ALLOWED_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
+
     let db_client = MongoDbClient::new()
         .await
-        .expect("Failed to connect to MongoDB");
+        .expect("❌ Failed to connect to MongoDB");
 
-    log::info!("Connected to MongoDB successfully");
+    log::info!("✅ Connected to MongoDB successfully");
 
-    // Create repository and service
     let customer_collection = db_client.get_customers_collection();
     let customer_repository = CustomerRepository::new(customer_collection);
     let customer_service = CustomerService::new(customer_repository);
 
-    log::info!("Starting server at http://{}:{}", host, port);
+    log::info!("🚀 Starting server at http://{}:{}", host, port);
 
-    // Start HTTP server
     HttpServer::new(move || {
         let cors = Cors::default()
             .allowed_origin(&cors_origin)
