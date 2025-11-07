@@ -1,7 +1,5 @@
-
-use mongodb::bson::{doc, oid::ObjectId};
+use mongodb::bson::{doc, oid::ObjectId, DateTime as BsonDateTime, to_bson};
 use mongodb::Collection;
-
 use crate::error::ApiError;
 use crate::models::{CreateCustomerRequest, Customer, UpdateCustomerRequest};
 
@@ -17,11 +15,9 @@ impl CustomerRepository {
 
     pub async fn create(&self, req: CreateCustomerRequest) -> Result<Customer, ApiError> {
         let mut customer = Customer::new(req);
-        
+
         let result = self.collection.insert_one(&customer, None).await?;
-        
         customer.id = result.inserted_id.as_object_id();
-        
         Ok(customer)
     }
 
@@ -39,52 +35,50 @@ impl CustomerRepository {
     pub async fn find_by_id(&self, id: &str) -> Result<Option<Customer>, ApiError> {
         let object_id = ObjectId::parse_str(id)
             .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
-
         let filter = doc! { "_id": object_id };
-        let customer = self.collection.find_one(filter, None).await?;
 
-        Ok(customer)
+        Ok(self.collection.find_one(filter, None).await?)
     }
 
     pub async fn update(&self, id: &str, req: UpdateCustomerRequest) -> Result<Customer, ApiError> {
         let object_id = ObjectId::parse_str(id)
             .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
-
         let filter = doc! { "_id": object_id };
 
-        let mut update_doc = doc! {
-            "$set": {
-                "updatedAt": mongodb::bson::DateTime::now()
-            }
+        // Initialize $set document with updatedAt only
+        let mut set_doc = doc! {
+            "updatedAt": BsonDateTime::now()
         };
 
-        if let Some(customer_name) = req.customer_name {
-            update_doc.get_document_mut("$set").unwrap().insert("customerName", customer_name);
+        if let Some(name) = req.customer_name {
+            set_doc.insert("customerName", name);
         }
-        if let Some(company_name) = req.company_name {
-            update_doc.get_document_mut("$set").unwrap().insert("companyName", company_name);
+        if let Some(company) = req.company_name {
+            set_doc.insert("companyName", company);
         }
-        if let Some(gst_in) = req.gst_in {
-            update_doc.get_document_mut("$set").unwrap().insert("gstIN", gst_in);
+        if let Some(gst) = req.gst_in {
+            set_doc.insert("gstIN", gst);
         }
         if let Some(addresses) = req.addresses {
-            let addresses_bson = mongodb::bson::to_bson(&addresses)
-                .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
-            update_doc.get_document_mut("$set").unwrap().insert("addresses", addresses_bson);
+            // Serialize addresses to BSON
+            set_doc.insert(
+                "addresses",
+                to_bson(&addresses).map_err(|e| ApiError::InternalServerError(e.to_string()))?,
+            );
         }
         if let Some(country) = req.country {
-            update_doc.get_document_mut("$set").unwrap().insert("country", country);
+            set_doc.insert("country", country);
         }
         if let Some(phone) = req.phone {
-            update_doc.get_document_mut("$set").unwrap().insert("phone", phone);
+            set_doc.insert("phone", phone);
         }
         if let Some(email) = req.email {
-            update_doc.get_document_mut("$set").unwrap().insert("email", email);
+            set_doc.insert("email", email);
         }
 
-        self.collection
-            .update_one(filter.clone(), update_doc, None)
-            .await?;
+        let update_doc = doc! { "$set": set_doc };
+
+        self.collection.update_one(filter.clone(), update_doc, None).await?;
 
         let updated_customer = self.collection
             .find_one(filter, None)
@@ -97,10 +91,9 @@ impl CustomerRepository {
     pub async fn delete(&self, id: &str) -> Result<bool, ApiError> {
         let object_id = ObjectId::parse_str(id)
             .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
-
         let filter = doc! { "_id": object_id };
-        let result = self.collection.delete_one(filter, None).await?;
 
+        let result = self.collection.delete_one(filter, None).await?;
         Ok(result.deleted_count > 0)
     }
 

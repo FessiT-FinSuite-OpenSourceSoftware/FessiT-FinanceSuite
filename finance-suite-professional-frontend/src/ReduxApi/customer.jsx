@@ -1,113 +1,142 @@
 import { createSlice } from '@reduxjs/toolkit'
-import { config ,KeyUri} from '../shared/key';
+import { config, KeyUri } from '../shared/key'
 import axios from 'axios'
-import {toast} from 'react-toastify'
+import { toast } from 'react-toastify'
 
 const initialState = {
-   isLoading:false,
-   customersData:[],
-   isError:false,
-   currentCustomer:null
+  isLoading: false,
+  customersData: [],
+  isError: false,
+  currentCustomer: null,
 }
 
 const customerSlice = createSlice({
-  name: "customer",
+  name: 'customer',
   initialState,
   reducers: {
-    getCustomer:(state)=>{
-        state.isLoading= true;
-        state.isError=false
+    getCustomer: (state) => {
+      state.isLoading = true
+      state.isError = false
     },
-    getCustomerSucces:(state,{payload})=>{
-    
-        state.isLoading=false;
-        state.isError= false;
-        state.customersData= payload
+    getCustomerSuccess: (state, { payload }) => {
+      state.isLoading = false
+      state.isError = false
+      state.customersData = payload
     },
-    getOneCustomer:(state,{payload})=>{
-        state.isLoading=false;
-        state.isError= false;
-        state.currentCustomer= payload
+    getOneCustomer: (state, { payload }) => {
+      state.isLoading = false
+      state.isError = false
+      state.currentCustomer = payload
+    },
+    getCustomerFailure: (state) => {
+      state.isLoading = false
+      state.isError = true
+      state.customersData = []
+    },
+  },
+})
 
-    },
-    getCustomerFailure:(state)=>{
-        state.isLoading=false;
-        state.isError= true;
-        state.customersData=null
-    }
-  }
-});
+export const {
+  getCustomer,
+  getCustomerFailure,
+  getCustomerSuccess,
+  getOneCustomer,
+} = customerSlice.actions
 
-export const {getCustomer,getCustomerFailure,getCustomerSucces,getOneCustomer} = customerSlice.actions
-export const customerSelector = (state)=>state.customer
+export const customerSelector = (state) => state.customer
 export default customerSlice.reducer
 
-export const createCustomer =(customerData)=>async(dispatch)=>{
-    dispatch(getCustomer())
-    try{
-        const {data} = await axios.post(KeyUri.BACKENDURI + '/customers',customerData,config)
-        console.log(data)
-        toast.success(data.message)
-
-    }catch(error){
-        console.log("error",error)
-        toast.warn(`${error.response.status}-${error.response.data.message}`)
-
-    }
+// ✅ Create customer
+export const createCustomer = (customerData) => async (dispatch) => {
+  dispatch(getCustomer())
+  try {
+    const { data } = await axios.post(
+      `${KeyUri.BACKENDURI}/customers`,
+      customerData,
+      config
+    )
+    console.log('Customer created:', data)
+    toast.success(data.message || 'Customer created successfully')
+    dispatch(fetchCustomerData()) // Refresh list after creation
+  } catch (error) {
+    console.error('Error creating customer:', error)
+    toast.error(
+      error?.response?.data?.message ||
+        `Failed: ${error?.response?.statusText || 'Unknown error'}`
+    )
+    dispatch(getCustomerFailure())
+  }
 }
 
-
-export const fetchCustomerData =()=>async(dispatch)=>{
-    dispatch(getCustomer())
-    let count =0
-    try{
-        const {data} = await axios.get(KeyUri.BACKENDURI + '/customers',config)
-        console.log(count++,data)
-        dispatch(getCustomerSucces(data))
-        // toast.success(data.message)
-
-    }catch(error){
-        console.log("error",error)
-        toast.error(`${error.response.status}-${error.response.data.message}`)
-
-    }
+// ✅ Fetch all customers
+export const fetchCustomerData = () => async (dispatch) => {
+  dispatch(getCustomer())
+  try {
+    const { data } = await axios.get(`${KeyUri.BACKENDURI}/customers`, config)
+    dispatch(getCustomerSuccess(data))
+  } catch (error) {
+    console.error('Error fetching customers:', error)
+    toast.error(
+      error?.response?.data?.message ||
+        `Failed: ${error?.response?.statusText || 'Unknown error'}`
+    )
+    dispatch(getCustomerFailure())
+  }
 }
 
-
-export const fechOneCustomer = (customerID)=>async(dispatch)=>{
-   dispatch(getCustomer())
-   try{
-    const {data} = await axios.get(KeyUri.BACKENDURI + `/customers/${customerID}`,config)
-    console.log(data)
+// ✅ Fetch one customer
+export const fetchOneCustomer = (customerID) => async (dispatch) => {
+  dispatch(getCustomer())
+  try {
+    const { data } = await axios.get(
+      `${KeyUri.BACKENDURI}/customers/${customerID}`,
+      config
+    )
     dispatch(getOneCustomer(data))
-
-
-   }catch(error){
-    console.log(error)
-   }
+  } catch (error) {
+    console.error('Error fetching customer:', error)
+    dispatch(getCustomerFailure())
+  }
 }
 
-export const updateCustomerData = (customerID,customerData)=>async(dispatch)=>{
+// ✅ Update customer (note the plural route fixed)
+export const updateCustomerData =
+  (customerID, customerData) => async (dispatch) => {
     dispatch(getCustomer())
-    try{
-       const {data} = await axios.put(KeyUri.BACKENDURI +`/customer/${customerID}`,customerData,config)
-    //    console.log(data)
-       toast.success(data.message)
-    }catch(error){
-        console.log(error)
-        toast.error(`${error.response.status}-${error.response.statusText}`)
+    try {
+      const { data } = await axios.put(
+        `${KeyUri.BACKENDURI}/customers/${customerID}`,
+        customerData,
+        config
+      )
+      toast.success(data.message || 'Customer updated successfully')
+      dispatch(fetchCustomerData())
+    } catch (error) {
+      console.error('Error updating customer:', error)
+      toast.error(
+        error?.response?.data?.message ||
+          `Failed: ${error?.response?.statusText || 'Unknown error'}`
+      )
+      dispatch(getCustomerFailure())
     }
-}
-export const deleteCustomer = (id)=>async(dispatch)=>{
-    dispatch(getCustomer())
-    try{
-        const {data} = await axios.delete(KeyUri.BACKENDURI +`/customers/${id}`,config)
-        console.log(data)
-        toast.success(data.message)
-        dispatch(fetchCustomerData())
+  }
 
-    }catch(error){
-        console.log(error)
-        toast.error(`${error.status}-${error.response.statusText}`)
-    }
+// ✅ Delete customer
+export const deleteCustomer = (id) => async (dispatch) => {
+  dispatch(getCustomer())
+  try {
+    const { data } = await axios.delete(
+      `${KeyUri.BACKENDURI}/customers/${id}`,
+      config
+    )
+    toast.success(data.message || 'Customer deleted successfully')
+    dispatch(fetchCustomerData())
+  } catch (error) {
+    console.error('Error deleting customer:', error)
+    toast.error(
+      error?.response?.data?.message ||
+        `Failed: ${error?.response?.statusText || 'Unknown error'}`
+    )
+    dispatch(getCustomerFailure())
+  }
 }
