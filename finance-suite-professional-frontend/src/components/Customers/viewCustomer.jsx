@@ -5,10 +5,10 @@ import { Pencil, Save } from "lucide-react"; // 🖊️ and 💾 icons
 import { ArrowLeft } from "lucide-react";
 import { countriesData } from "../../utils/countriesData";
 import { ChevronDown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate,useParams } from "react-router-dom";
 import { Search } from "lucide-react";
-import { useDispatch,useSelector } from "react-redux";
-import { createCustomer } from "../../ReduxApi/customer";
+import { useSelector,useDispatch } from "react-redux";
+import { customerSelector,fechOneCustomer } from "../../ReduxApi/customer";
 
 
 const initialCustomer = {
@@ -20,10 +20,9 @@ const initialCustomer = {
   countryCode: "",
   phone: "",
   email: "",
-  isActive:"New"
 };
 
-export default function CustomerCreation() {
+export default function ViewCustomer() {
   const [customer, setCustomer] = useState(initialCustomer);
   const [inputErrors, setInputErrors] = useState({});
   const [query, setQuery] = useState("");
@@ -32,7 +31,14 @@ export default function CustomerCreation() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const dropdownRef = useRef(null);
-  const dispatch = useDispatch()
+  const dispatch  = useDispatch()
+  const {id} = useParams()
+  const {currentCustomer} = useSelector(customerSelector)
+  console.log(currentCustomer)
+
+  useEffect(()=>{
+    dispatch(fechOneCustomer(id))
+  },[dispatch,id])
   // Country select
 
   // Close dropdown when clicked outside
@@ -105,11 +111,8 @@ export default function CustomerCreation() {
         break;
       case "customerName":
         if (!value) error = "Customer name is required";
-        break;
       case "country":
         if (!value) error = "Country is required";
-        break;
-
       case "phone":
         if (!value) {
           error = "Phone number is required.";
@@ -219,16 +222,13 @@ export default function CustomerCreation() {
 
     //clear error message
     setInputErrors({});
-
-    dispatch(createCustomer(customer))
-    nav("/customers");
-    
+    toast.success("Customer created successfully!");
+    console.log(customer);
     setCustomer({
       ...initialCustomer,
       addresses: initialCustomer.addresses.map((addr) => ({ ...addr })),
     });
     setSelected("");
-
   };
 
   const handleNavToCustomers = () => {
@@ -237,6 +237,37 @@ export default function CustomerCreation() {
   const filteredCountries = countriesData?.countries?.filter((country) =>
     country.country.toLowerCase().includes(query.toLowerCase())
   );
+  const onEdit = () => {
+    nav(`/customers/editCustomer/${id}`);
+  };
+
+useEffect(() => {
+  if (currentCustomer) {
+    setCustomer((prev) => ({
+      ...prev,
+      customerName: currentCustomer.customerName || "",
+      companyName: currentCustomer.companyName || "",
+      gstIN: currentCustomer.gstIN || "",
+      
+      phone: currentCustomer.phone || "",
+      email: currentCustomer.email || "",
+      addresses: currentCustomer.addresses?.length
+        ? currentCustomer.addresses
+        : prev.addresses,
+    }));
+    
+    const foundCountry = countriesData.countries.find(
+      (c) =>
+        c.country === currentCustomer.country ||
+        c.code === currentCustomer.countryCode
+    );
+
+    if (foundCountry) setSelected(foundCountry);
+ 
+
+
+}
+}, [id, currentCustomer]);
 
   return (
     <div className="relative">
@@ -252,21 +283,23 @@ export default function CustomerCreation() {
               />
             </div>
             <div className="flex flex-wrap justify-end gap-2 mr-5">
-              <button
+              {/* <button
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
                 onClick={handleSubmit}
               >
                 💾 Save
-              </button>
-              <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
+              </button> */}
+              <button 
+               onClick={onEdit}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
                 ⬇️ Edit
               </button>
-              <button
+              {/* <button
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
                 onClick={handleSubmit}
               >
                 ✉️ Create
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -288,7 +321,8 @@ export default function CustomerCreation() {
               type="text"
               name="customerName"
               value={customer.customerName}
-              onChange={handleChange}
+            //   onChange={handleChange}
+             disabled
               className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
               placeholder="Enter customer name"
             />
@@ -313,7 +347,8 @@ export default function CustomerCreation() {
               type="text"
               name="companyName"
               value={customer.companyName}
-              onChange={handleChange}
+            //   onChange={handleChange}
+             disabled
               className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
               placeholder="Enter company name"
             />
@@ -338,7 +373,9 @@ export default function CustomerCreation() {
               type="text"
               name="gstIN"
               value={customer.gstIN}
-              onChange={handleChange}
+            //   onChange={handleChange}
+             disabled
+            
               className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
               placeholder="Enter GSTIN"
             />
@@ -363,7 +400,8 @@ export default function CustomerCreation() {
 
             <button
               type="button"
-              onClick={() => setOpen(!open)}
+            //   onClick={() => setOpen(!open)}
+            disabled
               className="border border-gray-300 rounded-md px-3 py-2 w-full text-left focus:ring-1 focus:ring-black"
             >
               {selected ? `${selected.country}` : "Select country"}
@@ -435,7 +473,8 @@ export default function CustomerCreation() {
                 type="text"
                 name="phone"
                 value={customer.phone}
-                onChange={handlePhoneChange}
+                // onChange={handlePhoneChange}
+                disabled
                 className={`border border-gray-300 
               ${
                 (selected?.code && "rounded-tr-md rounded-br-md ") ||
@@ -467,7 +506,9 @@ export default function CustomerCreation() {
               type="email"
               name="email"
               value={customer.email}
-              onChange={handleChange}
+            //   onChange={handleChange}
+             disabled
+
               className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
               placeholder="Enter customer email"
             />
@@ -504,7 +545,9 @@ export default function CustomerCreation() {
                         </h4>
                         <button
                           type="button"
-                          onClick={() => toggleEditLabel(index)}
+                        //   onClick={() => toggleEditLabel(index)}
+                         disabled
+
                           className="text-gray-500 hover:text-blue-600"
                         >
                           <Pencil size={15} />
@@ -515,13 +558,16 @@ export default function CustomerCreation() {
                         <input
                           type="text"
                           value={addr.label}
-                          onChange={(e) => handleAddressLabelChange(e, index)}
+                        //   onChange={(e) => handleAddressLabelChange(e, index)}
+                          disabled
+
                           className="text-sm border-b border-gray-400 focus:border-blue-500 outline-none bg-transparent"
                           autoFocus
                         />
                         <button
                           type="button"
-                          onClick={() => toggleEditLabel(index, true)}
+                        //   onClick={() => toggleEditLabel(index, true)}
+                        disabled
                           className="text-green-600 hover:text-green-700"
                         >
                           <Save size={16} />
@@ -545,20 +591,24 @@ export default function CustomerCreation() {
                 <textarea
                   name={`address_${index}`}
                   value={addr.value}
-                  onChange={(e) => handleAddressValueChange(e, index)}
+                //   onChange={(e) => handleAddressValueChange(e, index)}
+             disabled
+
                   className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500 h-20"
                   placeholder={`Enter ${addr.label.toLowerCase()}`}
                 />
               </div>
             ))}
 
-            <button
+            {/* <button
               type="button"
-              onClick={addAddress}
+            //   onClick={addAddress}
+             disabled
+
               className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:text-blue-800 mt-2"
             >
               ➕ Add another address
-            </button>
+            </button> */}
 
             {inputErrors.address && (
               <p className="absolute text-[13px] text-[#f10404] mt-1">

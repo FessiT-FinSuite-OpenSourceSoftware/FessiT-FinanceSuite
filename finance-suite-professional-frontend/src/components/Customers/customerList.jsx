@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+
 import {
   Search,
   Plus,
@@ -10,9 +11,15 @@ import {
   Filter,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  fetchCustomerData,
+  customerSelector,
+  deleteCustomer,
+} from "../../ReduxApi/customer";
 
 // Sample invoice data - replace with your actual data/API call
-const sampleCustomers= [
+const sampleCustomers = [
   {
     id: 1,
     invoice_number: "INV-2024-001",
@@ -96,35 +103,45 @@ const sampleCustomers= [
 ];
 
 export default function CustomerList() {
-  const [cutomers] = useState(sampleCustomers);
+  const { customersData } = useSelector(customerSelector);
+
+  // const [customers,setCustomers] = useState(customersData);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
+  const [showAction, setShowAction] = useState(null);
+  const [page,setPage] = useState(5)
   const { id } = useParams();
+  const dispatch = useDispatch();
   const nav = useNavigate();
-  const itemsPerPage = 5;
+  const itemsPerPage = page;
 
-  const filteredInvoices = cutomers.filter((invoice) => {
+  const filteredCustomers = customersData.filter((item) => {
     const matchesSearch =
-      invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.company_name.toLowerCase().includes(searchTerm.toLowerCase());
+      item.gstIN.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.companyName.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      statusFilter === "All" || invoice.status === statusFilter;
+      statusFilter === "All" || item.isActive === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentInvoices = filteredInvoices.slice(startIndex, endIndex);
+  const currentCustomer = filteredCustomers.slice(startIndex, endIndex);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
+  useEffect(() => {
+    dispatch(fetchCustomerData());
+  }, [dispatch]);
+
   const getStatusColor = (status) => {
+    // console.log(status)
     switch (status) {
       case "Active":
         return "bg-green-100 text-green-800";
@@ -147,11 +164,27 @@ export default function CustomerList() {
     nav(`/customers/editCustomer/${id}`);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this invoice?")) {
-      console.log("Delete invoice:", id);
-    }
+  const onView = (id) => {
+    nav(`/customers/cutomer/${id}`);
+    console.log(id);
   };
+  const handleDelete = (id) => {
+    console.log(id);
+    dispatch(deleteCustomer(id));
+  };
+  console.log(customersData);
+  const onSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const onShowAction = (id, e) => {
+    e.stopPropagation();
+    setShowAction((prev) => (prev === id ? null : id));
+  };
+
+  const onPageItemSet = (e)=>{
+    setPage(e.target.value)
+  }
 
   return (
     <div>
@@ -167,7 +200,7 @@ export default function CustomerList() {
                 placeholder="Search by customer, or company..."
                 className="w-full ml-2 pl-10 pr-4 py-2 border border-gray-700 rounded-lg"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={onSearchChange}
               />
             </div>
 
@@ -181,14 +214,14 @@ export default function CustomerList() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <option value="All">All Status</option>
+                  <option value="New">New</option>
+
                   <option value="Active">Active</option>
                   <option value="Pending">Pending</option>
-                  
-                  
                 </select>
               </div>
 
-              {/* ✅ Create Invoice triggers invoice.jsx */}
+              {/* ✅ Create Customer triggers invoice.jsx */}
               <button
                 onClick={onCreateNew}
                 className="flex cursor-pointer items-center mr-2 gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -205,53 +238,45 @@ export default function CustomerList() {
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Total Customers</p>
             <p className="text-2xl font-bold text-gray-900">
-              {cutomers.length}
+              {customersData.length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Active</p>
             <p className="text-2xl font-bold text-green-600">
-              {cutomers.filter((i) => i.status === "Active").length}
+              {customersData.filter((i) => i.isActive === "Active").length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Pending</p>
             <p className="text-2xl font-bold text-yellow-600">
-              {cutomers.filter((i) => i.status === "Pending").length}
+              {customersData.filter((i) => i.isActive === "Pending").length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-sm text-gray-600 mb-1">New Entry</p>
             <p className="text-2xl font-bold text-red-600">
-              {cutomers.filter((i) => i.status === "New").length}
+              {customersData.filter((i) => i.isActive === "New").length}
             </p>
           </div>
         </div>
 
-        {/* Invoice Table */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        {/* Customer Table */}
+        <div className="bg-white h-72 rounded-lg shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Invoice No
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Company
                   </th>
-                  {/* <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
-                    Date
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+                    GSTIN
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
-                    Due Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Amount
-                  </th> */}
+                 
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Status
                   </th>
@@ -261,58 +286,86 @@ export default function CustomerList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {currentInvoices.length > 0 ? (
-                  currentInvoices.map((invoice) => (
+                {currentCustomer?.length > 0 ? (
+                  currentCustomer?.map((item) => (
                     <tr
-                      key={invoice.id}
+                      key={item?._id?.$oid}
                       className="hover:bg-gray-50 transition-colors"
                     >
                       <td
-                        className="px-6 py-4 whitespace-nowrap text-blue-600 font-medium cursor-pointer"
-                        onClick={() => onEdit(invoice.id)}
+                        className="px-6 py-4 capitalize whitespace-nowrap text-blue-600 font-medium cursor-pointer"
+                        onClick={() => onView(item?._id?.$oid)}
                       >
-                        {invoice.invoice_number}
+                        {item?.customerName}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {invoice.customer_name}
+                      <td className="px-6 py-4 capitalize whitespace-nowrap">
+                        {item?.companyName}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                        {invoice.company_name}
+                      <td className="px-6 py-4 capitalize whitespace-nowrap hidden md:table-cell">
+                        {item?.gstIN}
                       </td>
-                      {/* <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                        {invoice.invoice_date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                        {invoice.due_date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap font-semibold">
-                        ₹{invoice.total.toLocaleString()}
-                      </td> */}
+                      
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                            invoice.status
+                          className={`inline-flex px-2 py-1 capitalize text-xs font-semibold rounded-full ${getStatusColor(
+                            item?.isActive
                           )}`}
                         >
-                          {invoice.status}
+                          {item?.isActive}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => onEdit(invoice.id)}
-                            className="cursor-pointer text-gray-600 hover:text-green-600 transition-colors"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(invoice.id)}
-                            className="text-gray-600 cursor-pointer hover:text-red-600 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                        <div className="flex items-center justify-end gap-3 ">
+                        
+                          <div>
+                            <button
+                             
+                              className="cursor-pointer text-gray-600 hover:text-green-600 transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2
+                                className="w-4 h-4"
+                                onClick={() => onEdit(item?._id?.$oid)}
+                              />
+                            </button>
+                          </div>
+                          <div className="relative">
+                            <button
+                              
+                              onClick={(e) => onShowAction(item?._id?.$oid, e)}
+                              className="text-gray-600 cursor-pointer hover:text-red-600 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            {showAction === item?._id?.$oid && (
+                              <div className="absolute right-5 top-1/2 -translate-y-1/2 bg-white shadow-xl border border-gray-200 rounded-lg p-5  z-50">
+                                <div className="text-center ">
+                                 <div className="">
+                                   <p className="text-gray-800 font-sm">
+                                     Are you sure you want to delete <span className="font-bold capitalize">{item?.customerName}</span> ?
+                                  </p>
+                                 </div>
+                                  <div className="flex justify-end gap-3 mt-4">
+                                    <button
+                                      onClick={() => setShowAction(null)}
+                                      className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleDelete(item._id?.$oid)
+                                      }
+                                      className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-600 text-white transition shadow-sm"
+                                    >
+                                      Confirm
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -323,7 +376,7 @@ export default function CustomerList() {
                       colSpan="8"
                       className="px-6 py-12 text-center text-gray-500"
                     >
-                      No invoices found
+                      No customers found
                     </td>
                   </tr>
                 )}
@@ -332,13 +385,31 @@ export default function CustomerList() {
           </div>
 
           {/* Pagination */}
-          {filteredInvoices.length > 0 && (
+
+        </div>
+                  {filteredCustomers?.length > 0 && (
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
               <p className="text-sm text-gray-600">
                 Showing {startIndex + 1} to{" "}
-                {Math.min(endIndex, filteredInvoices.length)} of{" "}
-                {filteredInvoices.length} results
+                {Math.min(endIndex, filteredCustomers?.length)} of{" "}
+                {filteredCustomers?.length} results
               </p>
+              <div>
+                <select
+                onChange={onPageItemSet}
+                // value={page?page:""}
+                className="bg-gray-200 text-sm px-2 py-2 rounded-sm w-44"
+                >
+                 <option value={page}>All</option>
+                 <option value={1}>One</option>
+                 <option value={2}>Two</option>
+                 <option value={3}>Three</option>
+                 
+
+
+
+                </select>
+              </div>
               <div className="flex gap-1">
                 {[...Array(totalPages)].map((_, index) => (
                   <button
@@ -356,7 +427,6 @@ export default function CustomerList() {
               </div>
             </div>
           )}
-        </div>
       </div>
     </div>
   );

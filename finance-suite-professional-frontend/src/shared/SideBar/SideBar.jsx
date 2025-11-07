@@ -91,9 +91,22 @@ export default function SideBar({ component }) {
           sidebarOpen ? "w-64" : "w-0"
         } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden`}
       >
-        <div className="p-4  border-b border-gray-200 h-22">
-          <h1 className="text-2xl font-bold text-indigo-600">Finance Suite</h1>
+        <div className="p-4  border-b border-gray-200 h-22 flex justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-indigo-600">Finance Suite</h1>
           <p className="text-sm text-gray-500 mt-1">Professional</p>
+          </div>
+           <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors sider-button"
+                >
+                  {/* {sidebarOpen ? (
+                    <X size={20} strokeWidth={1} />
+                  ) : (
+                    <Menu size={20} strokeWidth={1} />
+                  )} */}
+                  {sidebarOpen && (<div><X size={20} strokeWidth={1} /></div>)}
+                </button>
         </div>
         <nav className="p-4 space-y-2">
           {navigation.map((item) => {
@@ -121,18 +134,19 @@ export default function SideBar({ component }) {
         <main className="overflow-y-auto">
           <header className="bg-white border-b border-gray-200 px-6 h-22 py-4 sticky z-10 top-0 right-0">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors sider-button"
+                  className={`p-2 hover:bg-gray-100 rounded-lg transition-colors`}
                 >
-                  {sidebarOpen ? (
+                  {/* {sidebarOpen ? (
                     <X size={20} strokeWidth={1} />
                   ) : (
                     <Menu size={20} strokeWidth={1} />
-                  )}
+                  )} */}
+                  {!sidebarOpen && (<div><Menu size={20} strokeWidth={1} /></div>)}
                 </button>
-                <div className="mb-4">
+                <div className="mb-4 ">
                   <h2 className="relative text-2xl font-bold text-gray-800 capitalize ">
                     {location.pathname.includes("/dashboard") && (
                       <p>Dashboard</p>

@@ -5,8 +5,15 @@ import { Pencil, Save } from "lucide-react"; // 🖊️ and 💾 icons
 import { ArrowLeft } from "lucide-react";
 import { countriesData } from "../../utils/countriesData";
 import { ChevronDown } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Search } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  customerSelector,
+  fechOneCustomer,
+  updateCustomerData,
+} from "../../ReduxApi/customer";
+import { isAction } from "@reduxjs/toolkit";
 const initialCustomer = {
   customerName: "",
   companyName: "",
@@ -16,6 +23,7 @@ const initialCustomer = {
   countryCode: "",
   phone: "",
   email: "",
+  isActive:""
 };
 
 export default function EditCustomer() {
@@ -27,6 +35,15 @@ export default function EditCustomer() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const dropdownRef = useRef(null);
+
+  const dispatch = useDispatch();
+  const { id } = useParams();
+  const { currentCustomer } = useSelector(customerSelector);
+  console.log(currentCustomer);
+
+  useEffect(() => {
+    dispatch(fechOneCustomer(id));
+  }, [dispatch, id]);
   // Country select
 
   // Close dropdown when clicked outside
@@ -209,14 +226,17 @@ export default function EditCustomer() {
     }
 
     //clear error message
+    dispatch(updateCustomerData(id, customer));
+    nav('/customers')
     setInputErrors({});
-    toast.success("Customer created successfully!");
-    console.log(customer);
-    setCustomer({
-      ...initialCustomer,
-      addresses: initialCustomer.addresses.map((addr) => ({ ...addr })),
-    });
-    setSelected("");
+    // toast.success("Customer created successfully!");
+    // console.log(customer);
+    // setCustomer({
+    //   ...initialCustomer,
+    //   addresses: initialCustomer.addresses.map((addr) => ({ ...addr })),
+    // });
+    // setSelected("");
+    // nav(-1)
   };
 
   const handleNavToCustomers = () => {
@@ -225,6 +245,41 @@ export default function EditCustomer() {
   const filteredCountries = countriesData?.countries?.filter((country) =>
     country.country.toLowerCase().includes(query.toLowerCase())
   );
+
+  useEffect(() => {
+    if (currentCustomer) {
+      setCustomer((prev) => ({
+        ...prev,
+        customerName: currentCustomer.customerName || "",
+        companyName: currentCustomer.companyName || "",
+        gstIN: currentCustomer.gstIN || "",
+        country: currentCustomer.country || "",
+        phone: currentCustomer.phone || "",
+        email: currentCustomer.email || "",
+        isActive:currentCustomer.isActive||"",
+        addresses: currentCustomer.addresses?.length
+          ? currentCustomer.addresses
+          : prev.addresses,
+      }));
+
+      const foundCountry = countriesData.countries.find(
+        (c) =>
+          c.country === currentCustomer.country ||
+          c.code === currentCustomer.countryCode
+      );
+
+      if (foundCountry) setSelected(foundCountry);
+
+      setInputErrors({});
+    }
+  }, [id, currentCustomer]);
+
+  const handleStatus =(e)=>{
+    setCustomer((prev)=>({
+      ...prev,
+      isActive:e.target.value
+    }))
+  }
 
   return (
     <div className="relative">
@@ -262,10 +317,40 @@ export default function EditCustomer() {
 
       {/* Form Section */}
       <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+      <div className=" flex justify-between border-b mb-4 border-gray-300 ">
+          <h2 className="text-lg font-semibold text-gray-800 pb-2">
           Customer Details
-        </h2>
+        
 
+        </h2>
+        <div className="flex justify-end gap-3">
+          <div className="flex ">
+             <p className="text-sm font-bold flex items-center">Current status :- </p>
+
+         <span className={`text-xs px-2 py-1 font-semibold flex justify-center items-center
+          ${customer?.isActive==="New"&&" text-red-800"}
+          ${customer?.isActive==="Pending"&&" text-yellow-800"}
+          ${customer?.isActive==="Active"&&" text-green-800"}
+
+          
+          `}>{customer?.isActive}</span>
+          </div>
+
+          <div className="flex justify-center items-center">
+            <select className=" bg-gray-100 px-3 py-2 rounded-sm text-sm "
+             onChange={handleStatus}
+             name="isActive"
+             value={customer?.isActive}
+            >
+              <option value="">Change status</option>
+              <option value="New">New</option>
+              <option value="Active">Active</option>
+              <option value="Pending">Pending</option>
+            
+            </select>
+          </div>
+        </div>
+      </div>
         <div className="grid grid-cols-2 gap-6 text-sm">
           {/* Customer Name */}
           <div className="relative">
