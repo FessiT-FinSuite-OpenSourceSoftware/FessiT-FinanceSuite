@@ -10,7 +10,7 @@ import { Search } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   customerSelector,
-  fechOneCustomer,
+  fetchOneCustomer,
   updateCustomerData,
 } from "../../ReduxApi/customer";
 import { isAction } from "@reduxjs/toolkit";
@@ -42,7 +42,7 @@ export default function EditCustomer() {
   console.log(currentCustomer);
 
   useEffect(() => {
-    dispatch(fechOneCustomer(id));
+    dispatch(fetchOneCustomer (id));
   }, [dispatch, id]);
   // Country select
 
@@ -200,44 +200,50 @@ export default function EditCustomer() {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const newErrors = {};
-    if (!customer.customerName.trim())
-      newErrors.customerName = "Customer name is required";
-    if (!customer.country.trim()) newErrors.country = "Country is required";
-    if (!customer.companyName.trim())
-      newErrors.companyName = "Company name is required";
-    if (!customer.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
-    if (customer.addresses.every((addr) => !addr.value.trim()))
-      newErrors.address = "At least one address is required";
-    if (!customer.phone.trim()) newErrors.phone = "Phone number is required";
-    if (!customer.email.trim()) newErrors.email = "Email is required";
+  const newErrors = {};
+  if (!customer.customerName.trim())
+    newErrors.customerName = "Customer name is required";
+  if (!customer.country.trim()) newErrors.country = "Country is required";
+  if (!customer.companyName.trim())
+    newErrors.companyName = "Company name is required";
+  if (!customer.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
+  if (customer.addresses.every((addr) => !addr.value.trim()))
+    newErrors.address = "At least one address is required";
+  if (!customer.phone.trim()) newErrors.phone = "Phone number is required";
+  if (!customer.email.trim()) newErrors.email = "Email is required";
 
-    if (Object.keys(newErrors).length > 0) {
-      setInputErrors(newErrors);
-      const firstErrorKey = Object.keys(newErrors)[0];
-      const el = document.querySelector(`[name="${firstErrorKey}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.focus();
-      }
-      return;
+  if (Object.keys(newErrors).length > 0) {
+    setInputErrors(newErrors);
+    const firstErrorKey = Object.keys(newErrors)[0];
+    const el = document.querySelector(`[name="${firstErrorKey}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.focus();
     }
+    return;
+  }
 
-    //clear error message
-    dispatch(updateCustomerData(id, customer));
-    nav('/customers')
-    setInputErrors({});
-    // toast.success("Customer created successfully!");
-    // console.log(customer);
-    // setCustomer({
-    //   ...initialCustomer,
-    //   addresses: initialCustomer.addresses.map((addr) => ({ ...addr })),
-    // });
-    // setSelected("");
-    // nav(-1)
+  // Prepare payload to match UpdateCustomerRequest
+  const payload = {
+    customer_name: customer.customerName,
+    company_name: customer.companyName,
+    gst_in: customer.gstIN,
+    addresses: customer.addresses.map(addr => ({
+      label: addr.label,
+      value: addr.value
+    })),
+    country: customer.country,
+    phone: customer.phone,
+    email: customer.email,
+    isActive: customer.isActive
   };
+
+  dispatch(updateCustomerData(id, payload));
+  nav("/customers");
+  setInputErrors({});
+};
 
   const handleNavToCustomers = () => {
     nav("/customers");

@@ -8,7 +8,7 @@ import { ChevronDown } from "lucide-react";
 import { useNavigate,useParams } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useSelector,useDispatch } from "react-redux";
-import { customerSelector,fechOneCustomer } from "../../ReduxApi/customer";
+import { customerSelector, fetchOneCustomer } from "../../ReduxApi/customer";
 
 
 const initialCustomer = {
@@ -36,9 +36,11 @@ export default function ViewCustomer() {
   const {currentCustomer} = useSelector(customerSelector)
   console.log(currentCustomer)
 
-  useEffect(()=>{
-    dispatch(fechOneCustomer(id))
-  },[dispatch,id])
+  // ✅ Fetch customer details when component loads
+  useEffect(() => {
+    dispatch(fetchOneCustomer(id));
+  }, [dispatch, id]);
+  
   // Country select
 
   // Close dropdown when clicked outside
