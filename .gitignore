@@ -2,6 +2,8 @@ cat > .gitignore << EOL
 # Dependencies
 node_modules/
 **/node_modules/
+<<<<<<< HEAD
+=======
 # Rust build
 /finance-suite-professional-backend/target
 *.pdb
@@ -9,6 +11,7 @@ node_modules/
 # Node build
 /finance-suite-professional-frontend/node_modules
 /finance-suite-professional-frontend/dist
+>>>>>>> Phoenix-Reborn
 
 # Build output
 dist/
@@ -30,10 +33,18 @@ build/
 .DS_Store
 Thumbs.db
 
+<<<<<<< HEAD
+target/
+=======
+>>>>>>> Phoenix-Reborn
 
 # Logs
 *.log
 npm-debug.log*
+<<<<<<< HEAD
+EOL
+=======
 EOLtarget/
 finance-suite-professional-backend/target/
 finance-suite-professional-frontend/node_modules/
+>>>>>>> Phoenix-Reborn
