@@ -27,20 +27,6 @@ pub struct Customer {
 
     #[validate(length(min = 1, message = "Country is required"))]
     pub country: String,
-<<<<<<< HEAD
-
-    #[validate(regex(path = "crate::utils::validation::PHONE_REGEX", message = "Invalid phone number"))]
-    pub phone: String,
-
-    #[validate(email(message = "Invalid email format"))]
-    pub email: String,
-
-    #[serde(rename = "createdAt")]
-    pub created_at: Option<DateTime<Utc>>,
-
-    #[serde(rename = "updatedAt")]
-    pub updated_at: Option<DateTime<Utc>>,
-=======
     #[serde(rename = "countryCode")]
     pub country_code: String,
 
@@ -60,7 +46,6 @@ pub struct Customer {
 
     // #[serde(rename = "updatedAt")]
     // pub updated_at: Option<DateTime<Utc>>,
->>>>>>> Phoenix-Reborn
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -75,13 +60,10 @@ pub struct CreateCustomerRequest {
     pub country: String,
     pub phone: String,
     pub email: String,
-<<<<<<< HEAD
-=======
     #[serde(rename = "countryCode")]
     pub country_code: String,
     #[serde(rename = "isActive")]
     pub is_active: String,
->>>>>>> Phoenix-Reborn
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -96,13 +78,10 @@ pub struct UpdateCustomerRequest {
     pub country: Option<String>,
     pub phone: Option<String>,
     pub email: Option<String>,
-<<<<<<< HEAD
-=======
     #[serde(rename = "countryCode")]
     pub country_code: Option<String>,
     #[serde(rename = "isActive")]
     pub is_active: Option<String>,
->>>>>>> Phoenix-Reborn
 }
 
 impl Customer {
@@ -116,15 +95,10 @@ impl Customer {
             country: req.country,
             phone: req.phone,
             email: req.email,
-<<<<<<< HEAD
-            created_at: Some(Utc::now()),
-            updated_at: Some(Utc::now()),
-=======
             country_code: req.country_code,
             is_active: req.is_active,
             // created_at: Some(Utc::now()),
             // updated_at: Some(Utc::now()),
->>>>>>> Phoenix-Reborn
         }
     }
 }

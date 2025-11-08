@@ -11,11 +11,8 @@ import {
   Bell,
   Menu,
   X,
-<<<<<<< HEAD
-=======
   ChevronRight,
   ChevronLeft,
->>>>>>> Phoenix-Reborn
 } from "lucide-react";
 
 export default function SideBar({ component }) {
@@ -93,25 +90,11 @@ export default function SideBar({ component }) {
       {/* Sidebar */}
       <div
         className={`${
-<<<<<<< HEAD
-          sidebarOpen ? "w-64" : "w-0"
-=======
           sidebarOpen ? "w-64" : "w-24"
->>>>>>> Phoenix-Reborn
         } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden`}
       >
         <div className="p-4  border-b border-gray-200 h-22 flex justify-between">
           <div>
-<<<<<<< HEAD
-            <h1 className="text-2xl font-bold text-indigo-600">Finance Suite</h1>
-          <p className="text-sm text-gray-500 mt-1">Professional</p>
-          </div>
-           <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors sider-button"
-                >
-                  {/* {sidebarOpen ? (
-=======
             <div className="flex">
               <h1 className={`${sidebarOpen?"text-2xl":"text-xs "} font-bold text-indigo-600`}>
               Finance Suite
@@ -136,15 +119,10 @@ export default function SideBar({ component }) {
                   className="p-2 hover:bg-gray-100 bg-transparent rounded-lg transition-colors sider-button"
                 > */}
           {/* {sidebarOpen ? (
->>>>>>> Phoenix-Reborn
                     <X size={20} strokeWidth={1} />
                   ) : (
                     <Menu size={20} strokeWidth={1} />
                   )} */}
-<<<<<<< HEAD
-                  {sidebarOpen && (<div><X size={20} strokeWidth={1} /></div>)}
-                </button>
-=======
           {sidebarOpen && (
             <div>
               <ChevronLeft
@@ -156,7 +134,6 @@ export default function SideBar({ component }) {
             </div>
           )}
           {/* </button> */}
->>>>>>> Phoenix-Reborn
         </div>
         <nav className="p-4 space-y-2">
           {navigation.map((item) => {
@@ -165,16 +142,6 @@ export default function SideBar({ component }) {
               <button
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
-<<<<<<< HEAD
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                  location.pathname.includes(`/${item.id}`)
-                    ? "bg-indigo-50 text-indigo-600 font-medium"
-                    : "text-gray-700 hover:bg-gray-50"
-                } sider-button`}
-              >
-                <Icon size={20} />
-                <span>{item.label}</span>
-=======
                 className={`w-full flex items-center  rounded-lg transition-colors ${
                   location.pathname.includes(`/${item.id}`)
                     ? "bg-indigo-50 text-indigo-600 font-medium"
@@ -186,7 +153,6 @@ export default function SideBar({ component }) {
                 <span className={`${sidebarOpen ? "block" : "hidden"}`}>
                   {item.label}
                 </span>
->>>>>>> Phoenix-Reborn
               </button>
             );
           })}
@@ -199,27 +165,15 @@ export default function SideBar({ component }) {
           <header className="bg-white border-b border-gray-200 px-6 h-22 py-4 sticky z-10 top-0 right-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-<<<<<<< HEAD
-                <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className={`p-2 hover:bg-gray-100 rounded-lg transition-colors`}
-                >
-                  {/* {sidebarOpen ? (
-=======
                 {/* <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
                   className={`p-2 hover:bg-gray-100 rounded-lg transition-colors`}
                 > */}
                 {/* {sidebarOpen ? (
->>>>>>> Phoenix-Reborn
                     <X size={20} strokeWidth={1} />
                   ) : (
                     <Menu size={20} strokeWidth={1} />
                   )} */}
-<<<<<<< HEAD
-                  {!sidebarOpen && (<div><Menu size={20} strokeWidth={1} /></div>)}
-                </button>
-=======
                 {/* {!sidebarOpen && (
                   <div>
                     <ChevronRight
@@ -231,7 +185,6 @@ export default function SideBar({ component }) {
                   </div>
                 )} */}
                 {/* </button> */}
->>>>>>> Phoenix-Reborn
                 <div className="mb-4 ">
                   <h2 className="relative text-2xl font-bold text-gray-800 capitalize ">
                     {location.pathname.includes("/dashboard") && (

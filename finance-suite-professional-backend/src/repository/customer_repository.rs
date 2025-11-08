@@ -1,11 +1,6 @@
-<<<<<<< HEAD
-use mongodb::bson::{doc, oid::ObjectId, DateTime as BsonDateTime, to_bson};
-use mongodb::Collection;
-=======
 use mongodb::bson::{doc, oid::ObjectId};
 use mongodb::Collection;
 
->>>>>>> Phoenix-Reborn
 use crate::error::ApiError;
 use crate::models::{CreateCustomerRequest, Customer, UpdateCustomerRequest};
 
@@ -23,12 +18,6 @@ impl CustomerRepository {
         let mut customer = Customer::new(req);
 
         let result = self.collection.insert_one(&customer, None).await?;
-<<<<<<< HEAD
-        customer.id = result.inserted_id.as_object_id();
-        Ok(customer)
-    }
-
-=======
 
         customer.id = result.inserted_id.as_object_id();
 
@@ -54,7 +43,6 @@ impl CustomerRepository {
             .map_err(|e| ApiError::DatabaseError(e.to_string()))?;
         Ok(result)
     }
->>>>>>> Phoenix-Reborn
     pub async fn find_all(&self) -> Result<Vec<Customer>, ApiError> {
         let mut cursor = self.collection.find(None, None).await?;
         let mut customers = Vec::new();
@@ -69,62 +57,16 @@ impl CustomerRepository {
     pub async fn find_by_id(&self, id: &str) -> Result<Option<Customer>, ApiError> {
         let object_id = ObjectId::parse_str(id)
             .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
-<<<<<<< HEAD
-        let filter = doc! { "_id": object_id };
-
-        Ok(self.collection.find_one(filter, None).await?)
-=======
 
         let filter = doc! { "_id": object_id };
         let customer = self.collection.find_one(filter, None).await?;
 
         Ok(customer)
->>>>>>> Phoenix-Reborn
     }
 
     pub async fn update(&self, id: &str, req: UpdateCustomerRequest) -> Result<Customer, ApiError> {
         let object_id = ObjectId::parse_str(id)
             .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
-<<<<<<< HEAD
-        let filter = doc! { "_id": object_id };
-
-        // Initialize $set document with updatedAt only
-        let mut set_doc = doc! {
-            "updatedAt": BsonDateTime::now()
-        };
-
-        if let Some(name) = req.customer_name {
-            set_doc.insert("customerName", name);
-        }
-        if let Some(company) = req.company_name {
-            set_doc.insert("companyName", company);
-        }
-        if let Some(gst) = req.gst_in {
-            set_doc.insert("gstIN", gst);
-        }
-        if let Some(addresses) = req.addresses {
-            // Serialize addresses to BSON
-            set_doc.insert(
-                "addresses",
-                to_bson(&addresses).map_err(|e| ApiError::InternalServerError(e.to_string()))?,
-            );
-        }
-        if let Some(country) = req.country {
-            set_doc.insert("country", country);
-        }
-        if let Some(phone) = req.phone {
-            set_doc.insert("phone", phone);
-        }
-        if let Some(email) = req.email {
-            set_doc.insert("email", email);
-        }
-
-        let update_doc = doc! { "$set": set_doc };
-
-        self.collection.update_one(filter.clone(), update_doc, None).await?;
-
-        let updated_customer = self.collection
-=======
 
         let filter = doc! { "_id": object_id };
 
@@ -198,7 +140,6 @@ impl CustomerRepository {
 
         let updated_customer = self
             .collection
->>>>>>> Phoenix-Reborn
             .find_one(filter, None)
             .await?
             .ok_or_else(|| ApiError::NotFound("Customer not found after update".to_string()))?;
@@ -209,11 +150,6 @@ impl CustomerRepository {
     pub async fn delete(&self, id: &str) -> Result<bool, ApiError> {
         let object_id = ObjectId::parse_str(id)
             .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
-<<<<<<< HEAD
-        let filter = doc! { "_id": object_id };
-
-        let result = self.collection.delete_one(filter, None).await?;
-=======
         println!("🧩 Trying to delete ObjectId: {}", object_id);
 
         let filter = doc! { "_id": object_id };
@@ -237,7 +173,6 @@ impl CustomerRepository {
         let filter = doc! { "email": email };
         let result = self.collection.delete_one(filter, None).await?;
 
->>>>>>> Phoenix-Reborn
         Ok(result.deleted_count > 0)
     }
 
