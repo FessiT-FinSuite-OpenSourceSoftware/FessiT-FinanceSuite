@@ -225,35 +225,12 @@ export default function EditCustomer() {
     return;
   }
 
-<<<<<<< HEAD
-  // Prepare payload to match UpdateCustomerRequest
-  const payload = {
-    customer_name: customer.customerName,
-    company_name: customer.companyName,
-    gst_in: customer.gstIN,
-    addresses: customer.addresses.map(addr => ({
-      label: addr.label,
-      value: addr.value
-    })),
-    country: customer.country,
-    phone: customer.phone,
-    email: customer.email,
-    isActive: customer.isActive
-  };
-
-  dispatch(updateCustomerData(id, payload));
-=======
   // ✅ valid form, dispatch update
   dispatch(updateCustomerData( id, customer )); // <-- pass properly
->>>>>>> Phoenix-Reborn
   nav("/customers");
   setInputErrors({});
 };
 
-<<<<<<< HEAD
-=======
-
->>>>>>> Phoenix-Reborn
   const handleNavToCustomers = () => {
     nav("/customers");
   };
