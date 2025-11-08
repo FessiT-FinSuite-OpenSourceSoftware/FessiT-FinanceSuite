@@ -106,19 +106,11 @@ export const updateCustomerData =
     dispatch(getCustomer())
     try {
       const { data } = await axios.put(
-<<<<<<< HEAD
-        `${KeyUri.BACKENDURI}/customers/${customerID}`,
-        customerData,
-        config
-      )
-      toast.success(data.message || 'Customer updated successfully')
-=======
         `${KeyUri.BACKENDURI}/customer/${customerID}`,
         customerData,
         config
       )
       toast.success(data.message)
->>>>>>> Phoenix-Reborn
       dispatch(fetchCustomerData())
     } catch (error) {
       console.error('Error updating customer:', error)
@@ -135,18 +127,11 @@ export const deleteCustomer = (id) => async (dispatch) => {
   dispatch(getCustomer())
   try {
     const { data } = await axios.delete(
-<<<<<<< HEAD
-      `${KeyUri.BACKENDURI}/customers/${id}`,
-      config
-    )
-    toast.success(data.message || 'Customer deleted successfully')
-=======
       `${KeyUri.BACKENDURI}/customer/${id}`,
       config
     )
     // console.log(data)
     toast.success(data.message)
->>>>>>> Phoenix-Reborn
     dispatch(fetchCustomerData())
   } catch (error) {
     console.error('Error deleting customer:', error)
