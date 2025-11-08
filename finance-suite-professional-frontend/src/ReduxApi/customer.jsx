@@ -55,14 +55,9 @@ export const createCustomer = (customerData) => async (dispatch) => {
       customerData,
       config
     )
-<<<<<<< HEAD
-    console.log('Customer created:', data)
-    toast.success(data.message || 'Customer created successfully')
-=======
     // console.log('Customer created:', data)
     toast.success(data.message)
     // console.log(data.message)
->>>>>>> Phoenix-Reborn
     dispatch(fetchCustomerData()) // Refresh list after creation
   } catch (error) {
     console.error('Error creating customer:', error)
