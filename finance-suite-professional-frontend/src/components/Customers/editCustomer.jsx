@@ -225,6 +225,7 @@ export default function EditCustomer() {
     return;
   }
 
+<<<<<<< HEAD
   // Prepare payload to match UpdateCustomerRequest
   const payload = {
     customer_name: customer.customerName,
@@ -241,10 +242,18 @@ export default function EditCustomer() {
   };
 
   dispatch(updateCustomerData(id, payload));
+=======
+  // ✅ valid form, dispatch update
+  dispatch(updateCustomerData( id, customer )); // <-- pass properly
+>>>>>>> Phoenix-Reborn
   nav("/customers");
   setInputErrors({});
 };
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> Phoenix-Reborn
   const handleNavToCustomers = () => {
     nav("/customers");
   };

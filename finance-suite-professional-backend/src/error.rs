@@ -8,6 +8,10 @@ pub enum ApiError {
     ValidationError(String),
     NotFound(String),
     InternalServerError(String),
+<<<<<<< HEAD
+=======
+    BadRequest(String),  // Added this variant
+>>>>>>> Phoenix-Reborn
 }
 
 #[derive(Serialize)]
@@ -23,6 +27,10 @@ impl fmt::Display for ApiError {
             ApiError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
             ApiError::NotFound(msg) => write!(f, "Not found: {}", msg),
             ApiError::InternalServerError(msg) => write!(f, "Internal server error: {}", msg),
+<<<<<<< HEAD
+=======
+            ApiError::BadRequest(msg) => write!(f, "Bad request: {}", msg),  // Added this
+>>>>>>> Phoenix-Reborn
         }
     }
 }
@@ -34,6 +42,10 @@ impl ResponseError for ApiError {
             ApiError::ValidationError(_) => StatusCode::BAD_REQUEST,
             ApiError::NotFound(_) => StatusCode::NOT_FOUND,
             ApiError::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+<<<<<<< HEAD
+=======
+            ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,  // Added this
+>>>>>>> Phoenix-Reborn
         }
     }
 
@@ -45,6 +57,10 @@ impl ResponseError for ApiError {
                 ApiError::ValidationError(_) => "VALIDATION_ERROR".to_string(),
                 ApiError::NotFound(_) => "NOT_FOUND".to_string(),
                 ApiError::InternalServerError(_) => "INTERNAL_SERVER_ERROR".to_string(),
+<<<<<<< HEAD
+=======
+                ApiError::BadRequest(_) => "BAD_REQUEST".to_string(),  // Added this
+>>>>>>> Phoenix-Reborn
             },
             message: self.to_string(),
         };

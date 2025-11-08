@@ -40,4 +40,8 @@ log = "0.4"
 
 # Regex
 regex = "1.10"
+<<<<<<< HEAD
 lazy_static = "1.4"
+=======
+lazy_static = "1.4"
+>>>>>>> Phoenix-Reborn

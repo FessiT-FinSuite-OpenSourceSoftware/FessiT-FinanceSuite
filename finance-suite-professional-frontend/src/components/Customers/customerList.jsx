@@ -262,7 +262,11 @@ export default function CustomerList() {
         </div>
 
         {/* Customer Table */}
+<<<<<<< HEAD
         <div className="bg-white h-72 rounded-lg shadow-sm overflow-hidden">
+=======
+        <div className="bg-white h-85 rounded-lg shadow-sm overflow-hidden">
+>>>>>>> Phoenix-Reborn
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">

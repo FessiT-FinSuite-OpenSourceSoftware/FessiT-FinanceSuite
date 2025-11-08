@@ -6,7 +6,17 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+<<<<<<< HEAD
 
+=======
+# Rust build
+/finance-suite-professional-backend/target
+*.pdb
+*.rlib
+# Node build
+/finance-suite-professional-frontend/node_modules
+/finance-suite-professional-frontend/dist
+>>>>>>> Phoenix-Reborn
 node_modules
 dist
 dist-ssr
