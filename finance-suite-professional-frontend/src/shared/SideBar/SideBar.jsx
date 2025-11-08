@@ -93,47 +93,73 @@ export default function SideBar({ component }) {
           sidebarOpen ? "w-64" : "w-24"
         } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden`}
       >
-        <div className="p-4  border-b border-gray-200 h-22 flex justify-between">
-          <div>
-            <div className="flex">
-              <h1 className={`${sidebarOpen?"text-2xl":"text-xs "} font-bold text-indigo-600`}>
-              Finance Suite
-            </h1>
-              <div>
-                 {!sidebarOpen && (
-                  <div>
-                    <ChevronRight
-                      size={25}
-                      strokeWidth={1}
-                      className="cursor-pointer ml-3"
-                      onClick={() => setSidebarOpen(!sidebarOpen)}
-                    />
-                  </div>
-                )}
-              </div>
+        <div className="p-4 border-b border-gray-200 h-22 flex justify-between items-center">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Logo Icon - Always visible */}
+            <div className="relative flex-shrink-0">
+              <svg width="48" height="48" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                {/* Circular background */}
+                <circle cx="50" cy="50" r="48" fill="#1e40af" opacity="0.1"/>
+                
+                {/* Graph/Chart element */}
+                <path d="M 25 70 L 35 55 L 45 60 L 55 40 L 65 45 L 75 30" 
+                      stroke="#1e40af" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                
+                {/* Letter F */}
+                <path d="M 30 35 L 30 75 M 30 35 L 50 35 M 30 53 L 45 53" 
+                      stroke="#0ea5e9" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                
+                {/* Letter S integrated */}
+                <path d="M 55 38 Q 60 35 65 38 Q 70 41 68 47 Q 66 53 60 55 Q 66 57 68 63 Q 70 69 65 72 Q 60 75 55 72" 
+                      stroke="#1e40af" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                
+                {/* Accent dots */}
+                <circle cx="75" cy="30" r="2.5" fill="#f59e0b"/>
+                <circle cx="25" cy="70" r="2.5" fill="#f59e0b"/>
+              </svg>
             </div>
-            <p className={`${sidebarOpen?"text-sm":"text-xs" } text-gray-500  mt-1`}>Professional</p>
+
+            {/* Text content - only visible when sidebar is open */}
+            {sidebarOpen && (
+              <div className="flex-1 min-w-0">
+                <h1 className="text-base font-bold text-indigo-600 leading-tight">
+                  Financial Suite
+                </h1>
+                <p className="text-[11px] text-gray-500 mt-0.5">by FessiT Solutions</p>
+                
+                {/* Made in India indicator */}
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <div className="flex gap-0.5">
+                    <div className="w-1 h-3 bg-orange-500 rounded-sm"></div>
+                    <div className="w-1 h-3 bg-white border border-gray-300 rounded-sm"></div>
+                    <div className="w-1 h-3 bg-green-600 rounded-sm"></div>
+                  </div>
+                  <span className="text-[10px] text-gray-600 font-medium tracking-wide">
+                    MADE IN INDIA
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
-          {/* <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2 hover:bg-gray-100 bg-transparent rounded-lg transition-colors sider-button"
-                > */}
-          {/* {sidebarOpen ? (
-                    <X size={20} strokeWidth={1} />
-                  ) : (
-                    <Menu size={20} strokeWidth={1} />
-                  )} */}
-          {sidebarOpen && (
-            <div>
+
+          {/* Toggle button */}
+          <div className="flex-shrink-0 ml-2">
+            {sidebarOpen ? (
               <ChevronLeft
-                className="cursor-pointer"
-                size={25}
-                strokeWidth={1}
+                className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
+                size={24}
+                strokeWidth={1.5}
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               />
-            </div>
-          )}
-          {/* </button> */}
+            ) : (
+              <ChevronRight
+                size={24}
+                strokeWidth={1.5}
+                className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              />
+            )}
+          </div>
         </div>
         <nav className="p-4 space-y-2">
           {navigation.map((item) => {
@@ -165,26 +191,6 @@ export default function SideBar({ component }) {
           <header className="bg-white border-b border-gray-200 px-6 h-22 py-4 sticky z-10 top-0 right-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                {/* <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className={`p-2 hover:bg-gray-100 rounded-lg transition-colors`}
-                > */}
-                {/* {sidebarOpen ? (
-                    <X size={20} strokeWidth={1} />
-                  ) : (
-                    <Menu size={20} strokeWidth={1} />
-                  )} */}
-                {/* {!sidebarOpen && (
-                  <div>
-                    <ChevronRight
-                      size={25}
-                      strokeWidth={1}
-                      className="cursor-pointer"
-                      onClick={() => setSidebarOpen(!sidebarOpen)}
-                    />
-                  </div>
-                )} */}
-                {/* </button> */}
                 <div className="mb-4 ">
                   <h2 className="relative text-2xl font-bold text-gray-800 capitalize ">
                     {location.pathname.includes("/dashboard") && (
@@ -223,10 +229,19 @@ export default function SideBar({ component }) {
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 </button>
 
-                {/* Notification Modal */}
-
-                <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
-                  AB
+                {/* User Name and Position */}
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-700 leading-tight">
+                      Amit Bhatt
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Finance Manager
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
+                    AB
+                  </div>
                 </div>
               </div>
             </div>
