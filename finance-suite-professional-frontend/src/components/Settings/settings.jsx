@@ -91,6 +91,7 @@ export default function SettingsCreation() {
   const [activeTab, setActiveTab] = useState("organization");
   const [isEditing,setIsEditing] = useState(false)
   const {currentOrganisation} = useSelector(orgamisationSelector)
+  const [orgId,setOrgID] = useState(null)
   const dispatch = useDispatch()
 
   useEffect(() => {
@@ -327,6 +328,7 @@ const handleEdit = async()=>{
   setIsEditing(true)
   const response =await axios.get(KeyUri.BACKENDURI + `/organisation/email/${localStorage.getItem('email')}`)
   console.log(response?.data?._id?.$oid)
+  setOrgID(response?.data?._id?.$oid)
   dispatch(fetchOneOrganisation(response?.data?._id?.$oid))
 }
 console.log(currentOrganisation)
@@ -362,7 +364,7 @@ useEffect(()=>{
   
         setInputErrors({});
  }
-},[currentOrganisation])
+},[orgId,currentOrganisation])
 
   const handleReset = () => {
     setSettings(initialSettings);
