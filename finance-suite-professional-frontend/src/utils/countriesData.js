@@ -1694,6 +1694,7 @@ export const countriesData = {
     {
       code: '+91',
       country: 'India',
+      phone: /^[6-9]\d{9}$/,
       flag: 'https://flagcdn.com/w40/in.png',
       states: [
         'Andaman and Nicobar Islands',
