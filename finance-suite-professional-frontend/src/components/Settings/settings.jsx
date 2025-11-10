@@ -3,6 +3,11 @@ import { toast } from "react-toastify";
 import { countriesData } from "../../utils/countriesData";
 import { Search } from "lucide-react";
 import { Pencil, Save } from "lucide-react"; // 🖊️ and 💾 icons
+import { useSelector,useDispatch } from "react-redux";
+import { createOrganisation,fetchOneOrganisation,orgamisationSelector, updateOrganisationData } from "../../ReduxApi/organisation";
+import axios from "axios";
+import { KeyUri } from "../../shared/key";
+
 
 const initialSettings = {
   organizationName: "",
@@ -84,6 +89,9 @@ export default function SettingsCreation() {
   const [selected, setSelected] = useState(null);
   const dropdownRef = useRef(null);
   const [activeTab, setActiveTab] = useState("organization");
+  const [isEditing,setIsEditing] = useState(false)
+  const {currentOrganisation} = useSelector(orgamisationSelector)
+  const dispatch = useDispatch()
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -122,6 +130,9 @@ export default function SettingsCreation() {
           error = "Phone number is required.";
         } else if (value.length > 15) {
           error = "Phone number cannot exceed 15 digits.";
+        } else if(selected?.phone instanceof RegExp && !selected?.phone?.test(value)){
+          error = `Invalid phone number for ${selected?.country}.`;
+          
         }
         break;
 
@@ -247,7 +258,8 @@ export default function SettingsCreation() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleOrganisationSubmit = (e) => {
+    console.log("first")
     e.preventDefault();
 
     const newErrors = {};
@@ -275,8 +287,18 @@ export default function SettingsCreation() {
 
     //clear error message
     setInputErrors({});
-    toast.success("Settings saved successfully!");
-    console.log(settings);
+    // toast.success("Settings saved successfully!");
+    // console.log(settings);
+    // dispatch(createOrganisation(settings))
+    if(isEditing){
+      console.log("editing mode")
+      dispatch(updateOrganisationData(orgId,settings))
+      setIsEditing(false)
+    }else{
+      
+      dispatch(createOrganisation(settings))
+      JSON.stringify(localStorage.setItem("email",settings.email))
+    }
     setSettings({
       ...initialSettings,
       addresses: (initialSettings.addresses || []).map((addr) => ({
@@ -288,6 +310,59 @@ export default function SettingsCreation() {
     setSelected("");
     // if (!validateForm()) return;
   };
+
+  const handleSave = (e) => {
+  if (activeTab === "organization") {
+    handleOrganisationSubmit(e);
+  } else if (activeTab === "customer") {
+    // handleCustomerSubmit();
+    console.log(" customer")
+  } else if (activeTab === "invoice") {
+    // handleInvoiceSubmit();
+    console.log("invoice")
+  }
+};
+
+const handleEdit = async()=>{
+  setIsEditing(true)
+  const response =await axios.get(KeyUri.BACKENDURI + `/organisation/email/${localStorage.getItem('email')}`)
+  console.log(response?.data?._id?.$oid)
+  dispatch(fetchOneOrganisation(response?.data?._id?.$oid))
+}
+console.log(currentOrganisation)
+
+
+useEffect(()=>{
+ if(currentOrganisation){
+  setSettings((prev)=>({
+    ...prev,
+    organizationName:currentOrganisation?.organizationName,
+    companyName:currentOrganisation?.companyName|| "",
+    gstIN:currentOrganisation?.gstIN || "",
+    gstIN:currentOrganisation?.gstIN || "",
+    country: currentOrganisation.country || "",
+    phone: currentOrganisation.phone || "",
+    email: currentOrganisation.email || "",
+    addresses: currentOrganisation.addresses?.length
+          ? currentOrganisation.addresses
+          : prev.addresses,
+
+
+    
+
+
+  }))
+  const foundCountry = countriesData.countries.find(
+          (c) =>
+            c.country === currentOrganisation.country ||
+            c.code === currentOrganisation.countryCode
+        );
+  
+        if (foundCountry) setSelected(foundCountry);
+  
+        setInputErrors({});
+ }
+},[currentOrganisation])
 
   const handleReset = () => {
     setSettings(initialSettings);
@@ -365,13 +440,13 @@ export default function SettingsCreation() {
             <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 pb-3">
               <button
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
-                onClick={handleSubmit}
+                onClick={handleSave}
               >
                 💾 Save
               </button>
               <button
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"
-                onClick={() => alert("Edit mode activated")}
+                onClick={handleEdit}
               >
                 ⬇️ Edit
               </button>
@@ -607,7 +682,7 @@ export default function SettingsCreation() {
                   Addresses *
                 </label>
 
-                {settings.addresses.map((addr, index) => (
+                {settings?.addresses?.map((addr, index) => (
                   <div
                     key={index}
                     className="mb-4 relative border border-gray-200 rounded-lg p-3 bg-gray-50"

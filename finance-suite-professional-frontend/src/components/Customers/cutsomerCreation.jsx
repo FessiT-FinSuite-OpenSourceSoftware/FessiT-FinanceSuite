@@ -115,6 +115,9 @@ export default function CustomerCreation() {
           error = "Phone number is required.";
         } else if (value.length > 15) {
           error = "Phone number cannot exceed 15 digits.";
+        }else if(selected?.phone instanceof RegExp && !selected?.phone?.test(value)){
+          error = `Invalid phone number for ${selected?.country}.`;
+
         }
         break;
 
@@ -179,6 +182,7 @@ export default function CustomerCreation() {
 
       country: selectedCountry.country,
       countryCode: selectedCountry.code,
+      phone:""
     });
     setOpen(false);
     setQuery("");
@@ -235,9 +239,9 @@ export default function CustomerCreation() {
     nav("/customers");
   };
   const filteredCountries = countriesData?.countries?.filter((country) =>
-    country.country.toLowerCase().includes(query.toLowerCase())
+    country?.country?.toLowerCase().includes(query.toLowerCase())
   );
-
+// console.log(selected)
   return (
     <div className="relative">
       {/* Fixed Buttons */}

@@ -12,9 +12,9 @@ use dotenv::dotenv;
 use std::env;
 
 use db::MongoDbClient;
-use handlers::configure_routes;
-use repository::CustomerRepository;
-use services::CustomerService;
+use handlers::{configure_customer_routes,configure_organisation_routes};
+use repository::{CustomerRepository,OrganisationRepository};
+use services::{CustomerService,OrganisationService};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -38,6 +38,10 @@ async fn main() -> std::io::Result<()> {
     let customer_collection = db_client.get_customers_collection();
     let customer_repository = CustomerRepository::new(customer_collection);
     let customer_service = CustomerService::new(customer_repository);
+    
+    let organisation_collection = db_client.get_organisation_collection();
+    let organisation_repository = OrganisationRepository::new(organisation_collection);
+    let organisation_service = OrganisationService::new(organisation_repository);
 
     log::info!("🚀 Starting server at http://{}:{}", host, port);
 
@@ -56,8 +60,11 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .wrap(Logger::default())
             .app_data(web::Data::new(customer_service.clone()))
+            .app_data(web::Data::new(organisation_service.clone()))
+
             .route("/health", web::get().to(health_check))
-            .configure(configure_routes)
+            .configure(configure_customer_routes)
+            .configure(configure_organisation_routes)
     })
     .bind((host, port))?
     .run()

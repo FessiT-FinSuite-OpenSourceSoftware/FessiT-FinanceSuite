@@ -155,19 +155,19 @@ export default function SideBar({ component }) {
               <ChevronRight
                 size={24}
                 strokeWidth={1.5}
-                className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
+                className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-3 transition-colors"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               />
             )}
           </div>
         </div>
         <nav className="p-4 space-y-2">
-          {navigation.map((item) => {
+          {navigation?.map((item) => {
             const Icon = item.icon;
             return (
               <button
                 key={item.id}
-                onClick={() => handleNavigate(item.id)}
+                onClick={() => handleNavigate(item?.id)}
                 className={`w-full flex items-center  rounded-lg transition-colors ${
                   location.pathname.includes(`/${item.id}`)
                     ? "bg-indigo-50 text-indigo-600 font-medium"
