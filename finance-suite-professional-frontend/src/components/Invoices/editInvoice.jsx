@@ -8,6 +8,9 @@ import { MoveLeft } from "lucide-react";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatNumber } from "../../utils/formatNumber";
+import InvoiceReportGeneration from "./invoiceReportGeneration";
+
+
 // const initialInvoiceData = {
 //   company_name: "",
 //   gstIN: "",
@@ -78,6 +81,8 @@ export default function EditInvoice() {
   const [inputErrors, setInputErrors] = useState({});
   const [errors, setErrors] = useState({});
   const [selectedCountry, setSelectedCountry] = useState(countries[0]);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const nav = useNavigate();
 
   useEffect(() => {
@@ -360,7 +365,8 @@ export default function EditInvoice() {
   return (
     <div className="relative">
       {/* Fixed Buttons at Top */}
-     <div className="sticky top-[88px]
+      {!showInvoicePreview?(<>
+           <div className="sticky top-[88px]
       w-full sm:w-[90%] md:w-full lg:w-full 
       z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
         <div className="">
@@ -382,8 +388,10 @@ export default function EditInvoice() {
               <button className="px-4 py-2 cursor-pointer bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
                 ⬇️ Download
               </button>
-              <button className="px-4 py-2 cursor-pointer bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto">
-                🖨️ Print
+              <button 
+              onClick={()=>setShowInvoicePreview(true)}
+              className="px-4 py-2 cursor-pointer bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto">
+                🖨️ Preview Invoice
               </button>
               <button className="px-4 py-2 cursor-pointer bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto">
                 ✉️ Email
@@ -1079,6 +1087,11 @@ export default function EditInvoice() {
           {/* </form> */}
         </div>
       </div>
+      </>):(<>
+      
+      <InvoiceReportGeneration/>
+      </>)}
+    
     </div>
   );
 }

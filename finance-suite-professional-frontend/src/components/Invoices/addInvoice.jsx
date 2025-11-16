@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatNumber } from "../../utils/formatNumber";
 
+
 const initialInvoiceData = {
   company_name: "",
   gstIN: "",
@@ -296,6 +297,7 @@ export default function AddInvoice() {
     setInputErrors({});
 
     console.log(invoiceData);
+    localStorage.setItem("invoice",JSON.stringify(invoiceData))
     setInvoiceData({
       ...initialInvoiceData,
     });
@@ -1056,6 +1058,7 @@ export default function AddInvoice() {
           {/* </form> */}
         </div>
       </div>
+      
     </div>
   );
 }
