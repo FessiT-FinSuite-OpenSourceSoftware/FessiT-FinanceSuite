@@ -41,3 +41,6 @@ log = "0.4"
 # Regex
 regex = "1.10"
 lazy_static = "1.4"
+
+# ✅ For TryStreamExt in invoice_repository (cursor.try_next())
+futures = "0.3"

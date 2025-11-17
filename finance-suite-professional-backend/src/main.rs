@@ -12,9 +12,13 @@ use dotenv::dotenv;
 use std::env;
 
 use db::MongoDbClient;
-use handlers::{configure_customer_routes,configure_organisation_routes};
-use repository::{CustomerRepository,OrganisationRepository};
-use services::{CustomerService,OrganisationService};
+use handlers::{
+    configure_customer_routes,
+    configure_organisation_routes,
+    configure_invoice_routes,
+};
+use repository::{CustomerRepository, OrganisationRepository, InvoiceRepository};
+use services::{CustomerService, OrganisationService, InvoiceService};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -27,7 +31,8 @@ async fn main() -> std::io::Result<()> {
         .parse::<u16>()
         .expect("Invalid SERVER_PORT");
 
-    let cors_origin = env::var("CORS_ALLOWED_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
+    let cors_origin =
+        env::var("CORS_ALLOWED_ORIGIN").unwrap_or_else(|_| "http://localhost:3000".to_string());
 
     let db_client = MongoDbClient::new()
         .await
@@ -38,10 +43,14 @@ async fn main() -> std::io::Result<()> {
     let customer_collection = db_client.get_customers_collection();
     let customer_repository = CustomerRepository::new(customer_collection);
     let customer_service = CustomerService::new(customer_repository);
-    
+
     let organisation_collection = db_client.get_organisation_collection();
     let organisation_repository = OrganisationRepository::new(organisation_collection);
     let organisation_service = OrganisationService::new(organisation_repository);
+
+    let invoice_collection = db_client.get_invoice_collection();
+    let invoice_repository = InvoiceRepository::new(invoice_collection);
+    let invoice_service = InvoiceService::new(invoice_repository);
 
     log::info!("🚀 Starting server at http://{}:{}", host, port);
 
@@ -59,12 +68,19 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .wrap(Logger::default())
+            // inject services
             .app_data(web::Data::new(customer_service.clone()))
             .app_data(web::Data::new(organisation_service.clone()))
-
+            .app_data(web::Data::new(invoice_service.clone()))
+            // health (optional: you can also put this under /api/v1)
             .route("/health", web::get().to(health_check))
-            .configure(configure_customer_routes)
-            .configure(configure_organisation_routes)
+            // all APIs under /api/v1
+            .service(
+                web::scope("/api/v1")
+                    .configure(configure_customer_routes)
+                    .configure(configure_organisation_routes)
+                    .configure(configure_invoice_routes),
+            )
     })
     .bind((host, port))?
     .run()
