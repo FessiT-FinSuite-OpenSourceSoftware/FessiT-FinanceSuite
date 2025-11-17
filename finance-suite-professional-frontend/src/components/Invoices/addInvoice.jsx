@@ -1,14 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { CirclePlus } from "lucide-react";
-import { CircleMinus } from "lucide-react";
+import { CirclePlus, CircleMinus, ChevronDown, ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
 import { countries } from "../../shared/countries";
-import { ChevronDown } from "lucide-react";
-import { MoveLeft } from "lucide-react";
-import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatNumber } from "../../utils/formatNumber";
-
+import { KeyUri, config } from "../../shared/key";
 
 const initialInvoiceData = {
   company_name: "",
@@ -44,6 +40,7 @@ const initialInvoiceData = {
   totalcgst: "",
   totalsgst: "",
   total: "",
+  status: "Draft",
 };
 
 export default function AddInvoice() {
@@ -53,17 +50,35 @@ export default function AddInvoice() {
   const [selectedCountry, setSelectedCountry] = useState(countries[0]);
   const nav = useNavigate();
 
+  const groupTaxValues = (items = []) => {
+    const grouped = { cgst: {}, sgst: {} };
+
+    items.forEach((item) => {
+      const hours = parseFloat(item.hours || 1);
+      const rate = parseFloat(item.rate || 0);
+      const baseAmount = hours * rate;
+
+      const cgstPercent = parseFloat(item.cgst?.cgstPercent || 0);
+      const sgstPercent = parseFloat(item.sgst?.sgstPercent || 0);
+
+      const cgstValue = (baseAmount * cgstPercent) / 100;
+      const sgstValue = (baseAmount * sgstPercent) / 100;
+
+      grouped.cgst[cgstPercent] = (grouped.cgst[cgstPercent] || 0) + cgstValue;
+      grouped.sgst[sgstPercent] = (grouped.sgst[sgstPercent] || 0) + sgstValue;
+    });
+
+    return grouped;
+  };
+
   useEffect(() => {
-    // 1. Calculate subtotal
     const subTotal = invoiceData.items.reduce(
       (sum, item) => sum + (parseFloat(item.itemTotal) || 0),
       0
     );
 
-    // 2. Group CGST and SGST by percent
     const grouped = groupTaxValues(invoiceData.items);
 
-    // 3. Calculate total CGST and SGST values
     const totalCgst = Object.values(grouped.cgst).reduce(
       (sum, val) => sum + val,
       0
@@ -73,10 +88,8 @@ export default function AddInvoice() {
       0
     );
 
-    // 4. Calculate final total
     const total = subTotal + totalCgst + totalSgst;
 
-    // 5. Update state
     setInvoiceData((prev) => ({
       ...prev,
       subTotal: subTotal.toFixed(2),
@@ -90,9 +103,9 @@ export default function AddInvoice() {
     const selected = countries.find((c) => c.code === e.target.value);
     setSelectedCountry(selected);
   };
+
   const validateField = (name, value) => {
     let error = "";
-    console.log(error);
 
     switch (name) {
       case "company_name":
@@ -148,7 +161,6 @@ export default function AddInvoice() {
   const handlePhoneChange = (e) => {
     let { name, value } = e.target;
 
-    // Allow only numbers — remove anything else
     value = value.replace(/\D/g, "");
 
     setInvoiceData((prev) => ({ ...prev, company_phone: value }));
@@ -167,7 +179,6 @@ export default function AddInvoice() {
     const updatedItems = [...invoiceData.items];
     const item = updatedItems[index];
 
-    // Numeric validation
     if (
       [
         "hours",
@@ -192,12 +203,10 @@ export default function AddInvoice() {
       item[name] = value;
     }
 
-    // Compute subtotal
     const hours = parseFloat(item.hours) || 0;
     const rate = parseFloat(item.rate) || 0;
     const subTotal = hours * rate;
 
-    // Calculate or preserve CGST/SGST amounts
     const cgstPercent = parseFloat(item.cgst.cgstPercent) || 0;
     const sgstPercent = parseFloat(item.sgst.sgstPercent) || 0;
 
@@ -208,7 +217,6 @@ export default function AddInvoice() {
       item.sgst.sgstAmount = ((subTotal * sgstPercent) / 100).toFixed(2);
     }
 
-    // Always update total
     const total =
       subTotal +
       (parseFloat(item.cgst.cgstAmount) || 0) +
@@ -241,22 +249,18 @@ export default function AddInvoice() {
     setInvoiceData({ ...invoiceData, items: updatedItems });
   };
 
-  const invoiceDataSubmit = (e) => {
+  const invoiceDataSubmit = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
 
     if (!invoiceData.company_name?.trim())
       newErrors.company_name = "Company name is required";
-
     if (!invoiceData.gstIN?.trim()) newErrors.gstIN = "GSTIN is required";
-
     if (!invoiceData.company_address?.trim())
       newErrors.company_address = "Address is required";
-
     if (!invoiceData.company_phone?.trim())
       newErrors.company_phone = "Phone number is required";
-
     if (!invoiceData.company_email?.trim())
       newErrors.company_email = "Email is required";
     if (!invoiceData?.invoice_number?.trim())
@@ -293,47 +297,35 @@ export default function AddInvoice() {
       return;
     }
 
-    //clear error message
     setInputErrors({});
 
-    console.log(invoiceData);
-    localStorage.setItem("invoice",JSON.stringify(invoiceData))
-    setInvoiceData({
-      ...initialInvoiceData,
-    });
+    try {
+      const res = await fetch(`${KeyUri.BACKENDURI}/invoices`, {
+        method: "POST",
+        headers: config.headers,
+        body: JSON.stringify(invoiceData),
+      });
+
+      if (!res.ok) throw new Error("Failed to create invoice");
+
+      toast.success("Invoice created successfully");
+      setInvoiceData(initialInvoiceData);
+      nav("/invoices");
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err.message || "Something went wrong while creating invoice"
+      );
+    }
   };
 
   const goBackToInvoices = () => {
     nav("/invoices");
   };
 
-  const groupTaxValues = (items = []) => {
-    const grouped = { cgst: {}, sgst: {} };
-
-    items.forEach((item) => {
-      const hours = parseFloat(item.hours || 1);
-      const rate = parseFloat(item.rate || 0);
-      const baseAmount = hours * rate;
-
-      // ✅ Correctly extract nested values
-      const cgstPercent = parseFloat(item.cgst?.cgstPercent || 0);
-      const sgstPercent = parseFloat(item.sgst?.sgstPercent || 0);
-
-      const cgstValue = (baseAmount * cgstPercent) / 100;
-      const sgstValue = (baseAmount * sgstPercent) / 100;
-
-      // ✅ Group properly
-      grouped.cgst[cgstPercent] = (grouped.cgst[cgstPercent] || 0) + cgstValue;
-
-      grouped.sgst[sgstPercent] = (grouped.sgst[sgstPercent] || 0) + sgstValue;
-    });
-
-    return grouped;
-  };
-
   return (
     <div className="relative">
-      {/* Fixed Buttons at Top */}
+      {/* Top bar */}
       <div
         className="sticky top-[88px]
       w-full sm:w-[90%] md:w-full lg:w-full 
@@ -345,7 +337,7 @@ export default function AddInvoice() {
               <ArrowLeft
                 strokeWidth={1}
                 onClick={goBackToInvoices}
-                className=" cursor-pointer"
+                className="cursor-pointer"
               />
             </div>
             <div className="flex flex-wrap justify-end  mr-5 gap-2 ">
@@ -369,10 +361,10 @@ export default function AddInvoice() {
         </div>
       </div>
 
+      {/* Main form */}
       <div>
         <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
-          {/* <!-- Company Details --> */}
-          {/* <form> */}
+          {/* Organization Details */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
             Organization Details
           </h2>
@@ -453,7 +445,7 @@ export default function AddInvoice() {
                 <div className="flex items-center ">
                   <div className="flex items-center">
                     <select
-                      onChange={(e) => handleSelect(e)}
+                      onChange={handleSelect}
                       className="flex items-center gap-2 py-2 px-6 text-sm font-medium 
             text-gray-900 bg-gray-100  border border-gray-300 rounded-l-lg 
              dark:text-gray-100 
@@ -517,7 +509,7 @@ export default function AddInvoice() {
             </div>
           </div>
 
-          {/* <!-- Invoice Details --> */}
+          {/* Invoice Details */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
             Invoice Details
           </h2>
@@ -632,11 +624,12 @@ export default function AddInvoice() {
             </div>
           </div>
 
-          {/* <!-- Bill To / Ship To --> */}
+          {/* Customer Details */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
             Customer Details
           </h2>
           <div className="grid grid-cols-2 gap-6 mb-6">
+            {/* Bill To */}
             <div>
               <h3 className="font-semibold text-gray-700 mb-2 text-sm">
                 Bill To
@@ -700,6 +693,7 @@ export default function AddInvoice() {
               </div>
             </div>
 
+            {/* Ship To */}
             <div>
               <h3 className="font-semibold text-gray-700 mb-2 text-sm">
                 Ship To
@@ -764,7 +758,7 @@ export default function AddInvoice() {
             </div>
           </div>
 
-          {/* <!-- Subject --> */}
+          {/* Subject */}
           <div className="mb-6">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Subject
@@ -780,7 +774,7 @@ export default function AddInvoice() {
             />
           </div>
 
-          {/* <!-- Items Table --> */}
+          {/* Items */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
             Items
           </h2>
@@ -945,7 +939,7 @@ export default function AddInvoice() {
             </table>
           </div>
 
-          {/* <!-- Totals --> */}
+          {/* Totals */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
             Totals
           </h2>
@@ -953,7 +947,6 @@ export default function AddInvoice() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div></div>
             <div className="space-y-2">
-              {/* Sub Total */}
               <div className="flex justify-between">
                 <span className="font-semibold text-gray-700">Sub Total</span>
                 <input
@@ -963,10 +956,10 @@ export default function AddInvoice() {
                   disabled
                 />
               </div>
+
               {(() => {
                 const grouped = groupTaxValues(invoiceData?.items || []);
 
-                // Combine CGST and SGST entries into a single list
                 const merged = Object.keys({
                   ...grouped.cgst,
                   ...grouped.sgst,
@@ -976,7 +969,6 @@ export default function AddInvoice() {
                   <>
                     {merged.map((percent) => (
                       <React.Fragment key={percent}>
-                        {/* CGST */}
                         {grouped.cgst[percent] !== undefined && (
                           <div className="flex justify-between">
                             <span className="font-semibold text-gray-700">
@@ -993,7 +985,6 @@ export default function AddInvoice() {
                           </div>
                         )}
 
-                        {/* SGST */}
                         {grouped.sgst[percent] !== undefined && (
                           <div className="flex justify-between">
                             <span className="font-semibold text-gray-700">
@@ -1015,7 +1006,6 @@ export default function AddInvoice() {
                 );
               })()}
 
-              {/* Total */}
               <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">
                 <span>Total</span>
                 <input
@@ -1055,10 +1045,8 @@ export default function AddInvoice() {
               </div>
             </div>
           </div>
-          {/* </form> */}
         </div>
       </div>
-      
     </div>
   );
 }

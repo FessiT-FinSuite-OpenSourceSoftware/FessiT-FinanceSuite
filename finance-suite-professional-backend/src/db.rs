@@ -1,7 +1,7 @@
 use mongodb::{Client, Collection, Database};
 use std::env;
 
-use crate::models::{Customer,Organisation};
+use crate::models::{Customer, Organisation, Invoice};
 
 #[derive(Clone)]
 pub struct MongoDbClient {
@@ -30,8 +30,13 @@ impl MongoDbClient {
     pub fn get_customers_collection(&self) -> Collection<Customer> {
         self.database.collection::<Customer>("customers")
     }
-    pub fn get_organisation_collection(&self)->Collection<Organisation>{
-        self.database.collection::<Organisation>("organisations")
 
+    pub fn get_organisation_collection(&self) -> Collection<Organisation> {
+        self.database.collection::<Organisation>("organisations")
+    }
+
+    // ⭐ NEW — Invoice Collection
+    pub fn get_invoice_collection(&self) -> Collection<Invoice> {
+        self.database.collection::<Invoice>("invoices")
     }
 }

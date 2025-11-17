@@ -1,125 +1,67 @@
 import React, { useState, useEffect } from "react";
-import {
-  Search,
-  Plus,
-  Eye,
-  Edit2,
-  Trash2,
-  Download,
-  Mail,
-  Filter,
-} from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Search, Plus, Edit2, Trash2, Filter } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { KeyUri, config } from "../../shared/key";
 
-// Sample invoice data - replace with your actual data/API call
-const sampleInvoices = [
-  {
-    id: 1,
-    invoice_number: "INV-2024-001",
-    company_name: "Acme Corporation",
-    customer_name: "John Doe",
-    invoice_date: "2024-01-15",
-    due_date: "2024-02-15",
-    total: 15000,
-    status: "Paid",
-  },
-  {
-    id: 2,
-    invoice_number: "INV-2024-002",
-    company_name: "Tech Solutions",
-    customer_name: "Jane Smith",
-    invoice_date: "2024-01-20",
-    due_date: "2024-02-20",
-    total: 25000,
-    status: "Pending",
-  },
-  {
-    id: 3,
-    invoice_number: "INV-2024-003",
-    company_name: "Digital Ventures",
-    customer_name: "Bob Johnson",
-    invoice_date: "2024-01-25",
-    due_date: "2024-02-25",
-    total: 18500,
-    status: "Overdue",
-  },
-  {
-    id: 4,
-    invoice_number: "INV-2024-004",
-    company_name: "Innovation Labs",
-    customer_name: "Alice Williams",
-    invoice_date: "2024-02-01",
-    due_date: "2024-03-01",
-    total: 32000,
-    status: "Paid",
-  },
-  {
-    id: 5,
-    invoice_number: "INV-2024-005",
-    company_name: "Creative Studios",
-    customer_name: "Charlie Brown",
-    invoice_date: "2024-02-10",
-    due_date: "2024-03-10",
-    total: 12500,
-    status: "Pending",
-  },
-  {
-    id: 6,
-    invoice_number: "INV-2024-006",
-    company_name: "Global Enterprises",
-    customer_name: "David Miller",
-    invoice_date: "2024-02-15",
-    due_date: "2024-03-15",
-    total: 45000,
-    status: "Draft",
-  },
-  {
-    id: 7,
-    invoice_number: "INV-2024-007",
-    company_name: "Smart Solutions",
-    customer_name: "Emma Davis",
-    invoice_date: "2024-02-20",
-    due_date: "2024-03-20",
-    total: 28000,
-    status: "Pending",
-  },
-  {
-    id: 8,
-    invoice_number: "INV-2024-008",
-    company_name: "Future Tech",
-    customer_name: "Frank Wilson",
-    invoice_date: "2024-02-25",
-    due_date: "2024-03-25",
-    total: 19500,
-    status: "Paid",
-  },
-];
+// 🔑 Helper to safely extract Mongo ObjectId as string
+const getInvoiceId = (invoice) => {
+  if (!invoice) return "";
+
+  // If backend already sends `id` as a plain string
+  if (typeof invoice.id === "string") return invoice.id;
+
+  // Mongo style: _id as string or as { $oid: "..." }
+  if (invoice._id) {
+    if (typeof invoice._id === "string") return invoice._id;
+    if (
+      typeof invoice._id === "object" &&
+      invoice._id !== null &&
+      typeof invoice._id.$oid === "string"
+    ) {
+      return invoice._id.$oid;
+    }
+  }
+
+  return "";
+};
 
 export default function InvoiceList() {
-  const [invoices] = useState(sampleInvoices);
+  const [invoices, setInvoices] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const { id } = useParams();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const nav = useNavigate();
   const itemsPerPage = 5;
 
-  const filteredInvoices = invoices.filter((invoice) => {
-    const matchesSearch =
-      invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.company_name.toLowerCase().includes(searchTerm.toLowerCase());
+  // Fetch invoices from backend on mount
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-    const matchesStatus =
-      statusFilter === "All" || invoice.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+        const res = await fetch(`${KeyUri.BACKENDURI}/invoices`);
+        if (!res.ok) {
+          throw new Error("Failed to load invoices");
+        }
 
-  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentInvoices = filteredInvoices.slice(startIndex, endIndex);
+        const data = await res.json();
+        setInvoices(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error(err);
+        setError(err.message || "Something went wrong while loading invoices");
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchInvoices();
+  }, []);
+
+  // Reset to first page whenever filter/search changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
@@ -133,7 +75,6 @@ export default function InvoiceList() {
       case "Overdue":
         return "bg-red-100 text-red-800";
       case "Draft":
-        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -147,11 +88,56 @@ export default function InvoiceList() {
     nav(`/invoices/editInvoice/${id}`);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this invoice?")) {
-      console.log("Delete invoice:", id);
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this invoice?")) return;
+
+    try {
+      const res = await fetch(`${KeyUri.BACKENDURI}/invoices/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete invoice");
+      }
+
+      // Update local state
+      setInvoices((prev) => prev.filter((inv) => getInvoiceId(inv) !== id));
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Something went wrong while deleting invoice");
     }
   };
+
+  // 🔍 Filtering logic
+  const filteredInvoices = invoices.filter((invoice) => {
+    const invoiceNumber = (invoice.invoice_number || "").toLowerCase();
+    const companyName = (invoice.company_name || "").toLowerCase();
+    const customerName = (
+      invoice.billcustomer_name ||
+      invoice.customer_name ||
+      ""
+    ).toLowerCase();
+
+    const matchesSearch =
+      invoiceNumber.includes(searchTerm.toLowerCase()) ||
+      companyName.includes(searchTerm.toLowerCase()) ||
+      customerName.includes(searchTerm.toLowerCase());
+
+    const status = invoice.status || "Draft";
+    const matchesStatus = statusFilter === "All" || status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  // 📄 Pagination
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentInvoices = filteredInvoices.slice(startIndex, endIndex);
+
+  // Stats
+  const countByStatus = (status) =>
+    invoices.filter((i) => (i.status || "Draft") === status).length;
 
   return (
     <div>
@@ -188,7 +174,7 @@ export default function InvoiceList() {
                 </select>
               </div>
 
-              {/* ✅ Create Invoice triggers invoice.jsx */}
+              {/* ✅ Create Invoice triggers AddInvoice page */}
               <button
                 onClick={onCreateNew}
                 className="flex cursor-pointer items-center mr-2 gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -199,6 +185,19 @@ export default function InvoiceList() {
             </div>
           </div>
         </div>
+
+        {/* Loading / Error states */}
+        {loading && (
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
+            <p className="text-gray-600">Loading invoices...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-700 text-sm">{error}</p>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
@@ -211,19 +210,19 @@ export default function InvoiceList() {
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Paid</p>
             <p className="text-2xl font-bold text-green-600">
-              {invoices.filter((i) => i.status === "Paid").length}
+              {countByStatus("Paid")}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Pending</p>
             <p className="text-2xl font-bold text-yellow-600">
-              {invoices.filter((i) => i.status === "Pending").length}
+              {countByStatus("Pending")}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Overdue</p>
             <p className="text-2xl font-bold text-red-600">
-              {invoices.filter((i) => i.status === "Overdue").length}
+              {countByStatus("Overdue")}
             </p>
           </div>
         </div>
@@ -262,68 +261,82 @@ export default function InvoiceList() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {currentInvoices.length > 0 ? (
-                  currentInvoices.map((invoice) => (
-                    <tr
-                      key={invoice.id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td
-                        className="px-6 py-4 whitespace-nowrap text-blue-600 font-medium cursor-pointer"
-                        onClick={() => onEdit(invoice.id)}
+                  currentInvoices.map((invoice) => {
+                    const id = getInvoiceId(invoice);
+                    const customerName =
+                      invoice.billcustomer_name ||
+                      invoice.customer_name ||
+                      "";
+                    const invoiceDate =
+                      invoice.invoice_date || invoice.date || "";
+                    const dueDate =
+                      invoice.invoice_dueDate || invoice.due_date || "";
+
+                    return (
+                      <tr
+                        key={id}
+                        className="hover:bg-gray-50 transition-colors"
                       >
-                        {invoice.invoice_number}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {invoice.customer_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                        {invoice.company_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                        {invoice.invoice_date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                        {invoice.due_date}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap font-semibold">
-                        ₹{invoice.total.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                            invoice.status
-                          )}`}
+                        <td
+                          className="px-6 py-4 whitespace-nowrap text-blue-600 font-medium cursor-pointer"
+                          onClick={() => onEdit(id)}
                         >
-                          {invoice.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => onEdit(invoice.id)}
-                            className="cursor-pointer text-gray-600 hover:text-green-600 transition-colors"
-                            title="Edit"
+                          {invoice.invoice_number}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {customerName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                          {invoice.company_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                          {invoiceDate}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                          {dueDate}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap font-semibold">
+                          ₹{Number(invoice.total || 0).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                              invoice.status || "Draft"
+                            )}`}
                           >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(invoice.id)}
-                            className="text-gray-600 cursor-pointer hover:text-red-600 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            {invoice.status || "Draft"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => onEdit(id)}
+                              className="cursor-pointer text-gray-600 hover:text-green-600 transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(id)}
+                              className="text-gray-600 cursor-pointer hover:text-red-600 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td
                       colSpan="8"
                       className="px-6 py-12 text-center text-gray-500"
                     >
-                      No invoices found
+                      {loading
+                        ? "Loading..."
+                        : "No invoices found. Try creating one."}
                     </td>
                   </tr>
                 )}
