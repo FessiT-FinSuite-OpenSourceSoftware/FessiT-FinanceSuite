@@ -62,11 +62,11 @@ export const bankDetails = {
   title: "Bank Details",
   fields: [
     { label: "Account Name", value: "M/s Fessit Solutions Private Limited" },
-    { label: "Account Number", value: "50200111090190" },
+    { label: "Account Number", value: "50xxxxxxx" },
     { label: "Account Type", value: "Current Account" },
-    { label: "IFSC Code", value: "HDFC0001208" },
+    { label: "IFSC Code", value: "HDFC000xxxx" },
     { label: "Banker", value: "HDFC Bank" },
-    { label: "Branch", value: "Millers Road" }
+    { label: "Branch", value: "xxxx Road" }
   ]
 };
 
