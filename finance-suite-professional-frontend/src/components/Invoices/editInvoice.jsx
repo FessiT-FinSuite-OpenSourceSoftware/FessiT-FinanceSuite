@@ -414,15 +414,22 @@ export default function EditInvoice() {
                   >
                     💾 Save
                   </button>
-                  <button className="px-4 py-2 cursor-pointer bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
+
+                  {/* Just opens preview; actual download is inside preview */}
+                  <button
+                    className="px-4 py-2 cursor-pointer bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"
+                    onClick={() => setShowInvoicePreview(true)}
+                  >
                     ⬇️ Download
                   </button>
+
                   <button
                     onClick={() => setShowInvoicePreview(true)}
                     className="px-4 py-2 cursor-pointer bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto"
                   >
                     🖨️ Preview Invoice
                   </button>
+
                   <button className="px-4 py-2 cursor-pointer bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto">
                     ✉️ Email
                   </button>
