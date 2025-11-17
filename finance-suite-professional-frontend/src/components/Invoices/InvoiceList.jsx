@@ -239,9 +239,7 @@ export default function InvoiceList() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
-                    Company
-                  </th>
+                  
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
                     Date
                   </th>
@@ -286,9 +284,7 @@ export default function InvoiceList() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           {customerName}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                          {invoice.company_name}
-                        </td>
+                        
                         <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                           {invoiceDate}
                         </td>
