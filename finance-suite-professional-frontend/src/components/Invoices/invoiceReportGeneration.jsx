@@ -64,34 +64,34 @@ const InvoiceReportGeneration = ({ invoiceData }) => {
   const items = Array.isArray(data.items) ? data.items : [];
 
   // 🔹 Group CGST / SGST by percentage slabs
-const groupTaxValues = (itemsArr = []) => {
-  const grouped = { cgst: {}, sgst: {} };
+  const groupTaxValues = (itemsArr = []) => {
+    const grouped = { cgst: {}, sgst: {} };
 
-  itemsArr.forEach((item) => {
-    const hours = parseFloat(item.hours || 0);
-    const rate = parseFloat(item.rate || 0);
-    const baseAmount = hours * rate;
+    itemsArr.forEach((item) => {
+      const hours = parseFloat(item.hours || 0);
+      const rate = parseFloat(item.rate || 0);
+      const baseAmount = hours * rate;
 
-    const cgstPercent = parseFloat(item?.cgst?.cgstPercent || 0);
-    const sgstPercent = parseFloat(item?.sgst?.sgstPercent || 0);
+      const cgstPercent = parseFloat(item?.cgst?.cgstPercent || 0);
+      const sgstPercent = parseFloat(item?.sgst?.sgstPercent || 0);
 
-    if (cgstPercent > 0) {
-      const cgstValue = (baseAmount * cgstPercent) / 100;
-      grouped.cgst[cgstPercent] =
-        (grouped.cgst[cgstPercent] || 0) + cgstValue;
-    }
+      if (cgstPercent > 0) {
+        const cgstValue = (baseAmount * cgstPercent) / 100;
+        grouped.cgst[cgstPercent] =
+          (grouped.cgst[cgstPercent] || 0) + cgstValue;
+      }
 
-    if (sgstPercent > 0) {
-      const sgstValue = (baseAmount * sgstPercent) / 100;
-      grouped.sgst[sgstPercent] =
-        (grouped.sgst[sgstPercent] || 0) + sgstValue;
-    }
-  });
+      if (sgstPercent > 0) {
+        const sgstValue = (baseAmount * sgstPercent) / 100;
+        grouped.sgst[sgstPercent] =
+          (grouped.sgst[sgstPercent] || 0) + sgstValue;
+      }
+    });
 
-  return grouped;
-};
+    return grouped;
+  };
 
-const groupedTaxes = groupTaxValues(items);
+  const groupedTaxes = groupTaxValues(items);
 
   // If totals are not present for some reason, derive simple subtotal
   const computedSubTotal =
@@ -114,8 +114,7 @@ const groupedTaxes = groupTaxValues(items);
   const handlePrint = () => window.print();
   const handleDownload = () => generateInvoicePdf(data.invoice_number);
 
-  // 🔗 Terms & Conditions: take from invoiceData.notes if present,
-  // otherwise fall back to static `terms` from SampleInvoiceData.
+  // 🔗 Terms & Conditions: from notes if present, else static terms
   const customTermsLines = (data.notes || "")
     .split("\n")
     .map((l) => l.trim())
@@ -179,28 +178,67 @@ const groupedTaxes = groupTaxValues(items);
           </div>
 
           <div className="text-right">
-            <h2 className="text-lg font-semibold text-gray-900">TAX INVOICE</h2>
-            <p className="text-xs text-gray-700 mt-2">
-              Invoice No:{" "}
-              <span className="font-medium">{data.invoice_number}</span>
-            </p>
-            <p className="text-xs text-gray-700">
-              Invoice Date:{" "}
-              <span className="font-medium">{data.invoice_date}</span>
-            </p>
-            <p className="text-xs text-gray-700">
-              Due Date:{" "}
-              <span className="font-medium">{data.invoice_dueDate}</span>
-            </p>
-            <p className="text-xs text-gray-700">
-              Terms:{" "}
-              <span className="font-medium">{data.invoice_terms}</span>
-            </p>
+            <h2 className="text-lg font-semibold text-gray-900">
+              TAX INVOICE
+            </h2>
           </div>
         </div>
 
-        {/* Bill / Ship To + PO / Place of Supply */}
-        <div className="grid grid-cols-2 gap-4 border-t border-b border-gray-300 py-4 mb-6">
+        {/* Bill / Ship To */}
+        <div className="border-t border-b border-gray-300 py-3 mb-4 text-xs text-gray-800">
+          <div className="grid grid-cols-2 gap-4">
+            {/* LEFT COLUMN */}
+            <div className="space-y-1">
+              <p>
+                <span className="font-semibold">Invoice No.</span>
+                <span className="ml-2">: {data.invoice_number || "-"}</span>
+              </p>
+              <p>
+                <span className="font-semibold">Invoice Date</span>
+                <span className="ml-2">: {data.invoice_date || "-"}</span>
+              </p>
+              <p>
+                <span className="font-semibold">Terms</span>
+                <span className="ml-2">: {data.invoice_terms || "-"}</span>
+              </p>
+              <p>
+                <span className="font-semibold">Due Date</span>
+                <span className="ml-2">: {data.invoice_dueDate || "-"}</span>
+              </p>
+              <p>
+                <span className="font-semibold">Place of Supply</span>
+                <span className="ml-2">: {data.place_of_supply || "-"}</span>
+              </p>
+            </div>
+
+            {/* RIGHT COLUMN */}
+            <div className="space-y-1">
+              <p>
+                <span className="font-semibold">P O Number</span>
+                <span className="ml-2">: {data.po_number || "-"}</span>
+              </p>
+              <p>
+                <span className="font-semibold">P O Date</span>
+                <span className="ml-2">: {data.po_date || "-"}</span>
+              </p>
+              <p>
+                <span className="font-semibold">LUT No</span>
+                <span className="ml-2">
+                  : {data.lut_no || data.lutNo || "-"}
+                </span>
+              </p>
+              <p>
+                <span className="font-semibold">IEC No</span>
+                <span className="ml-2">
+                  : {data.iec_no || data.iecNo || "-"}
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bill / Ship To (now comes AFTER meta block) */}
+        <div className="grid grid-cols-2 gap-4 border-b border-gray-300 pb-4 mb-6">
           <div>
             <h3 className="text-xs font-semibold text-gray-800 mb-1">
               Bill To
@@ -228,17 +266,6 @@ const groupedTaxes = groupTaxValues(items);
             </p>
             <p className="text-xs text-gray-700 mt-1">
               GSTIN: {data.shipcustomer_gstin}
-            </p>
-          </div>
-
-          <div className="col-span-2 grid grid-cols-2 mt-3 gap-4">
-            <p className="text-xs text-gray-700">
-              <span className="font-semibold">PO Number:</span>{" "}
-              {data.po_number}
-            </p>
-            <p className="text-xs text-gray-700">
-              <span className="font-semibold">Place of Supply:</span>{" "}
-              {data.place_of_supply}
             </p>
           </div>
         </div>

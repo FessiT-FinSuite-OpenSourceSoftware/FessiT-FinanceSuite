@@ -13,11 +13,16 @@ const initialInvoiceData = {
   company_address: "",
   company_phone: "",
   company_email: "",
+  // 🔹 NEW optional org fields
+  lut_no: "",
+  iec_no: "",
   invoice_number: "",
   invoice_date: "",
   invoice_dueDate: "",
   invoice_terms: "Due on receipt",
   po_number: "",
+  // 🔹 NEW required P.O. date
+  po_date: "",
   place_of_supply: "",
   billcustomer_name: "",
   billcustomer_address: "",
@@ -325,7 +330,10 @@ export default function EditInvoice() {
     if (!invoiceData?.invoice_dueDate?.trim())
       newErrors.invoice_dueDate = "Invoice due date is required";
     if (!invoiceData?.po_number?.trim())
-      newErrors.po_number = "PO.NO is required";
+      newErrors.po_number = "P.O. No is required";
+    // 🔹 NEW: P.O. Date required
+    if (!invoiceData?.po_date?.trim())
+      newErrors.po_date = "P.O. Date is required";
     if (!invoiceData?.place_of_supply?.trim())
       newErrors.place_of_supply = "Place of supply is required";
     if (!invoiceData?.billcustomer_name?.trim())
@@ -338,8 +346,7 @@ export default function EditInvoice() {
       newErrors.shipcustomer_name = "Customer name required";
     if (!invoiceData?.shipcustomer_address?.trim())
       newErrors.shipcustomer_address = "Address is required";
-    //if (!invoiceData?.shipcustomer_gstin?.trim())
-    //  newErrors.shipcustomer_gstin = "GSTIN is required";
+    // ship GSTIN kept optional as per your commented code
 
     if (Object.keys(newErrors).length > 0) {
       setInputErrors(newErrors);
@@ -583,6 +590,36 @@ export default function EditInvoice() {
                     </p>
                   )}
                 </div>
+
+                {/* 🔹 NEW optional fields: LUT No, IEC No */}
+                <div className="relative">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    LUT No
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter LUT No (optional)"
+                    className="border border-gray-300 rounded px-3 
+                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                    value={invoiceData.lut_no}
+                    name="lut_no"
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="relative">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    IEC No
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter IEC No (optional)"
+                    className="border border-gray-300 rounded px-3 
+                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                    value={invoiceData.iec_no}
+                    name="iec_no"
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
 
               {/* Invoice Details */}
@@ -679,6 +716,28 @@ export default function EditInvoice() {
                     </p>
                   )}
                 </div>
+
+                {/* 🔹 NEW P.O. Date field (required) */}
+                <div className="relative">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    P.O. Date *
+                  </label>
+                  <input
+                    type="date"
+                    placeholder="dd-mm-yyyy"
+                    className="border border-gray-300 rounded px-3 
+                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                    value={invoiceData.po_date}
+                    name="po_date"
+                    onChange={handleChange}
+                  />
+                  {inputErrors?.po_date && (
+                    <p className="absolute text-[13px]  text-[#f10404]">
+                      {inputErrors?.po_date}
+                    </p>
+                  )}
+                </div>
+
                 <div className="relative">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Place of Supply *
@@ -812,25 +871,7 @@ export default function EditInvoice() {
                       </p>
                     )}
                   </div>
-                  {/* <div className="relative">
-                    <label className="block text-xs font-semibold text-gray-600 mt-2 mb-1">
-                      GSTIN *
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Enter GSTIN"
-                      className="border border-gray-300 rounded px-3 
-                        py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
-                      value={invoiceData.shipcustomer_gstin}
-                      name="shipcustomer_gstin"
-                      onChange={handleChange}
-                    />
-                    {inputErrors?.shipcustomer_gstin && (
-                      <p className="absolute text-[13px] text-[#f10404]">
-                        {inputErrors?.shipcustomer_gstin}
-                      </p>
-                    )}
-                  </div> */}
+                  {/* Ship GSTIN optional as per your previous logic */}
                 </div>
               </div>
 
@@ -1038,49 +1079,54 @@ export default function EditInvoice() {
                   {(() => {
                     const grouped = groupTaxValues(invoiceData?.items || []);
 
+                    // Build sorted unique percentage list: [5, 9, ...]
+                    const percentOrder = Array.from(
+                      new Set([
+                        ...Object.keys(grouped.cgst || {}),
+                        ...Object.keys(grouped.sgst || {}),
+                      ])
+                    )
+                      .map((p) => parseFloat(p))
+                      .filter((p) => p > 0)
+                      .sort((a, b) => a - b);
+
                     return (
                       <>
-                        {Object.entries(grouped.cgst)
-                          .filter(([percent]) => parseFloat(percent) > 0)
-                          .map(([percent, value]) => (
-                            <div
-                              key={`cgst-${percent}`}
-                              className="flex justify-between"
-                            >
-                              <span className="font-semibold text-gray-700">
-                                CGST ({percent}%)
-                              </span>
-                              <input
-                                type="text"
-                                className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                                value={formatNumber(
-                                  Number(value).toFixed(2)
-                                )}
-                                disabled
-                              />
-                            </div>
-                          ))}
+                        {percentOrder.map((percent) => (
+                          <React.Fragment key={percent}>
+                            {grouped.cgst[percent] != null && (
+                              <div className="flex justify-between">
+                                <span className="font-semibold text-gray-700">
+                                  CGST ({percent}%)
+                                </span>
+                                <input
+                                  type="text"
+                                  className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                                  value={formatNumber(
+                                    Number(grouped.cgst[percent] || 0).toFixed(2)
+                                  )}
+                                  disabled
+                                />
+                              </div>
+                            )}
 
-                        {Object.entries(grouped.sgst)
-                          .filter(([percent]) => parseFloat(percent) > 0)
-                          .map(([percent, value]) => (
-                            <div
-                              key={`sgst-${percent}`}
-                              className="flex justify-between"
-                            >
-                              <span className="font-semibold text-gray-700">
-                                SGST ({percent}%)
-                              </span>
-                              <input
-                                type="text"
-                                className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                                value={formatNumber(
-                                  Number(value).toFixed(2)
-                                )}
-                                disabled
-                              />
-                            </div>
-                          ))}
+                            {grouped.sgst[percent] != null && (
+                              <div className="flex justify-between">
+                                <span className="font-semibold text-gray-700">
+                                  SGST ({percent}%)
+                                </span>
+                                <input
+                                  type="text"
+                                  className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                                  value={formatNumber(
+                                    Number(grouped.sgst[percent] || 0).toFixed(2)
+                                  )}
+                                  disabled
+                                />
+                              </div>
+                            )}
+                          </React.Fragment>
+                        ))}
                       </>
                     );
                   })()}
@@ -1097,7 +1143,7 @@ export default function EditInvoice() {
                 </div>
               </div>
 
-              {/* Notes */}
+              {/* Notes / Terms & Conditions */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Terms & Conditions
