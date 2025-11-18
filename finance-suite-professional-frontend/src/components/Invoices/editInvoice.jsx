@@ -38,6 +38,7 @@ const initialInvoiceData = {
       rate: "",
       cgst: { cgstPercent: "", cgstAmount: "" },
       sgst: { sgstPercent: "", sgstAmount: "" },
+      igst: { igstPercent: "", igstAmount: "" }, // 🔹 NEW
       itemTotal: "",
     },
   ],
@@ -45,6 +46,7 @@ const initialInvoiceData = {
   subTotal: "",
   totalcgst: "",
   totalsgst: "",
+  totaligst: "", // 🔹 NEW
   total: "",
   status: "Draft",
 };
@@ -60,8 +62,9 @@ export default function EditInvoice() {
 
   console.log("EditInvoice id from URL:", id);
 
+  // 🔹 Group CGST / SGST / IGST by percentage
   const groupTaxValues = (items = []) => {
-    const grouped = { cgst: {}, sgst: {} };
+    const grouped = { cgst: {}, sgst: {}, igst: {} };
 
     items.forEach((item) => {
       const hours = parseFloat(item.hours || 1);
@@ -70,12 +73,15 @@ export default function EditInvoice() {
 
       const cgstPercent = parseFloat(item.cgst?.cgstPercent || 0);
       const sgstPercent = parseFloat(item.sgst?.sgstPercent || 0);
+      const igstPercent = parseFloat(item.igst?.igstPercent || 0);
 
       const cgstValue = (baseAmount * cgstPercent) / 100;
       const sgstValue = (baseAmount * sgstPercent) / 100;
+      const igstValue = (baseAmount * igstPercent) / 100;
 
       grouped.cgst[cgstPercent] = (grouped.cgst[cgstPercent] || 0) + cgstValue;
       grouped.sgst[sgstPercent] = (grouped.sgst[sgstPercent] || 0) + sgstValue;
+      grouped.igst[igstPercent] = (grouped.igst[igstPercent] || 0) + igstValue;
     });
 
     return grouped;
@@ -100,14 +106,19 @@ export default function EditInvoice() {
       (sum, val) => sum + val,
       0
     );
+    const totalIgst = Object.values(grouped.igst).reduce(
+      (sum, val) => sum + val,
+      0
+    );
 
-    const total = subTotal + totalCgst + totalSgst;
+    const total = subTotal + totalCgst + totalSgst + totalIgst;
 
     setInvoiceData((prev) => ({
       ...prev,
       subTotal: subTotal.toFixed(2),
       totalcgst: totalCgst.toFixed(2),
       totalsgst: totalSgst.toFixed(2),
+      totaligst: totalIgst.toFixed(2),
       total: total.toFixed(2),
     }));
   }, [invoiceData.items]);
@@ -141,6 +152,7 @@ export default function EditInvoice() {
                 rate: item.rate || "",
                 cgst: item.cgst || { cgstPercent: "", cgstAmount: "" },
                 sgst: item.sgst || { sgstPercent: "", sgstAmount: "" },
+                igst: item.igst || { igstPercent: "", igstAmount: "" }, // 🔹 ensure IGST exists
                 itemTotal: item.itemTotal || "",
               }))
             : initialInvoiceData.items;
@@ -247,6 +259,8 @@ export default function EditInvoice() {
         "cgstAmount",
         "sgstPercent",
         "sgstAmount",
+        "igstPercent",
+        "igstAmount",
         "itemTotal",
       ].includes(name)
     ) {
@@ -255,6 +269,8 @@ export default function EditInvoice() {
           item.cgst[name] = value; // cgstPercent / cgstAmount
         } else if (name.startsWith("sgst")) {
           item.sgst[name] = value; // sgstPercent / sgstAmount
+        } else if (name.startsWith("igst")) {
+          item.igst[name] = value; // igstPercent / igstAmount
         } else {
           item[name] = value;
         }
@@ -265,22 +281,27 @@ export default function EditInvoice() {
 
     const hours = parseFloat(item.hours) || 0;
     const rate = parseFloat(item.rate) || 0;
-    const subTotal = hours * rate;
+    const baseSubTotal = hours * rate;
 
-    const cgstPercent = parseFloat(item.cgst.cgstPercent) || 0;
-    const sgstPercent = parseFloat(item.sgst.sgstPercent) || 0;
+    const cgstPercent = parseFloat(item.cgst?.cgstPercent) || 0;
+    const sgstPercent = parseFloat(item.sgst?.sgstPercent) || 0;
+    const igstPercent = parseFloat(item.igst?.igstPercent) || 0;
 
     if (name === "cgstPercent") {
-      item.cgst.cgstAmount = ((subTotal * cgstPercent) / 100).toFixed(2);
+      item.cgst.cgstAmount = ((baseSubTotal * cgstPercent) / 100).toFixed(2);
     }
     if (name === "sgstPercent") {
-      item.sgst.sgstAmount = ((subTotal * sgstPercent) / 100).toFixed(2);
+      item.sgst.sgstAmount = ((baseSubTotal * sgstPercent) / 100).toFixed(2);
+    }
+    if (name === "igstPercent") {
+      item.igst.igstAmount = ((baseSubTotal * igstPercent) / 100).toFixed(2);
     }
 
     const total =
-      subTotal +
+      baseSubTotal +
       (parseFloat(item.cgst.cgstAmount) || 0) +
-      (parseFloat(item.sgst.sgstAmount) || 0);
+      (parseFloat(item.sgst.sgstAmount) || 0) +
+      (parseFloat(item.igst.igstAmount) || 0);
 
     item.itemTotal = total.toFixed(2);
 
@@ -298,6 +319,7 @@ export default function EditInvoice() {
           rate: "",
           cgst: { cgstPercent: "", cgstAmount: "" },
           sgst: { sgstPercent: "", sgstAmount: "" },
+          igst: { igstPercent: "", igstAmount: "" }, // 🔹 NEW
           itemTotal: "",
         },
       ],
@@ -936,6 +958,12 @@ export default function EditInvoice() {
                         SGST
                       </th>
                       <th
+                        colSpan="2"
+                        className="border border-gray-300 px-3 py-2 text-center"
+                      >
+                        IGST
+                      </th>
+                      <th
                         rowSpan="2"
                         className="border border-gray-300 px-3 py-2 text-center"
                       >
@@ -949,6 +977,12 @@ export default function EditInvoice() {
                       </th>
                     </tr>
                     <tr>
+                      <th className="border border-gray-300 px-3 py-2 text-center">
+                        %
+                      </th>
+                      <th className="border border-gray-300 px-3 py-2 text-center">
+                        Amt
+                      </th>
                       <th className="border border-gray-300 px-3 py-2 text-center">
                         %
                       </th>
@@ -1031,6 +1065,21 @@ export default function EditInvoice() {
                           {item.sgst?.sgstAmount || "0.00"}
                         </td>
 
+                        {/* IGST */}
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          <input
+                            type="number"
+                            value={item?.igst?.igstPercent}
+                            name="igstPercent"
+                            onChange={(e) => handleItemChange(index, e)}
+                            className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
+                            placeholder="%"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2 text-right text-gray-700">
+                          {item.igst?.igstAmount || "0.00"}
+                        </td>
+
                         <td className="border border-gray-300 px-3 py-2 text-right font-semibold text-gray-800">
                           {item.itemTotal || "0.00"}
                         </td>
@@ -1057,7 +1106,7 @@ export default function EditInvoice() {
               </div>
 
               {/* Totals */}
-              <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4 mt-6 border-b pb-2 border-gray-300">
                 Totals
               </h2>
 
@@ -1076,6 +1125,9 @@ export default function EditInvoice() {
                     />
                   </div>
 
+                  {/* Separator line below Sub Total */}
+                  <div className="border-t border-gray-200 my-1"></div>
+
                   {(() => {
                     const grouped = groupTaxValues(invoiceData?.items || []);
 
@@ -1084,54 +1136,111 @@ export default function EditInvoice() {
                       new Set([
                         ...Object.keys(grouped.cgst || {}),
                         ...Object.keys(grouped.sgst || {}),
+                        ...Object.keys(grouped.igst || {}),
                       ])
                     )
                       .map((p) => parseFloat(p))
                       .filter((p) => p > 0)
                       .sort((a, b) => a - b);
 
+                    // Track if we need separator before IGST section
+                    let hasCGSTorSGST = false;
+
                     return (
                       <>
-                        {percentOrder.map((percent) => (
-                          <React.Fragment key={percent}>
-                            {grouped.cgst[percent] != null && (
-                              <div className="flex justify-between">
-                                <span className="font-semibold text-gray-700">
-                                  CGST ({percent}%)
-                                </span>
-                                <input
-                                  type="text"
-                                  className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                                  value={formatNumber(
-                                    Number(grouped.cgst[percent] || 0).toFixed(2)
-                                  )}
-                                  disabled
-                                />
-                              </div>
-                            )}
+                        {/* First, display all CGST and SGST */}
+                        {percentOrder.map((percent, index) => {
+                          const hasCGST = grouped.cgst[percent] != null && grouped.cgst[percent] > 0;
+                          const hasSGST = grouped.sgst[percent] != null && grouped.sgst[percent] > 0;
+                          
+                          if (hasCGST || hasSGST) {
+                            hasCGSTorSGST = true;
+                          }
 
-                            {grouped.sgst[percent] != null && (
-                              <div className="flex justify-between">
-                                <span className="font-semibold text-gray-700">
-                                  SGST ({percent}%)
-                                </span>
-                                <input
-                                  type="text"
-                                  className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                                  value={formatNumber(
-                                    Number(grouped.sgst[percent] || 0).toFixed(2)
-                                  )}
-                                  disabled
-                                />
-                              </div>
-                            )}
-                          </React.Fragment>
-                        ))}
+                          return (
+                            <React.Fragment key={`cgst-sgst-${percent}`}>
+                              {/* Separator line between different percentage groups */}
+                              {index > 0 && (hasCGST || hasSGST) && (
+                                <div className="border-t border-gray-200 my-1"></div>
+                              )}
+
+                              {/* CGST */}
+                              {hasCGST && (
+                                <div className="flex justify-between">
+                                  <span className="font-semibold text-gray-700">
+                                    CGST ({percent}%)
+                                  </span>
+                                  <input
+                                    type="text"
+                                    className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                                    value={formatNumber(
+                                      Number(grouped.cgst[percent] || 0).toFixed(2)
+                                    )}
+                                    disabled
+                                  />
+                                </div>
+                              )}
+
+                              {/* SGST */}
+                              {hasSGST && (
+                                <div className="flex justify-between">
+                                  <span className="font-semibold text-gray-700">
+                                    SGST ({percent}%)
+                                  </span>
+                                  <input
+                                    type="text"
+                                    className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                                    value={formatNumber(
+                                      Number(grouped.sgst[percent] || 0).toFixed(2)
+                                    )}
+                                    disabled
+                                  />
+                                </div>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+
+                        {/* Now display all IGST entries */}
+                        {percentOrder.map((percent, index) => {
+                          const hasIGST = grouped.igst[percent] != null && grouped.igst[percent] > 0;
+
+                          return (
+                            <React.Fragment key={`igst-${percent}`}>
+                              {/* Separator before first IGST if CGST/SGST exist */}
+                              {hasIGST && index === 0 && hasCGSTorSGST && (
+                                <div className="border-t border-gray-200 my-1"></div>
+                              )}
+
+                              {/* Separator between IGST percentage groups */}
+                              {hasIGST && index > 0 && (
+                                <div className="border-t border-gray-200 my-1"></div>
+                              )}
+
+                              {/* IGST */}
+                              {hasIGST && (
+                                <div className="flex justify-between">
+                                  <span className="font-semibold text-gray-700">
+                                    IGST ({percent}%)
+                                  </span>
+                                  <input
+                                    type="text"
+                                    className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                                    value={formatNumber(
+                                      Number(grouped.igst[percent] || 0).toFixed(2)
+                                    )}
+                                    disabled
+                                  />
+                                </div>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
                       </>
                     );
                   })()}
 
-                  <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">
+                  <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
                     <span>Total</span>
                     <input
                       type="text"
@@ -1148,15 +1257,32 @@ export default function EditInvoice() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Terms & Conditions
                 </label>
-                <textarea
-                  type="text"
-                  placeholder="Enter note"
-                  className="border border-gray-300 rounded px-3 
-                    py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 h-20"
-                  value={invoiceData.notes}
-                  name="notes"
-                  onChange={handleChange}
-                />
+                <div className="relative">
+                  <textarea
+                    type="text"
+                    placeholder="Enter terms & conditions (each new line will be bulleted)"
+                    className="border border-gray-300 rounded px-3 
+                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 h-20 pl-7"
+                    value={invoiceData.notes}
+                    name="notes"
+                    onChange={handleChange}
+                    style={{
+                      lineHeight: '1.5rem'
+                    }}
+                  />
+                  {/* Bullet points overlay */}
+                  <div 
+                    className="absolute left-3 top-2 pointer-events-none text-gray-600 text-sm"
+                    style={{ lineHeight: '1.5rem' }}
+                  >
+                    {invoiceData.notes && invoiceData.notes.split('\n').map((_, index) => (
+                      <div key={index} style={{ height: '1.5rem' }}>•</div>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Press Enter to add a new bulleted line
+                </p>
               </div>
 
               {/* Signature */}
@@ -1176,7 +1302,10 @@ export default function EditInvoice() {
       ) : (
         <>
           {/* Invoice Preview Component */}
-          <InvoiceReportGeneration invoiceData={invoiceData} />
+          <InvoiceReportGeneration
+            invoiceData={invoiceData}
+            onBack={() => setShowInvoicePreview(false)}
+          />
         </>
       )}
     </div>
