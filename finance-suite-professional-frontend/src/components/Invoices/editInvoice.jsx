@@ -338,8 +338,8 @@ export default function EditInvoice() {
       newErrors.shipcustomer_name = "Customer name required";
     if (!invoiceData?.shipcustomer_address?.trim())
       newErrors.shipcustomer_address = "Address is required";
-    if (!invoiceData?.shipcustomer_gstin?.trim())
-      newErrors.shipcustomer_gstin = "GSTIN is required";
+    //if (!invoiceData?.shipcustomer_gstin?.trim())
+    //  newErrors.shipcustomer_gstin = "GSTIN is required";
 
     if (Object.keys(newErrors).length > 0) {
       setInputErrors(newErrors);
@@ -812,7 +812,7 @@ export default function EditInvoice() {
                       </p>
                     )}
                   </div>
-                  <div className="relative">
+                  {/* <div className="relative">
                     <label className="block text-xs font-semibold text-gray-600 mt-2 mb-1">
                       GSTIN *
                     </label>
@@ -830,7 +830,7 @@ export default function EditInvoice() {
                         {inputErrors?.shipcustomer_gstin}
                       </p>
                     )}
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -1100,7 +1100,7 @@ export default function EditInvoice() {
               {/* Notes */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Notes
+                  Terms & Conditions
                 </label>
                 <textarea
                   type="text"

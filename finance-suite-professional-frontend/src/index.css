@@ -17,6 +17,21 @@
   margin: 10mm; /* printer page margin */
 }
 
+/* A4 page size for the invoice */
+.invoice-a4 {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm;              /* inner margin for content */
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+/* For screen preview */
+.invoice-wrapper {
+  background: #f3f4f6;        /* tailwind-ish gray */
+}
+
 @media print {
   body {
     -webkit-print-color-adjust: exact;
@@ -26,11 +41,19 @@
 
   /* Remove screen padding/margins around the invoice */
   .invoice-wrapper {
-    padding: 0 !important;
-    margin: 0 !important;
-    background: white !important;
+    background: #ffffff;
+    padding: 0;
+    margin: 0;
   }
 
+  .invoice-a4 {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+  }
+  
   /* Only show the invoice content */
   body * {
     visibility: hidden !important;
