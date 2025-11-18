@@ -172,8 +172,8 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
       {/* ✅ A4-fitted printable area with outer border */}
       <div
         id="invoice-print-area"
-        className="invoice-a4 mx-auto bg-white shadow-lg text-sm border-2 border-gray-800"
-        style={{ padding: "1rem" }}
+        className="invoice-a4 mx-auto bg-white shadow-lg text-sm border-[1.4px] border-gray-400"
+        style={{ padding: '1rem' }}
       >
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
@@ -210,12 +210,12 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
 
         {/* 🔹 Combined Invoice / PO / Bill To / Ship To table (no gap between lines) */}
         <div className="-mx-4 mb-6 text-xs text-gray-800">
-          <table className="w-full border-t border-b border-gray-300 border-collapse">
+          <table className="w-full border-t border-b border-gray-400 border-collapse">
             <tbody>
               {/* Row 1: Invoice & PO details */}
               <tr>
                 {/* LEFT COLUMN – Invoice side */}
-                <td className="w-1/2 align-top border-r border-gray-300 px-4 py-2">
+                <td className="w-1/2 align-top border-r border-gray-400 px-4 py-2">
                   <p>
                     <span className="font-semibold">Invoice No.</span>
                     <span className="ml-2">
@@ -280,7 +280,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
               {/* Row 2: Bill To / Ship To – shares same outer borders, middle line continuous */}
               <tr>
                 {/* Bill To */}
-                <td className="w-1/2 align-top border-r border-t border-gray-300 px-4 py-3">
+                <td className="w-1/2 align-top border-r border-t border-gray-400 px-4 py-3">
                   <h3 className="text-xs font-semibold text-gray-800 mb-1">
                     Bill To
                   </h3>
@@ -296,7 +296,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                 </td>
 
                 {/* Ship To */}
-                <td className="w-1/2 align-top border-t border-gray-300 px-4 py-3">
+                <td className="w-1/2 align-top border-t border-gray-400 px-4 py-3">
                   <h3 className="text-xs font-semibold text-gray-800 mb-1">
                     Ship To
                   </h3>
@@ -326,40 +326,40 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
         )}
 
         {/* Items Table */}
-        <table className="w-full border border-gray-300 border-collapse text-xs mb-4">
+        <table className="w-full border border-black border-collapse text-xs mb-4">
           <thead className="bg-gray-100">
             <tr>
-              <th className="border border-gray-300 px-2 py-1 text-center w-8">
+              <th className="border border-gray-400 px-2 py-1 text-center w-8">
                 Sl
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center">
+              <th className="border border-gray-400 px-2 py-1 text-center">
                 Item & Description
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center w-16">
+              <th className="border border-gray-400 px-2 py-1 text-center w-16">
                 Hour
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center w-20">
+              <th className="border border-gray-400 px-2 py-1 text-center w-20">
                 Rate
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center w-16">
+              <th className="border border-gray-400 px-2 py-1 text-center w-16">
                 CGST %
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center w-20">
+              <th className="border border-gray-400 px-2 py-1 text-center w-20">
                 CGST Amt
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center w-16">
+              <th className="border border-gray-400 px-2 py-1 text-center w-16">
                 SGST %
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center w-20">
+              <th className="border border-gray-400 px-2 py-1 text-center w-20">
                 SGST Amt
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center w-16">
+              <th className="border border-gray-400 px-2 py-1 text-center w-16">
                 IGST %
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center w-20">
+              <th className="border border-gray-400 px-2 py-1 text-center w-20">
                 IGST Amt
               </th>
-              <th className="border border-gray-300 px-2 py-1 text-center w-24">
+              <th className="border border-gray-400 px-2 py-1 text-center w-24">
                 Amount
               </th>
             </tr>
@@ -368,37 +368,37 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
             {items.length > 0 ? (
               items.map((item, index) => (
                 <tr key={index} className="align-top">
-                  <td className="border border-gray-300 px-2 py-1 text-center">
+                  <td className="border border-gray-400 px-2 py-1 text-center">
                     {index + 1}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1">
+                  <td className="border border-gray-400 px-2 py-1">
                     {item.description}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-right">
+                  <td className="border border-gray-400 px-2 py-1 text-right">
                     {item.hours}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-right">
+                  <td className="border border-gray-400 px-2 py-1 text-right">
                     {formatNumber(item.rate || 0)}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-center">
+                  <td className="border border-gray-400 px-2 py-1 text-center">
                     {item?.cgst?.cgstPercent || "0"}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-right">
+                  <td className="border border-gray-400 px-2 py-1 text-right">
                     {formatNumber(item?.cgst?.cgstAmount || 0)}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-center">
+                  <td className="border border-gray-400 px-2 py-1 text-center">
                     {item?.sgst?.sgstPercent || "0"}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-right">
+                  <td className="border border-gray-400 px-2 py-1 text-right">
                     {formatNumber(item?.sgst?.sgstAmount || 0)}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-center">
+                  <td className="border border-gray-400 px-2 py-1 text-center">
                     {item?.igst?.igstPercent || "0"}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-right">
+                  <td className="border border-gray-400 px-2 py-1 text-right">
                     {formatNumber(item?.igst?.igstAmount || 0)}
                   </td>
-                  <td className="border border-gray-300 px-2 py-1 text-right font-semibold">
+                  <td className="border border-gray-400 px-2 py-1 text-right font-semibold">
                     {formatNumber(item.itemTotal || 0)}
                   </td>
                 </tr>
@@ -407,7 +407,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
               <tr>
                 <td
                   colSpan={11}
-                  className="border border-gray-300 px-2 py-4 text-center text-gray-500"
+                  className="border border-gray-400 px-2 py-4 text-center text-gray-500"
                 >
                   No items added
                 </td>
@@ -422,7 +422,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
           <div className="text-xs text-gray-800 space-y-3">
             <div>
               <h3 className="font-semibold mb-1">{bankDetails.title}</h3>
-              <div className="border border-gray-300 rounded p-2">
+              <div className="border border-gray-400 rounded p-2">
                 {bankDetails.fields.map((field) => (
                   <p key={field.label}>
                     <span className="font-semibold">{field.label}:</span>{" "}
@@ -443,116 +443,118 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
           </div>
 
           {/* Totals */}
-          <div className="space-y-2 text-xs text-gray-900">
-            {/* Subtotal */}
-            <div className="flex justify-between">
-              <span>Sub Total</span>
-              <span className="font-semibold">
-                ₹ {formatNumber(subTotal || 0)}
-              </span>
-            </div>
+          <div className="text-xs text-gray-900">
+            <div className="p-2 space-y-2 -mt-4">
+              {/* Subtotal */}
+              <div className="flex justify-between">
+                <span>Sub Total</span>
+                <span className="font-semibold">
+                  ₹ {formatNumber(subTotal || 0)}
+                </span>
+              </div>
 
-            {/* Separator below subtotal */}
-            <div className="border-t border-gray-300 my-1"></div>
+              {/* Separator below subtotal */}
+              <div className="border-t border-gray-400 my-1"></div>
 
-            {(() => {
-              // Collect all distinct percentage slabs
-              const allPercents = Array.from(
-                new Set([
-                  ...Object.keys(groupedTaxes.cgst || {}),
-                  ...Object.keys(groupedTaxes.sgst || {}),
-                  ...Object.keys(groupedTaxes.igst || {}),
-                ])
-              )
-                .map((p) => parseFloat(p))
-                .filter((p) => !Number.isNaN(p) && p > 0)
-                .sort((a, b) => a - b);
+              {(() => {
+                // Collect all distinct percentage slabs
+                const allPercents = Array.from(
+                  new Set([
+                    ...Object.keys(groupedTaxes.cgst || {}),
+                    ...Object.keys(groupedTaxes.sgst || {}),
+                    ...Object.keys(groupedTaxes.igst || {}),
+                  ])
+                )
+                  .map((p) => parseFloat(p))
+                  .filter((p) => !Number.isNaN(p) && p > 0)
+                  .sort((a, b) => a - b);
 
-              // Track if we have CGST/SGST
-              let hasCGSTorSGST = false;
+                // Track if we have CGST/SGST
+                let hasCGSTorSGST = false;
 
-              return (
-                <>
-                  {/* First, display all CGST and SGST */}
-                  {allPercents.map((percent, index) => {
-                    const key = String(percent);
-                    const cgstAmount = groupedTaxes.cgst?.[key] || 0;
-                    const sgstAmount = groupedTaxes.sgst?.[key] || 0;
+                return (
+                  <>
+                    {/* First, display all CGST and SGST */}
+                    {allPercents.map((percent, index) => {
+                      const key = String(percent);
+                      const cgstAmount = groupedTaxes.cgst?.[key] || 0;
+                      const sgstAmount = groupedTaxes.sgst?.[key] || 0;
 
-                    const hasCGST = cgstAmount > 0;
-                    const hasSGST = sgstAmount > 0;
+                      const hasCGST = cgstAmount > 0;
+                      const hasSGST = sgstAmount > 0;
 
-                    if (hasCGST || hasSGST) {
-                      hasCGSTorSGST = true;
-                    }
+                      if (hasCGST || hasSGST) {
+                        hasCGSTorSGST = true;
+                      }
 
-                    return (
-                      <React.Fragment key={`cgst-sgst-${percent}`}>
-                        {/* Separator between percentage groups */}
-                        {index > 0 && (hasCGST || hasSGST) && (
-                          <div className="border-t border-gray-200 my-1"></div>
-                        )}
+                      return (
+                        <React.Fragment key={`cgst-sgst-${percent}`}>
+                          {/* Separator between percentage groups */}
+                          {index > 0 && (hasCGST || hasSGST) && (
+                            <div className="border-t border-gray-200 my-1"></div>
+                          )}
 
-                        {hasCGST && (
-                          <div className="flex justify-between">
-                            <span>{`CGST (${percent}%)`}</span>
-                            <span className="font-semibold">
-                              ₹ {formatNumber(cgstAmount)}
-                            </span>
-                          </div>
-                        )}
+                          {hasCGST && (
+                            <div className="flex justify-between">
+                              <span>{`CGST (${percent}%)`}</span>
+                              <span className="font-semibold">
+                                ₹ {formatNumber(cgstAmount)}
+                              </span>
+                            </div>
+                          )}
 
-                        {hasSGST && (
-                          <div className="flex justify-between">
-                            <span>{`SGST (${percent}%)`}</span>
-                            <span className="font-semibold">
-                              ₹ {formatNumber(sgstAmount)}
-                            </span>
-                          </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
+                          {hasSGST && (
+                            <div className="flex justify-between">
+                              <span>{`SGST (${percent}%)`}</span>
+                              <span className="font-semibold">
+                                ₹ {formatNumber(sgstAmount)}
+                              </span>
+                            </div>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
 
-                  {/* Now display all IGST entries */}
-                  {allPercents.map((percent, index) => {
-                    const key = String(percent);
-                    const igstAmount = groupedTaxes.igst?.[key] || 0;
-                    const hasIGST = igstAmount > 0;
+                    {/* Now display all IGST entries */}
+                    {allPercents.map((percent, index) => {
+                      const key = String(percent);
+                      const igstAmount = groupedTaxes.igst?.[key] || 0;
+                      const hasIGST = igstAmount > 0;
 
-                    return (
-                      <React.Fragment key={`igst-${percent}`}>
-                        {/* Separator before first IGST if CGST/SGST exist */}
-                        {hasIGST && index === 0 && hasCGSTorSGST && (
-                          <div className="border-t border-gray-200 my-1"></div>
-                        )}
+                      return (
+                        <React.Fragment key={`igst-${percent}`}>
+                          {/* Separator before first IGST if CGST/SGST exist */}
+                          {hasIGST && index === 0 && hasCGSTorSGST && (
+                            <div className="border-t border-gray-200 my-1"></div>
+                          )}
 
-                        {/* Separator between IGST percentage groups */}
-                        {hasIGST && index > 0 && (
-                          <div className="border-t border-gray-200 my-1"></div>
-                        )}
+                          {/* Separator between IGST percentage groups */}
+                          {hasIGST && index > 0 && (
+                            <div className="border-t border-gray-200 my-1"></div>
+                          )}
 
-                        {hasIGST && (
-                          <div className="flex justify-between">
-                            <span>{`IGST (${percent}%)`}</span>
-                            <span className="font-semibold">
-                              ₹ {formatNumber(igstAmount)}
-                            </span>
-                          </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </>
-              );
-            })()}
+                          {hasIGST && (
+                            <div className="flex justify-between">
+                              <span>{`IGST (${percent}%)`}</span>
+                              <span className="font-semibold">
+                                ₹ {formatNumber(igstAmount)}
+                              </span>
+                            </div>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </>
+                );
+              })()}
 
-            {/* Grand Total */}
-            <div className="flex justify-between border-t border-gray-400 pt-2 mt-2 text-sm">
-              <span className="font-bold">Grand Total</span>
-              <span className="font-extrabold text-indigo-700">
-                ₹ {formatNumber(total || 0)}
-              </span>
+              {/* Grand Total */}
+              <div className="flex justify-between border-t border-gray-400 pt-2 mt-2 text-sm">
+                <span className="font-bold">Grand Total</span>
+                <span className="font-extrabold text-indigo-700">
+                  ₹ {formatNumber(total || 0)}
+                </span>
+              </div>
             </div>
           </div>
         </div>

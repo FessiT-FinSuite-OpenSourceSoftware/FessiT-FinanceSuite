@@ -12,11 +12,16 @@ const initialInvoiceData = {
   company_address: "",
   company_phone: "",
   company_email: "",
+  // 🔹 NEW optional org fields
+  lut_no: "",
+  iec_no: "",
   invoice_number: "",
   invoice_date: "",
   invoice_dueDate: "",
   invoice_terms: "Due on receipt",
   po_number: "",
+  // 🔹 NEW required P.O. date
+  po_date: "",
   place_of_supply: "",
   billcustomer_name: "",
   billcustomer_address: "",
@@ -31,7 +36,7 @@ const initialInvoiceData = {
       hours: "",
       rate: "",
       cgst: { cgstPercent: "", cgstAmount: "" },
-      sgst: { sgstPercent: "", sgstAmount: "" },
+      sgst: { cgstPercent: "", sgstAmount: "" },
       itemTotal: "",
     },
   ],
@@ -270,7 +275,10 @@ export default function AddInvoice() {
     if (!invoiceData?.invoice_dueDate?.trim())
       newErrors.invoice_dueDate = "Invoice due date is required";
     if (!invoiceData?.po_number?.trim())
-      newErrors.po_number = "PO.NO is required";
+      newErrors.po_number = "P.O. No is required";
+    // 🔹 NEW: P.O. Date required
+    if (!invoiceData?.po_date?.trim())
+      newErrors.po_date = "P.O. Date is required";
     if (!invoiceData?.place_of_supply?.trim())
       newErrors.place_of_supply = "Place of supply is required";
     if (!invoiceData?.billcustomer_name?.trim())
@@ -283,8 +291,7 @@ export default function AddInvoice() {
       newErrors.shipcustomer_name = "Customer name required";
     if (!invoiceData?.shipcustomer_address?.trim())
       newErrors.shipcustomer_address = "Address is required";
-    if (!invoiceData?.shipcustomer_gstin?.trim())
-      newErrors.shipcustomer_gstin = "GSTIN is required";
+    // ship GSTIN kept optional as per EditInvoice
 
     if (Object.keys(newErrors).length > 0) {
       setInputErrors(newErrors);
@@ -507,6 +514,36 @@ export default function AddInvoice() {
                 </p>
               )}
             </div>
+
+            {/* 🔹 NEW optional fields: LUT No, IEC No */}
+            <div className="relative">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                LUT No
+              </label>
+              <input
+                type="text"
+                placeholder="Enter LUT No (optional)"
+                className="border border-gray-300 rounded px-3 
+                  py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                value={invoiceData.lut_no}
+                name="lut_no"
+                onChange={handleChange}
+              />
+            </div>
+            <div className="relative">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                IEC No
+              </label>
+              <input
+                type="text"
+                placeholder="Enter IEC No (optional)"
+                className="border border-gray-300 rounded px-3 
+                  py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                value={invoiceData.iec_no}
+                name="iec_no"
+                onChange={handleChange}
+              />
+            </div>
           </div>
 
           {/* Invoice Details */}
@@ -603,6 +640,28 @@ export default function AddInvoice() {
                 </p>
               )}
             </div>
+
+            {/* 🔹 NEW P.O. Date field (required) */}
+            <div className="relative">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                P.O. Date *
+              </label>
+              <input
+                type="date"
+                placeholder="dd-mm-yyyy"
+                className="border border-gray-300 rounded px-3 
+                  py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                value={invoiceData.po_date}
+                name="po_date"
+                onChange={handleChange}
+              />
+              {inputErrors?.po_date && (
+                <p className="absolute text-[13px]  text-[#f10404]">
+                  {inputErrors?.po_date}
+                </p>
+              )}
+            </div>
+
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Place of Supply *
@@ -736,25 +795,7 @@ export default function AddInvoice() {
                   </p>
                 )}
               </div>
-              <div className="relative">
-                <label className="block text-xs font-semibold text-gray-600 mt-2 mb-1">
-                  GSTIN *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter GSTIN"
-                  className="border border-gray-300 rounded px-3 
-                py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
-                  value={invoiceData.shipcustomer_gstin}
-                  name="shipcustomer_gstin"
-                  onChange={handleChange}
-                />
-                {inputErrors?.shipcustomer_gstin && (
-                  <p className="absolute text-[13px] text-[#f10404]">
-                    {inputErrors?.shipcustomer_gstin}
-                  </p>
-                )}
-              </div>
+              {/* Ship GSTIN optional as per EditInvoice */}
             </div>
           </div>
 
@@ -940,7 +981,7 @@ export default function AddInvoice() {
           </div>
 
           {/* Totals */}
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 mt-6 border-b pb-2 border-gray-300">
             Totals
           </h2>
 
@@ -1006,7 +1047,7 @@ export default function AddInvoice() {
                 );
               })()}
 
-              <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">
+              <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
                 <span>Total</span>
                 <input
                   type="text"
