@@ -1218,16 +1218,15 @@ export default function AddInvoice() {
           {/* Notes */}
           <div className="mb-6">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Notes
+              **Terms & Conditions, Notes**
             </label>
             <textarea
-              type="text"
-              placeholder="Enter note"
-              className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 h-20"
-              value={invoiceData.notes}
-              name="notes"
-              onChange={handleChange}
-            />
+            placeholder="Add any notes or special terms & conditions"
+            className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 h-24 placeholder:text-gray-400"
+            name="notes"
+            value={invoiceData.notes}
+            onChange={handleChange}
+           />
           </div>
 
           {/* Signature */}
