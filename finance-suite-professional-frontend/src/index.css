@@ -11,7 +11,27 @@
   /* background: white; */
 }
 
-/* Ensure border prints correctly */
+/* Tell the browser to use A4 for print */
+@page {
+  size: A4;
+  margin: 10mm; /* printer page margin */
+}
+
+/* A4 page size for the invoice */
+.invoice-a4 {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 12mm;              /* inner margin for content */
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+/* For screen preview */
+.invoice-wrapper {
+  background: #f3f4f6;        /* tailwind-ish gray */
+}
+
 @media print {
   body {
     -webkit-print-color-adjust: exact;
@@ -19,9 +39,44 @@
     background: white;
   }
 
-  .print-area {
-    
-    padding: 12mm !important;
+  /* Remove screen padding/margins around the invoice */
+  .invoice-wrapper {
+    background: #ffffff;
+    padding: 0;
+    margin: 0;
+  }
+
+  .invoice-a4 {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+  }
+  
+  /* Only show the invoice content */
+  body * {
+    visibility: hidden !important;
+  }
+
+  #invoice-print-area,
+  #invoice-print-area * {
+    visibility: visible !important;
+  }
+
+  /* Make the invoice fit nicely on A4 */
+  #invoice-print-area.invoice-a4 {
+    width: 190mm;          /* A4 width minus page margins */
+    margin: 0 auto;
+    min-height: auto;      /* don't vertically center */
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 8mm !important;
+  }
+
+  /* Hide any explicit print-hidden elements if you use them */
+  .print-hidden {
+    display: none !important;
   }
 }
 

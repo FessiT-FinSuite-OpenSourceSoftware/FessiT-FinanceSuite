@@ -33,6 +33,9 @@ export default function InvoiceList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // 🔽 controls the Domestic / International dropdown
+  const [showInvoiceOptions, setShowInvoiceOptions] = useState(false);
+
   const nav = useNavigate();
   const itemsPerPage = 5;
 
@@ -80,8 +83,28 @@ export default function InvoiceList() {
     }
   };
 
-  const onCreateNew = () => {
-    nav("/invoices/addInvoice");
+  const getTypeBadgeClass = (invoiceType) => {
+    if (invoiceType === "international") {
+      return "bg-emerald-100 text-emerald-700";
+    }
+    // default domestic
+    return "bg-blue-100 text-blue-700";
+  };
+
+  const getTypeLabel = (invoiceType) => {
+    if (invoiceType === "international") return "International";
+    return "Domestic";
+  };
+
+  // Navigate helpers
+  const createDomesticInvoice = () => {
+    setShowInvoiceOptions(false);
+    nav("/invoices/addInvoice?type=domestic");
+  };
+
+  const createInternationalInvoice = () => {
+    setShowInvoiceOptions(false);
+    nav("/invoices/addInvoice?type=international");
   };
 
   const onEdit = (id) => {
@@ -157,7 +180,7 @@ export default function InvoiceList() {
               />
             </div>
 
-            {/* Filter and Create Button */}
+            {/* Filter + Create Invoice dropdown */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Filter className="w-5 h-5 text-gray-500" />
@@ -174,14 +197,35 @@ export default function InvoiceList() {
                 </select>
               </div>
 
-              {/* ✅ Create Invoice triggers AddInvoice page */}
-              <button
-                onClick={onCreateNew}
-                className="flex cursor-pointer items-center mr-2 gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Create Invoice</span>
-              </button>
+              {/* Create Invoice dropdown (Domestic / International) */}
+              <div className="relative">
+                <button
+                  onClick={() =>
+                    setShowInvoiceOptions((prev) => !prev)
+                  }
+                  className="flex cursor-pointer items-center mr-2 gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="hidden sm:inline">Create Invoice</span>
+                </button>
+
+                {showInvoiceOptions && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={createDomesticInvoice}
+                      className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                    >
+                      🏠 Domestic Invoice
+                    </button>
+                    <button
+                      onClick={createInternationalInvoice}
+                      className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                    >
+                      🌍 International Invoice
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -239,7 +283,10 @@ export default function InvoiceList() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Customer
                   </th>
-                  
+                  {/* 🔹 New Type Column */}
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Type
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
                     Date
                   </th>
@@ -270,6 +317,12 @@ export default function InvoiceList() {
                     const dueDate =
                       invoice.invoice_dueDate || invoice.due_date || "";
 
+                    // 🔹 Safely derive type; default to domestic if missing
+                    const invoiceType =
+                      invoice.invoice_type === "international"
+                        ? "international"
+                        : "domestic";
+
                     return (
                       <tr
                         key={id}
@@ -284,7 +337,18 @@ export default function InvoiceList() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           {customerName}
                         </td>
-                        
+
+                        {/* 🔹 Type cell */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeBadgeClass(
+                              invoiceType
+                            )}`}
+                          >
+                            {getTypeLabel(invoiceType)}
+                          </span>
+                        </td>
+
                         <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                           {invoiceDate}
                         </td>
