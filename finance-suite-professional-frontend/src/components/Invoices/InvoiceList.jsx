@@ -83,6 +83,19 @@ export default function InvoiceList() {
     }
   };
 
+  const getTypeBadgeClass = (invoiceType) => {
+    if (invoiceType === "international") {
+      return "bg-emerald-100 text-emerald-700";
+    }
+    // default domestic
+    return "bg-blue-100 text-blue-700";
+  };
+
+  const getTypeLabel = (invoiceType) => {
+    if (invoiceType === "international") return "International";
+    return "Domestic";
+  };
+
   // Navigate helpers
   const createDomesticInvoice = () => {
     setShowInvoiceOptions(false);
@@ -270,7 +283,10 @@ export default function InvoiceList() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Customer
                   </th>
-
+                  {/* 🔹 New Type Column */}
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Type
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
                     Date
                   </th>
@@ -301,6 +317,12 @@ export default function InvoiceList() {
                     const dueDate =
                       invoice.invoice_dueDate || invoice.due_date || "";
 
+                    // 🔹 Safely derive type; default to domestic if missing
+                    const invoiceType =
+                      invoice.invoice_type === "international"
+                        ? "international"
+                        : "domestic";
+
                     return (
                       <tr
                         key={id}
@@ -314,6 +336,17 @@ export default function InvoiceList() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {customerName}
+                        </td>
+
+                        {/* 🔹 Type cell */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeBadgeClass(
+                              invoiceType
+                            )}`}
+                          >
+                            {getTypeLabel(invoiceType)}
+                          </span>
                         </td>
 
                         <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">

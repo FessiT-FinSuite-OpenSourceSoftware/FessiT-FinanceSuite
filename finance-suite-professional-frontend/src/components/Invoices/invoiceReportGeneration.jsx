@@ -64,6 +64,11 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
     ...baseData,
   };
 
+  // 🔹 Decide invoice type
+  const invoiceType =
+    data.invoice_type === "international" ? "international" : "domestic";
+  const isInternational = invoiceType === "international";
+
   const items = Array.isArray(data.items) ? data.items : [];
 
   // 🔹 Group CGST / SGST / IGST by percentage slabs
@@ -173,7 +178,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
       <div
         id="invoice-print-area"
         className="invoice-a4 mx-auto bg-white shadow-lg text-sm border-[1.4px] border-gray-400"
-        style={{ padding: '1rem' }}
+        style={{ padding: "1rem" }}
       >
         {/* Header */}
         <div className="flex justify-between items-start mb-6">
@@ -262,18 +267,24 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                       : {data.po_date || "-"}
                     </span>
                   </p>
-                  <p>
-                    <span className="font-semibold">LUT No</span>
-                    <span className="ml-2">
-                      : {data.lut_no || data.lutNo || "-"}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">IEC No</span>
-                    <span className="ml-2">
-                      : {data.iec_no || data.iecNo || "-"}
-                    </span>
-                  </p>
+
+                  {/* 🔹 LUT / IEC only for INTERNATIONAL */}
+                  {isInternational && (
+                    <>
+                      <p>
+                        <span className="font-semibold">LUT No</span>
+                        <span className="ml-2">
+                          : {data.lut_no || data.lutNo || "-"}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="font-semibold">IEC No</span>
+                        <span className="ml-2">
+                          : {data.iec_no || data.iecNo || "-"}
+                        </span>
+                      </p>
+                    </>
+                  )}
                 </td>
               </tr>
 
@@ -325,88 +336,132 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
           </div>
         )}
 
-        {/* Items Table */}
+        {/* Items Table – structure depends on domestic vs international */}
         <table className="w-full border border-black border-collapse text-xs mb-4">
           <thead className="bg-gray-100">
-            <tr>
-              <th className="border border-gray-400 px-2 py-1 text-center w-8">
-                Sl
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center">
-                Item & Description
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center w-16">
-                Hour
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center w-20">
-                Rate
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center w-16">
-                CGST %
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center w-20">
-                CGST Amt
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center w-16">
-                SGST %
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center w-20">
-                SGST Amt
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center w-16">
-                IGST %
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center w-20">
-                IGST Amt
-              </th>
-              <th className="border border-gray-400 px-2 py-1 text-center w-24">
-                Amount
-              </th>
-            </tr>
+            {isInternational ? (
+              // 🌍 INTERNATIONAL: Only IGST columns
+              <tr>
+                <th className="border border-gray-400 px-2 py-1 text-center w-8">
+                  Sl
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center">
+                  Item & Description
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-16">
+                  Hour
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-20">
+                  Rate
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-16">
+                  IGST %
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-20">
+                  IGST Amt
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-24">
+                  Amount
+                </th>
+              </tr>
+            ) : (
+              // 🏠 DOMESTIC: CGST + SGST, no IGST
+              <tr>
+                <th className="border border-gray-400 px-2 py-1 text-center w-8">
+                  Sl
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center">
+                  Item & Description
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-16">
+                  Hour
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-20">
+                  Rate
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-16">
+                  CGST %
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-20">
+                  CGST Amt
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-16">
+                  SGST %
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-20">
+                  SGST Amt
+                </th>
+                <th className="border border-gray-400 px-2 py-1 text-center w-24">
+                  Amount
+                </th>
+              </tr>
+            )}
           </thead>
           <tbody>
             {items.length > 0 ? (
-              items.map((item, index) => (
-                <tr key={index} className="align-top">
-                  <td className="border border-gray-400 px-2 py-1 text-center">
-                    {index + 1}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1">
-                    {item.description}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-right">
-                    {item.hours}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-right">
-                    {formatNumber(item.rate || 0)}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-center">
-                    {item?.cgst?.cgstPercent || "0"}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-right">
-                    {formatNumber(item?.cgst?.cgstAmount || 0)}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-center">
-                    {item?.sgst?.sgstPercent || "0"}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-right">
-                    {formatNumber(item?.sgst?.sgstAmount || 0)}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-center">
-                    {item?.igst?.igstPercent || "0"}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-right">
-                    {formatNumber(item?.igst?.igstAmount || 0)}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1 text-right font-semibold">
-                    {formatNumber(item.itemTotal || 0)}
-                  </td>
-                </tr>
-              ))
+              items.map((item, index) =>
+                isInternational ? (
+                  // 🌍 INTERNATIONAL ROW (IGST only)
+                  <tr key={index} className="align-top">
+                    <td className="border border-gray-400 px-2 py-1 text-center">
+                      {index + 1}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1">
+                      {item.description}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right">
+                      {item.hours}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right">
+                      {formatNumber(item.rate || 0)}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-center">
+                      {item?.igst?.igstPercent || "0"}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right">
+                      {formatNumber(item?.igst?.igstAmount || 0)}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right font-semibold">
+                      {formatNumber(item.itemTotal || 0)}
+                    </td>
+                  </tr>
+                ) : (
+                  // 🏠 DOMESTIC ROW (CGST + SGST, no IGST)
+                  <tr key={index} className="align-top">
+                    <td className="border border-gray-400 px-2 py-1 text-center">
+                      {index + 1}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1">
+                      {item.description}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right">
+                      {item.hours}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right">
+                      {formatNumber(item.rate || 0)}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-center">
+                      {item?.cgst?.cgstPercent || "0"}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right">
+                      {formatNumber(item?.cgst?.cgstAmount || 0)}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-center">
+                      {item?.sgst?.sgstPercent || "0"}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right">
+                      {formatNumber(item?.sgst?.sgstAmount || 0)}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1 text-right font-semibold">
+                      {formatNumber(item.itemTotal || 0)}
+                    </td>
+                  </tr>
+                )
+              )
             ) : (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={isInternational ? 7 : 9}
                   className="border border-gray-400 px-2 py-4 text-center text-gray-500"
                 >
                   No items added
@@ -456,41 +511,62 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
               {/* Separator below subtotal */}
               <div className="border-t border-gray-400 my-1"></div>
 
-              {(() => {
-                // Collect all distinct percentage slabs
-                const allPercents = Array.from(
-                  new Set([
-                    ...Object.keys(groupedTaxes.cgst || {}),
-                    ...Object.keys(groupedTaxes.sgst || {}),
-                    ...Object.keys(groupedTaxes.igst || {}),
-                  ])
-                )
-                  .map((p) => parseFloat(p))
-                  .filter((p) => !Number.isNaN(p) && p > 0)
-                  .sort((a, b) => a - b);
+              {isInternational ? (
+                /* 🌍 INTERNATIONAL: IGST only */
+                (() => {
+                  const igstPercents = Object.keys(groupedTaxes.igst || {})
+                    .map((p) => parseFloat(p))
+                    .filter((p) => !Number.isNaN(p) && p > 0)
+                    .sort((a, b) => a - b);
 
-                // Track if we have CGST/SGST
-                let hasCGSTorSGST = false;
+                  return igstPercents.length > 0 ? (
+                    igstPercents.map((percent, index) => {
+                      const key = String(percent);
+                      const igstAmount = groupedTaxes.igst?.[key] || 0;
+                      if (!igstAmount) return null;
 
-                return (
-                  <>
-                    {/* First, display all CGST and SGST */}
-                    {allPercents.map((percent, index) => {
+                      return (
+                        <React.Fragment key={`igst-${percent}`}>
+                          {index > 0 && (
+                            <div className="border-t border-gray-200 my-1"></div>
+                          )}
+                          <div className="flex justify-between">
+                            <span>{`IGST (${percent}%)`}</span>
+                            <span className="font-semibold">
+                              ₹ {formatNumber(igstAmount)}
+                            </span>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })
+                  ) : null;
+                })()
+              ) : (
+                /* 🏠 DOMESTIC: CGST + SGST (no IGST) */
+                (() => {
+                  const percents = Array.from(
+                    new Set([
+                      ...Object.keys(groupedTaxes.cgst || {}),
+                      ...Object.keys(groupedTaxes.sgst || {}),
+                    ])
+                  )
+                    .map((p) => parseFloat(p))
+                    .filter((p) => !Number.isNaN(p) && p > 0)
+                    .sort((a, b) => a - b);
+
+                  return percents.length > 0 ? (
+                    percents.map((percent, index) => {
                       const key = String(percent);
                       const cgstAmount = groupedTaxes.cgst?.[key] || 0;
                       const sgstAmount = groupedTaxes.sgst?.[key] || 0;
-
                       const hasCGST = cgstAmount > 0;
                       const hasSGST = sgstAmount > 0;
 
-                      if (hasCGST || hasSGST) {
-                        hasCGSTorSGST = true;
-                      }
+                      if (!hasCGST && !hasSGST) return null;
 
                       return (
                         <React.Fragment key={`cgst-sgst-${percent}`}>
-                          {/* Separator between percentage groups */}
-                          {index > 0 && (hasCGST || hasSGST) && (
+                          {index > 0 && (
                             <div className="border-t border-gray-200 my-1"></div>
                           )}
 
@@ -513,40 +589,10 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                           )}
                         </React.Fragment>
                       );
-                    })}
-
-                    {/* Now display all IGST entries */}
-                    {allPercents.map((percent, index) => {
-                      const key = String(percent);
-                      const igstAmount = groupedTaxes.igst?.[key] || 0;
-                      const hasIGST = igstAmount > 0;
-
-                      return (
-                        <React.Fragment key={`igst-${percent}`}>
-                          {/* Separator before first IGST if CGST/SGST exist */}
-                          {hasIGST && index === 0 && hasCGSTorSGST && (
-                            <div className="border-t border-gray-200 my-1"></div>
-                          )}
-
-                          {/* Separator between IGST percentage groups */}
-                          {hasIGST && index > 0 && (
-                            <div className="border-t border-gray-200 my-1"></div>
-                          )}
-
-                          {hasIGST && (
-                            <div className="flex justify-between">
-                              <span>{`IGST (${percent}%)`}</span>
-                              <span className="font-semibold">
-                                ₹ {formatNumber(igstAmount)}
-                              </span>
-                            </div>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </>
-                );
-              })()}
+                    })
+                  ) : null;
+                })()
+              )}
 
               {/* Grand Total */}
               <div className="flex justify-between border-t border-gray-400 pt-2 mt-2 text-sm">

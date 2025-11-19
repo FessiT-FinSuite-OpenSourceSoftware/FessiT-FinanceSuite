@@ -1,22 +1,34 @@
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
-/// Nested CGST info: { cgstPercent, cgstAmount }
+/// CGST Tax block for a line item
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct InvoiceItemTax {
+pub struct CGST {
     #[serde(rename = "cgstPercent", default)]
     pub cgst_percent: String,
+
     #[serde(rename = "cgstAmount", default)]
     pub cgst_amount: String,
 }
 
-/// Nested SGST info: { sgstPercent, sgstAmount }
+/// SGST Tax block for a line item
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct InvoiceItemSgstTax {
+pub struct SGST {
     #[serde(rename = "sgstPercent", default)]
     pub sgst_percent: String,
+
     #[serde(rename = "sgstAmount", default)]
     pub sgst_amount: String,
+}
+
+/// IGST Tax block for a line item
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct IGST {
+    #[serde(rename = "igstPercent", default)]
+    pub igst_percent: String,
+
+    #[serde(rename = "igstAmount", default)]
+    pub igst_amount: String,
 }
 
 /// A single line item in the invoice
@@ -24,35 +36,45 @@ pub struct InvoiceItemSgstTax {
 pub struct InvoiceItem {
     #[serde(default)]
     pub description: String,
+
     #[serde(default)]
     pub hours: String,
+
     #[serde(default)]
     pub rate: String,
 
     #[serde(default)]
-    pub cgst: InvoiceItemTax,
+    pub cgst: CGST,
 
     #[serde(default)]
-    pub sgst: InvoiceItemSgstTax,
+    pub sgst: SGST,
+
+    #[serde(default)]
+    pub igst: IGST,
 
     #[serde(rename = "itemTotal", default)]
     pub item_total: String,
 }
 
-/// Main Invoice document stored in MongoDB
+/// The Invoice document stored in MongoDB
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Invoice {
-    /// MongoDB _id
+    /// MongoDB document _id
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
 
+    // Domestic / International
+    #[serde(default)]
+    pub invoice_type: String,
+
+    // Company Info
     #[serde(default)]
     pub company_name: String,
 
     #[serde(rename = "gstIN", default)]
     pub gst_in: String,
 
-    #[serde(rename = "company_address", default)]
+    #[serde(default)]
     pub company_address: String,
 
     #[serde(default)]
@@ -61,6 +83,14 @@ pub struct Invoice {
     #[serde(default)]
     pub company_email: String,
 
+    // LUT & IEC (used in International invoices)
+    #[serde(default)]
+    pub lut_no: String,
+
+    #[serde(default)]
+    pub iec_no: String,
+
+    // Invoice details
     #[serde(default)]
     pub invoice_number: String,
 
@@ -77,8 +107,12 @@ pub struct Invoice {
     pub po_number: String,
 
     #[serde(default)]
+    pub po_date: String,
+
+    #[serde(default)]
     pub place_of_supply: String,
 
+    // Bill To
     #[serde(default)]
     pub billcustomer_name: String,
 
@@ -88,6 +122,7 @@ pub struct Invoice {
     #[serde(default)]
     pub billcustomer_gstin: String,
 
+    // Ship To
     #[serde(default)]
     pub shipcustomer_name: String,
 
@@ -97,12 +132,15 @@ pub struct Invoice {
     #[serde(default)]
     pub shipcustomer_gstin: String,
 
+    // Subject line
     #[serde(default)]
     pub subject: String,
 
+    // Invoice items
     #[serde(default)]
     pub items: Vec<InvoiceItem>,
 
+    // Totals
     #[serde(rename = "subTotal", default)]
     pub sub_total: String,
 
@@ -113,8 +151,12 @@ pub struct Invoice {
     pub totalsgst: String,
 
     #[serde(default)]
+    pub totaligst: String,
+
+    #[serde(default)]
     pub total: String,
 
+    // Notes / Terms & Conditions
     #[serde(default)]
     pub notes: String,
 
@@ -122,7 +164,8 @@ pub struct Invoice {
     pub status: String,
 }
 
-/// For now, creation & update use the same shape as Invoice (minus / ignoring _id).
-/// If later you want partial updates, we can change UpdateInvoiceRequest to use Option<T>.
+/// For creation (POST /invoices)
 pub type CreateInvoiceRequest = Invoice;
+
+/// For updates (PUT /invoices/{id})
 pub type UpdateInvoiceRequest = Invoice;

@@ -8,12 +8,13 @@ import InvoiceReportGeneration from "./invoiceReportGeneration";
 import { KeyUri } from "../../shared/key";
 
 const initialInvoiceData = {
+  invoice_type: "domestic", // "domestic" or "international"
+
   company_name: "",
   gstIN: "",
   company_address: "",
   company_phone: "",
   company_email: "",
-  // 🔹 NEW optional org fields
   lut_no: "",
   iec_no: "",
   invoice_number: "",
@@ -21,7 +22,6 @@ const initialInvoiceData = {
   invoice_dueDate: "",
   invoice_terms: "Due on receipt",
   po_number: "",
-  // 🔹 NEW required P.O. date
   po_date: "",
   place_of_supply: "",
   billcustomer_name: "",
@@ -38,7 +38,7 @@ const initialInvoiceData = {
       rate: "",
       cgst: { cgstPercent: "", cgstAmount: "" },
       sgst: { sgstPercent: "", sgstAmount: "" },
-      igst: { igstPercent: "", igstAmount: "" }, // 🔹 NEW
+      igst: { igstPercent: "", igstAmount: "" },
       itemTotal: "",
     },
   ],
@@ -46,7 +46,7 @@ const initialInvoiceData = {
   subTotal: "",
   totalcgst: "",
   totalsgst: "",
-  totaligst: "", // 🔹 NEW
+  totaligst: "",
   total: "",
   status: "Draft",
 };
@@ -60,9 +60,14 @@ export default function EditInvoice() {
   const nav = useNavigate();
   const { id } = useParams();
 
+  // treat missing type as domestic for safety
+  const isDomestic =
+    invoiceData.invoice_type === "domestic" || !invoiceData.invoice_type;
+  const isInternational = invoiceData.invoice_type === "international";
+
   console.log("EditInvoice id from URL:", id);
 
-  // 🔹 Group CGST / SGST / IGST by percentage
+  // Group tax values – behavior depends on invoice_type
   const groupTaxValues = (items = []) => {
     const grouped = { cgst: {}, sgst: {}, igst: {} };
 
@@ -71,23 +76,29 @@ export default function EditInvoice() {
       const rate = parseFloat(item.rate || 0);
       const baseAmount = hours * rate;
 
-      const cgstPercent = parseFloat(item.cgst?.cgstPercent || 0);
-      const sgstPercent = parseFloat(item.sgst?.sgstPercent || 0);
-      const igstPercent = parseFloat(item.igst?.igstPercent || 0);
+      if (isDomestic) {
+        const cgstPercent = parseFloat(item.cgst?.cgstPercent || 0);
+        const sgstPercent = parseFloat(item.sgst?.sgstPercent || 0);
 
-      const cgstValue = (baseAmount * cgstPercent) / 100;
-      const sgstValue = (baseAmount * sgstPercent) / 100;
-      const igstValue = (baseAmount * igstPercent) / 100;
+        const cgstValue = (baseAmount * cgstPercent) / 100;
+        const sgstValue = (baseAmount * sgstPercent) / 100;
 
-      grouped.cgst[cgstPercent] = (grouped.cgst[cgstPercent] || 0) + cgstValue;
-      grouped.sgst[sgstPercent] = (grouped.sgst[sgstPercent] || 0) + sgstValue;
-      grouped.igst[igstPercent] = (grouped.igst[igstPercent] || 0) + igstValue;
+        grouped.cgst[cgstPercent] =
+          (grouped.cgst[cgstPercent] || 0) + cgstValue;
+        grouped.sgst[sgstPercent] =
+          (grouped.sgst[sgstPercent] || 0) + sgstValue;
+      } else if (isInternational) {
+        const igstPercent = parseFloat(item.igst?.igstPercent || 0);
+        const igstValue = (baseAmount * igstPercent) / 100;
+        grouped.igst[igstPercent] =
+          (grouped.igst[igstPercent] || 0) + igstValue;
+      }
     });
 
     return grouped;
   };
 
-  // Recalculate totals when items change
+  // Recalculate totals when items or invoice_type change
   useEffect(() => {
     if (!invoiceData || !Array.isArray(invoiceData.items)) return;
 
@@ -98,18 +109,25 @@ export default function EditInvoice() {
 
     const grouped = groupTaxValues(invoiceData.items);
 
-    const totalCgst = Object.values(grouped.cgst).reduce(
-      (sum, val) => sum + val,
-      0
-    );
-    const totalSgst = Object.values(grouped.sgst).reduce(
-      (sum, val) => sum + val,
-      0
-    );
-    const totalIgst = Object.values(grouped.igst).reduce(
-      (sum, val) => sum + val,
-      0
-    );
+    let totalCgst = 0;
+    let totalSgst = 0;
+    let totalIgst = 0;
+
+    if (isDomestic) {
+      totalCgst = Object.values(grouped.cgst).reduce(
+        (sum, val) => sum + val,
+        0
+      );
+      totalSgst = Object.values(grouped.sgst).reduce(
+        (sum, val) => sum + val,
+        0
+      );
+    } else if (isInternational) {
+      totalIgst = Object.values(grouped.igst).reduce(
+        (sum, val) => sum + val,
+        0
+      );
+    }
 
     const total = subTotal + totalCgst + totalSgst + totalIgst;
 
@@ -121,7 +139,7 @@ export default function EditInvoice() {
       totaligst: totalIgst.toFixed(2),
       total: total.toFixed(2),
     }));
-  }, [invoiceData.items]);
+  }, [invoiceData.items, invoiceData.invoice_type, isDomestic, isInternational]);
 
   // Load invoice by id
   useEffect(() => {
@@ -131,9 +149,7 @@ export default function EditInvoice() {
 
         const res = await fetch(`${KeyUri.BACKENDURI}/invoices/${id}`);
         if (!res.ok) {
-          if (res.status === 404) {
-            throw new Error("Invoice not found");
-          }
+          if (res.status === 404) throw new Error("Invoice not found");
           throw new Error("Failed to load invoice");
         }
 
@@ -152,7 +168,7 @@ export default function EditInvoice() {
                 rate: item.rate || "",
                 cgst: item.cgst || { cgstPercent: "", cgstAmount: "" },
                 sgst: item.sgst || { sgstPercent: "", sgstAmount: "" },
-                igst: item.igst || { igstPercent: "", igstAmount: "" }, // 🔹 ensure IGST exists
+                igst: item.igst || { igstPercent: "", igstAmount: "" },
                 itemTotal: item.itemTotal || "",
               }))
             : initialInvoiceData.items;
@@ -232,7 +248,6 @@ export default function EditInvoice() {
 
   const handlePhoneChange = (e) => {
     let { name, value } = e.target;
-
     value = value.replace(/\D/g, "");
 
     setInvoiceData((prev) => ({ ...prev, company_phone: value }));
@@ -266,11 +281,11 @@ export default function EditInvoice() {
     ) {
       if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
         if (name.startsWith("cgst")) {
-          item.cgst[name] = value; // cgstPercent / cgstAmount
+          item.cgst[name] = value;
         } else if (name.startsWith("sgst")) {
-          item.sgst[name] = value; // sgstPercent / sgstAmount
+          item.sgst[name] = value;
         } else if (name.startsWith("igst")) {
-          item.igst[name] = value; // igstPercent / igstAmount
+          item.igst[name] = value;
         } else {
           item[name] = value;
         }
@@ -287,21 +302,27 @@ export default function EditInvoice() {
     const sgstPercent = parseFloat(item.sgst?.sgstPercent) || 0;
     const igstPercent = parseFloat(item.igst?.igstPercent) || 0;
 
-    if (name === "cgstPercent") {
-      item.cgst.cgstAmount = ((baseSubTotal * cgstPercent) / 100).toFixed(2);
-    }
-    if (name === "sgstPercent") {
-      item.sgst.sgstAmount = ((baseSubTotal * sgstPercent) / 100).toFixed(2);
-    }
-    if (name === "igstPercent") {
-      item.igst.igstAmount = ((baseSubTotal * igstPercent) / 100).toFixed(2);
-    }
+    let total = baseSubTotal;
 
-    const total =
-      baseSubTotal +
-      (parseFloat(item.cgst.cgstAmount) || 0) +
-      (parseFloat(item.sgst.sgstAmount) || 0) +
-      (parseFloat(item.igst.igstAmount) || 0);
+    if (isDomestic) {
+      if (name === "cgstPercent") {
+        item.cgst.cgstAmount = ((baseSubTotal * cgstPercent) / 100).toFixed(2);
+      }
+      if (name === "sgstPercent") {
+        item.sgst.sgstAmount = ((baseSubTotal * sgstPercent) / 100).toFixed(2);
+      }
+
+      total =
+        baseSubTotal +
+        (parseFloat(item.cgst.cgstAmount) || 0) +
+        (parseFloat(item.sgst.sgstAmount) || 0);
+    } else if (isInternational) {
+      if (name === "igstPercent") {
+        item.igst.igstAmount = ((baseSubTotal * igstPercent) / 100).toFixed(2);
+      }
+
+      total = baseSubTotal + (parseFloat(item.igst.igstAmount) || 0);
+    }
 
     item.itemTotal = total.toFixed(2);
 
@@ -319,7 +340,7 @@ export default function EditInvoice() {
           rate: "",
           cgst: { cgstPercent: "", cgstAmount: "" },
           sgst: { sgstPercent: "", sgstAmount: "" },
-          igst: { igstPercent: "", igstAmount: "" }, // 🔹 NEW
+          igst: { igstPercent: "", igstAmount: "" },
           itemTotal: "",
         },
       ],
@@ -345,6 +366,15 @@ export default function EditInvoice() {
       newErrors.company_phone = "Phone number is required";
     if (!invoiceData.company_email?.trim())
       newErrors.company_email = "Email is required";
+
+    // International: LUT & IEC required
+    if (isInternational) {
+      if (!invoiceData.lut_no?.trim())
+        newErrors.lut_no = "LUT No is required for international invoices";
+      if (!invoiceData.iec_no?.trim())
+        newErrors.iec_no = "IEC No is required for international invoices";
+    }
+
     if (!invoiceData?.invoice_number?.trim())
       newErrors.invoice_number = "Invoice number is required";
     if (!invoiceData?.invoice_date?.trim())
@@ -353,7 +383,6 @@ export default function EditInvoice() {
       newErrors.invoice_dueDate = "Invoice due date is required";
     if (!invoiceData?.po_number?.trim())
       newErrors.po_number = "P.O. No is required";
-    // 🔹 NEW: P.O. Date required
     if (!invoiceData?.po_date?.trim())
       newErrors.po_date = "P.O. Date is required";
     if (!invoiceData?.place_of_supply?.trim())
@@ -362,13 +391,15 @@ export default function EditInvoice() {
       newErrors.billcustomer_name = "Customer name is required";
     if (!invoiceData?.billcustomer_address?.trim())
       newErrors.billcustomer_address = "Address is required";
-    if (!invoiceData?.billcustomer_gstin?.trim())
-      newErrors.billcustomer_gstin = "GSTIN required";
+
+    // Bill-to GSTIN required only for domestic
+    if (isDomestic && !invoiceData?.billcustomer_gstin?.trim())
+      newErrors.billcustomer_gstin = "GSTIN required for domestic invoices";
+
     if (!invoiceData?.shipcustomer_name?.trim())
       newErrors.shipcustomer_name = "Customer name required";
     if (!invoiceData?.shipcustomer_address?.trim())
       newErrors.shipcustomer_address = "Address is required";
-    // ship GSTIN kept optional as per your commented code
 
     if (Object.keys(newErrors).length > 0) {
       setInputErrors(newErrors);
@@ -408,7 +439,6 @@ export default function EditInvoice() {
     nav("/invoices");
   };
 
-  // If for some reason items is not yet ready, avoid crashing render
   if (!invoiceData || !Array.isArray(invoiceData.items)) {
     return (
       <div className="p-6">
@@ -429,12 +459,26 @@ export default function EditInvoice() {
           >
             <div className="">
               <div className="flex justify-between">
-                <div className="px-4 py-2">
+                <div className="px-4 py-2 flex items-center gap-3">
                   <ArrowLeft
                     strokeWidth={1}
                     onClick={goBackToInvoices}
                     className=" cursor-pointer"
                   />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-700">
+                      Invoice Type:
+                    </span>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        isDomestic
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
+                    >
+                      {isDomestic ? "₹ Domestic" : "$ International"}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2 mr-5">
                   <button
@@ -613,35 +657,49 @@ export default function EditInvoice() {
                   )}
                 </div>
 
-                {/* 🔹 NEW optional fields: LUT No, IEC No */}
-                <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    LUT No
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter LUT No (optional)"
-                    className="border border-gray-300 rounded px-3 
-                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
-                    value={invoiceData.lut_no}
-                    name="lut_no"
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    IEC No
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter IEC No (optional)"
-                    className="border border-gray-300 rounded px-3 
-                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
-                    value={invoiceData.iec_no}
-                    name="iec_no"
-                    onChange={handleChange}
-                  />
-                </div>
+                {/* LUT / IEC only for International */}
+                {isInternational && (
+                  <>
+                    <div className="relative">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        LUT No *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter LUT No"
+                        className="border border-gray-300 rounded px-3 
+                          py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                        value={invoiceData.lut_no}
+                        name="lut_no"
+                        onChange={handleChange}
+                      />
+                      {inputErrors?.lut_no && (
+                        <p className="absolute text-[13px] text-[#f10404]">
+                          {inputErrors?.lut_no}
+                        </p>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        IEC No *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter IEC No"
+                        className="border border-gray-300 rounded px-3 
+                          py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                        value={invoiceData.iec_no}
+                        name="iec_no"
+                        onChange={handleChange}
+                      />
+                      {inputErrors?.iec_no && (
+                        <p className="absolute text-[13px] text-[#f10404]">
+                          {inputErrors?.iec_no}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Invoice Details */}
@@ -739,7 +797,7 @@ export default function EditInvoice() {
                   )}
                 </div>
 
-                {/* 🔹 NEW P.O. Date field (required) */}
+                {/* P.O. Date */}
                 <div className="relative">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     P.O. Date *
@@ -829,25 +887,27 @@ export default function EditInvoice() {
                       </p>
                     )}
                   </div>
-                  <div className="relative">
-                    <label className="block text-xs font-semibold text-gray-600 mt-2 mb-1">
-                      GSTIN *
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Enter GSTIN"
-                      className="border border-gray-300 rounded px-3 
-                        py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
-                      value={invoiceData.billcustomer_gstin}
-                      name="billcustomer_gstin"
-                      onChange={handleChange}
-                    />
-                    {inputErrors?.billcustomer_gstin && (
-                      <p className="absolute text-[13px] text-[#f10404]">
-                        {inputErrors?.billcustomer_gstin}
-                      </p>
-                    )}
-                  </div>
+                  {isDomestic && (
+                    <div className="relative">
+                      <label className="block text-xs font-semibold text-gray-600 mt-2 mb-1">
+                        GSTIN *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter GSTIN"
+                        className="border border-gray-300 rounded px-3 
+                          py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                        value={invoiceData.billcustomer_gstin}
+                        name="billcustomer_gstin"
+                        onChange={handleChange}
+                      />
+                      {inputErrors?.billcustomer_gstin && (
+                        <p className="absolute text-[13px] text-[#f10404]">
+                          {inputErrors?.billcustomer_gstin}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Ship To */}
@@ -893,7 +953,7 @@ export default function EditInvoice() {
                       </p>
                     )}
                   </div>
-                  {/* Ship GSTIN optional as per your previous logic */}
+                  {/* Ship GSTIN optional (same as AddInvoice) */}
                 </div>
               </div>
 
@@ -945,24 +1005,31 @@ export default function EditInvoice() {
                       >
                         Rate
                       </th>
-                      <th
-                        colSpan="2"
-                        className="border border-gray-300 px-3 py-2 text-center"
-                      >
-                        CGST
-                      </th>
-                      <th
-                        colSpan="2"
-                        className="border border-gray-300 px-3 py-2 text-center"
-                      >
-                        SGST
-                      </th>
-                      <th
-                        colSpan="2"
-                        className="border border-gray-300 px-3 py-2 text-center"
-                      >
-                        IGST
-                      </th>
+
+                      {isDomestic ? (
+                        <>
+                          <th
+                            colSpan="2"
+                            className="border border-gray-300 px-3 py-2 text-center"
+                          >
+                            CGST
+                          </th>
+                          <th
+                            colSpan="2"
+                            className="border border-gray-300 px-3 py-2 text-center"
+                          >
+                            SGST
+                          </th>
+                        </>
+                      ) : (
+                        <th
+                          colSpan="2"
+                          className="border border-gray-300 px-3 py-2 text-center"
+                        >
+                          IGST
+                        </th>
+                      )}
+
                       <th
                         rowSpan="2"
                         className="border border-gray-300 px-3 py-2 text-center"
@@ -977,24 +1044,31 @@ export default function EditInvoice() {
                       </th>
                     </tr>
                     <tr>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        %
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        Amt
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        %
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        Amt
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        %
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        Amt
-                      </th>
+                      {isDomestic ? (
+                        <>
+                          <th className="border border-gray-300 px-3 py-2 text-center">
+                            %
+                          </th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">
+                            Amt
+                          </th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">
+                            %
+                          </th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">
+                            Amt
+                          </th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="border border-gray-300 px-3 py-2 text-center">
+                            %
+                          </th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">
+                            Amt
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
 
@@ -1035,50 +1109,56 @@ export default function EditInvoice() {
                           />
                         </td>
 
-                        {/* CGST */}
-                        <td className="border border-gray-300 px-3 py-2 text-center">
-                          <input
-                            type="number"
-                            value={item?.cgst?.cgstPercent}
-                            name="cgstPercent"
-                            onChange={(e) => handleItemChange(index, e)}
-                            className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
-                            placeholder="%"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-3 py-2 text-right text-gray-700">
-                          {item.cgst?.cgstAmount || "0.00"}
-                        </td>
+                        {isDomestic ? (
+                          <>
+                            {/* CGST */}
+                            <td className="border border-gray-300 px-3 py-2 text-center">
+                              <input
+                                type="number"
+                                value={item?.cgst?.cgstPercent}
+                                name="cgstPercent"
+                                onChange={(e) => handleItemChange(index, e)}
+                                className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
+                                placeholder="%"
+                              />
+                            </td>
+                            <td className="border border-gray-300 px-3 py-2 text-right text-gray-700">
+                              {item.cgst?.cgstAmount || "0.00"}
+                            </td>
 
-                        {/* SGST */}
-                        <td className="border border-gray-300 px-3 py-2 text-center">
-                          <input
-                            type="number"
-                            value={item?.sgst?.sgstPercent}
-                            name="sgstPercent"
-                            onChange={(e) => handleItemChange(index, e)}
-                            className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
-                            placeholder="%"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-3 py-2 text-right text-gray-700">
-                          {item.sgst?.sgstAmount || "0.00"}
-                        </td>
-
-                        {/* IGST */}
-                        <td className="border border-gray-300 px-3 py-2 text-center">
-                          <input
-                            type="number"
-                            value={item?.igst?.igstPercent}
-                            name="igstPercent"
-                            onChange={(e) => handleItemChange(index, e)}
-                            className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
-                            placeholder="%"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-3 py-2 text-right text-gray-700">
-                          {item.igst?.igstAmount || "0.00"}
-                        </td>
+                            {/* SGST */}
+                            <td className="border border-gray-300 px-3 py-2 text-center">
+                              <input
+                                type="number"
+                                value={item?.sgst?.sgstPercent}
+                                name="sgstPercent"
+                                onChange={(e) => handleItemChange(index, e)}
+                                className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
+                                placeholder="%"
+                              />
+                            </td>
+                            <td className="border border-gray-300 px-3 py-2 text-right text-gray-700">
+                              {item.sgst?.sgstAmount || "0.00"}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            {/* IGST */}
+                            <td className="border border-gray-300 px-3 py-2 text-center">
+                              <input
+                                type="number"
+                                value={item?.igst?.igstPercent}
+                                name="igstPercent"
+                                onChange={(e) => handleItemChange(index, e)}
+                                className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
+                                placeholder="%"
+                              />
+                            </td>
+                            <td className="border border-gray-300 px-3 py-2 text-right text-gray-700">
+                              {item.igst?.igstAmount || "0.00"}
+                            </td>
+                          </>
+                        )}
 
                         <td className="border border-gray-300 px-3 py-2 text-right font-semibold text-gray-800">
                           {item.itemTotal || "0.00"}
@@ -1125,47 +1205,20 @@ export default function EditInvoice() {
                     />
                   </div>
 
-                  {/* Separator line below Sub Total */}
-                  <div className="border-t border-gray-200 my-1"></div>
-
                   {(() => {
                     const grouped = groupTaxValues(invoiceData?.items || []);
 
-                    // Build sorted unique percentage list: [5, 9, ...]
-                    const percentOrder = Array.from(
-                      new Set([
-                        ...Object.keys(grouped.cgst || {}),
-                        ...Object.keys(grouped.sgst || {}),
-                        ...Object.keys(grouped.igst || {}),
-                      ])
-                    )
-                      .map((p) => parseFloat(p))
-                      .filter((p) => p > 0)
-                      .sort((a, b) => a - b);
+                    if (isDomestic) {
+                      const merged = Object.keys({
+                        ...grouped.cgst,
+                        ...grouped.sgst,
+                      }).filter((percent) => parseFloat(percent) > 0);
 
-                    // Track if we need separator before IGST section
-                    let hasCGSTorSGST = false;
-
-                    return (
-                      <>
-                        {/* First, display all CGST and SGST */}
-                        {percentOrder.map((percent, index) => {
-                          const hasCGST = grouped.cgst[percent] != null && grouped.cgst[percent] > 0;
-                          const hasSGST = grouped.sgst[percent] != null && grouped.sgst[percent] > 0;
-                          
-                          if (hasCGST || hasSGST) {
-                            hasCGSTorSGST = true;
-                          }
-
-                          return (
-                            <React.Fragment key={`cgst-sgst-${percent}`}>
-                              {/* Separator line between different percentage groups */}
-                              {index > 0 && (hasCGST || hasSGST) && (
-                                <div className="border-t border-gray-200 my-1"></div>
-                              )}
-
-                              {/* CGST */}
-                              {hasCGST && (
+                      return (
+                        <>
+                          {merged.map((percent) => (
+                            <React.Fragment key={percent}>
+                              {grouped.cgst[percent] !== undefined && (
                                 <div className="flex justify-between">
                                   <span className="font-semibold text-gray-700">
                                     CGST ({percent}%)
@@ -1174,15 +1227,14 @@ export default function EditInvoice() {
                                     type="text"
                                     className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
                                     value={formatNumber(
-                                      Number(grouped.cgst[percent] || 0).toFixed(2)
+                                      grouped.cgst[percent]?.toFixed(2)
                                     )}
                                     disabled
                                   />
                                 </div>
                               )}
 
-                              {/* SGST */}
-                              {hasSGST && (
+                              {grouped.sgst[percent] !== undefined && (
                                 <div className="flex justify-between">
                                   <span className="font-semibold text-gray-700">
                                     SGST ({percent}%)
@@ -1191,53 +1243,44 @@ export default function EditInvoice() {
                                     type="text"
                                     className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
                                     value={formatNumber(
-                                      Number(grouped.sgst[percent] || 0).toFixed(2)
+                                      grouped.sgst[percent]?.toFixed(2)
                                     )}
                                     disabled
                                   />
                                 </div>
                               )}
                             </React.Fragment>
-                          );
-                        })}
+                          ))}
+                        </>
+                      );
+                    } else {
+                      const igstPercentages = Object.keys(grouped.igst).filter(
+                        (percent) => parseFloat(percent) > 0
+                      );
 
-                        {/* Now display all IGST entries */}
-                        {percentOrder.map((percent, index) => {
-                          const hasIGST = grouped.igst[percent] != null && grouped.igst[percent] > 0;
-
-                          return (
-                            <React.Fragment key={`igst-${percent}`}>
-                              {/* Separator before first IGST if CGST/SGST exist */}
-                              {hasIGST && index === 0 && hasCGSTorSGST && (
-                                <div className="border-t border-gray-200 my-1"></div>
-                              )}
-
-                              {/* Separator between IGST percentage groups */}
-                              {hasIGST && index > 0 && (
-                                <div className="border-t border-gray-200 my-1"></div>
-                              )}
-
-                              {/* IGST */}
-                              {hasIGST && (
-                                <div className="flex justify-between">
-                                  <span className="font-semibold text-gray-700">
-                                    IGST ({percent}%)
-                                  </span>
-                                  <input
-                                    type="text"
-                                    className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                                    value={formatNumber(
-                                      Number(grouped.igst[percent] || 0).toFixed(2)
-                                    )}
-                                    disabled
-                                  />
-                                </div>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </>
-                    );
+                      return (
+                        <>
+                          {igstPercentages.map((percent) => (
+                            <div
+                              key={percent}
+                              className="flex justify-between"
+                            >
+                              <span className="font-semibold text-gray-700">
+                                IGST ({percent}%)
+                              </span>
+                              <input
+                                type="text"
+                                className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
+                                value={formatNumber(
+                                  grouped.igst[percent]?.toFixed(2)
+                                )}
+                                disabled
+                              />
+                            </div>
+                          ))}
+                        </>
+                      );
+                    }
                   })()}
 
                   <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
@@ -1252,32 +1295,35 @@ export default function EditInvoice() {
                 </div>
               </div>
 
-              {/* Notes / Terms & Conditions */}
+              {/* Notes / Terms & Conditions, Notes */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Terms & Conditions
+                  Terms &amp; Conditions, Notes
                 </label>
                 <div className="relative">
                   <textarea
                     type="text"
-                    placeholder="Enter terms & conditions (each new line will be bulleted)"
+                    placeholder="Enter terms & conditions, notes (each new line will be bulleted)"
                     className="border border-gray-300 rounded px-3 
                       py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 h-20 pl-7"
                     value={invoiceData.notes}
                     name="notes"
                     onChange={handleChange}
                     style={{
-                      lineHeight: '1.5rem'
+                      lineHeight: "1.5rem",
                     }}
                   />
                   {/* Bullet points overlay */}
-                  <div 
+                  <div
                     className="absolute left-3 top-2 pointer-events-none text-gray-600 text-sm"
-                    style={{ lineHeight: '1.5rem' }}
+                    style={{ lineHeight: "1.5rem" }}
                   >
-                    {invoiceData.notes && invoiceData.notes.split('\n').map((_, index) => (
-                      <div key={index} style={{ height: '1.5rem' }}>•</div>
-                    ))}
+                    {invoiceData.notes &&
+                      invoiceData.notes.split("\n").map((_, index) => (
+                        <div key={index} style={{ height: "1.5rem" }}>
+                          •
+                        </div>
+                      ))}
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
