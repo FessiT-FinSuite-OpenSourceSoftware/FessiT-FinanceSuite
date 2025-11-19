@@ -18,7 +18,7 @@ async function generateInvoicePdf(invoiceNumber) {
       logging: false,
     });
 
-    const imgData = canvas.toDataURL("image/png");
+    const imgData = canvas.toDataURL("image/jpeg");
 
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -40,7 +40,7 @@ async function generateInvoicePdf(invoiceNumber) {
     const x = (pageWidth - imgWidth) / 2;
     const y = (pageHeight - imgHeight) / 2;
 
-    pdf.addImage(imgData, "PNG", x, y, imgWidth, imgHeight);
+    pdf.addImage(imgData, "JPEG", x, y, imgWidth, imgHeight);
     pdf.save(`invoice-${invoiceNumber || "invoice"}.pdf`);
   } catch (err) {
     console.error("PDF generation failed:", err);
@@ -61,7 +61,7 @@ async function printInvoicePdf(invoiceNumber) {
       logging: false,
     });
 
-    const imgData = canvas.toDataURL("image/png");
+    const imgData = canvas.toDataURL("image/jpeg");
 
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -83,7 +83,7 @@ async function printInvoicePdf(invoiceNumber) {
     const x = (pageWidth - imgWidth) / 2;
     const y = (pageHeight - imgHeight) / 2;
 
-    pdf.addImage(imgData, "PNG", x, y, imgWidth, imgHeight);
+    pdf.addImage(imgData, "JPEG", x, y, imgWidth, imgHeight);
     pdf.autoPrint();
 
     const blob = pdf.output("blob");
