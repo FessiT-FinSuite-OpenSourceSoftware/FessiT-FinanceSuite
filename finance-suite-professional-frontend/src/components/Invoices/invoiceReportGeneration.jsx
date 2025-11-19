@@ -12,7 +12,7 @@ async function generateInvoicePdf(invoiceNumber) {
     if (!element) throw new Error("Invoice area not found");
 
     const canvas = await html2canvas(element, {
-      scale: 3,
+      scale: 4,
       useCORS: true,
       backgroundColor: "#ffffff",
       logging: false,
@@ -195,7 +195,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
   return (
     <div className="bg-gray-100 min-h-screen py-6 print:bg-white invoice-wrapper">
       {/* Top bar – hidden in print, aligned with invoice width */}
-      <div className="max-w-4xl mx-auto mb-4 flex justify-between items-center print:hidden px-2">
+      <div className="mx-auto mb-4 flex justify-between items-center print-hidden" style={{ maxWidth: "820px", padding: "0 1rem" }}>
         {/* Back + Preview title */}
         <div
           className="flex items-center gap-2 cursor-pointer"
@@ -273,12 +273,12 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
           </div>
 
           <div className="text-right">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-2xl font-semibold text-black-300">
               TAX INVOICE
             </h2>
-            <div className="mt-2 inline-flex px-3 py-1 rounded-full text-xs font-semibold border border-gray-400">
+            {/* <div className="mt-2 inline-flex px-3 py-1 rounded-full text-xs font-semibold border border-gray-400">
               {isDomestic ? "₹ Domestic" : "🌍 International"}
-            </div>
+            </div> */}
           </div>
         </div>
 
