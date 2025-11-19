@@ -33,6 +33,21 @@
 }
 
 @media print {
+  /* Reset everything for clean print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  html, body {
+    width: 210mm;
+    height: 297mm;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
   body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -41,19 +56,11 @@
 
   /* Remove screen padding/margins around the invoice */
   .invoice-wrapper {
-    background: #ffffff;
-    padding: 0;
-    margin: 0;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
-  .invoice-a4 {
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0 auto;
-  }
-  
   /* Only show the invoice content */
   body * {
     visibility: hidden !important;
@@ -64,19 +71,49 @@
     visibility: visible !important;
   }
 
-  /* Make the invoice fit nicely on A4 */
-  #invoice-print-area.invoice-a4 {
-    width: 190mm;          /* A4 width minus page margins */
-    margin: 0 auto;
-    min-height: auto;      /* don't vertically center */
-    box-shadow: none !important;
-    border-radius: 0 !important;
+  /* Position the invoice properly */
+  #invoice-print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
     padding: 8mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
   }
 
-  /* Hide any explicit print-hidden elements if you use them */
+  /* Ensure proper table rendering */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  /* Prevent page breaks inside important elements */
+  table, tr, td, th, div, p, h1, h2, h3 {
+    page-break-inside: avoid !important;
+  }
+
+  /* Hide any explicit print-hidden elements */
   .print-hidden {
     display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Ensure images render properly */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Remove shadows and borders in print */
+  .shadow-lg,
+  .shadow,
+  .shadow-sm {
+    box-shadow: none !important;
   }
 }
 
@@ -162,4 +199,3 @@ h1 {
 .custom-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
-
