@@ -44,3 +44,7 @@ lazy_static = "1.4"
 
 # ✅ For TryStreamExt in invoice_repository (cursor.try_next())
 futures = "0.3"
+
+actix-files = "0.6"
+actix-multipart = "0.6"
+

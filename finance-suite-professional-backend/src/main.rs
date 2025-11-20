@@ -13,12 +13,13 @@ use std::env;
 
 use db::MongoDbClient;
 use handlers::{
-    configure_customer_routes,
+    configure_customer_routes, configure_expense_routes, configure_invoice_routes,
     configure_organisation_routes,
-    configure_invoice_routes,
 };
-use repository::{CustomerRepository, OrganisationRepository, InvoiceRepository};
-use services::{CustomerService, OrganisationService, InvoiceService};
+use repository::{
+    CustomerRepository, ExpenseRepository, InvoiceRepository, OrganisationRepository,
+};
+use services::{CustomerService, ExpenseService, InvoiceService, OrganisationService};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -40,17 +41,25 @@ async fn main() -> std::io::Result<()> {
 
     log::info!("✅ Connected to MongoDB successfully");
 
+    // 🔹 Customers
     let customer_collection = db_client.get_customers_collection();
     let customer_repository = CustomerRepository::new(customer_collection);
     let customer_service = CustomerService::new(customer_repository);
 
+    // 🔹 Organisations
     let organisation_collection = db_client.get_organisation_collection();
     let organisation_repository = OrganisationRepository::new(organisation_collection);
     let organisation_service = OrganisationService::new(organisation_repository);
 
+    // 🔹 Invoices
     let invoice_collection = db_client.get_invoice_collection();
     let invoice_repository = InvoiceRepository::new(invoice_collection);
     let invoice_service = InvoiceService::new(invoice_repository);
+
+    // 🔹 Expenses
+    let expense_collection = db_client.get_expense_collection();
+    let expense_repository = ExpenseRepository::new(expense_collection);
+    let expense_service = ExpenseService::new(expense_repository);
 
     log::info!("🚀 Starting server at http://{}:{}", host, port);
 
@@ -72,14 +81,16 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(customer_service.clone()))
             .app_data(web::Data::new(organisation_service.clone()))
             .app_data(web::Data::new(invoice_service.clone()))
-            // health (optional: you can also put this under /api/v1)
+            .app_data(web::Data::new(expense_service.clone()))
+            // health
             .route("/health", web::get().to(health_check))
             // all APIs under /api/v1
             .service(
                 web::scope("/api/v1")
                     .configure(configure_customer_routes)
                     .configure(configure_organisation_routes)
-                    .configure(configure_invoice_routes),
+                    .configure(configure_invoice_routes)
+                    .configure(configure_expense_routes),
             )
     })
     .bind((host, port))?
