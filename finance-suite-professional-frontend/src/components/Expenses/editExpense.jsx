@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, CirclePlus, CircleMinus, Eye } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { KeyUri } from "../../shared/key";
 
 const emptyExpenseItem = () => ({
@@ -10,9 +10,13 @@ const emptyExpenseItem = () => ({
   receiptFile: null,
   receiptName: "",
   receiptPreviewUrl: "",
+  existingReceiptFile: null, // To track existing receipt from backend
 });
 
-export default function Expense() {
+export default function EditExpense() {
+  const { id } = useParams();
+  const nav = useNavigate();
+
   // 🔹 Header / group-level fields
   const [header, setHeader] = useState({
     expenseTitle: "",
@@ -26,8 +30,58 @@ export default function Expense() {
   const [items, setItems] = useState([emptyExpenseItem()]);
   const [inputErrors, setInputErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const nav = useNavigate();
+  // Fetch expense data on mount
+  useEffect(() => {
+    const fetchExpense = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const res = await fetch(`${KeyUri.BACKENDURI}/expenses/${id}`);
+        if (!res.ok) {
+          throw new Error("Failed to load expense");
+        }
+
+        const expense = await res.json();
+
+        // Populate header
+        setHeader({
+          expenseTitle: expense.expense_title || "",
+          projectCostCenter: expense.project_cost_center || "",
+          expenseDate: expense.items?.[0]?.expense_date || "",
+          currency: expense.items?.[0]?.currency || "INR",
+          comment: expense.notes || "",
+        });
+
+        // Populate items
+        if (expense.items && expense.items.length > 0) {
+          setItems(
+            expense.items.map((item) => ({
+              expenseCategory: item.expense_category || "",
+              amount: item.amount?.toString() || "",
+              comment: item.comment || "",
+              receiptFile: null,
+              receiptName: item.original_filename || item.receipt_file || "",
+              receiptPreviewUrl: "",
+              existingReceiptFile: item.receipt_file || null,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error(err);
+        setError(err.message || "Failed to load expense");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchExpense();
+    }
+  }, [id]);
 
   const goBackToExpenses = () => {
     nav("/expenses");
@@ -56,7 +110,7 @@ export default function Expense() {
       const copy = [...prev];
       const row = { ...copy[index] };
       row.receiptFile = file || null;
-      row.receiptName = file ? file.name : "";
+      row.receiptName = file ? file.name : row.receiptName;
       row.receiptPreviewUrl = file ? URL.createObjectURL(file) : "";
       copy[index] = row;
       return copy;
@@ -68,7 +122,18 @@ export default function Expense() {
   };
 
   const removeItemRow = (index) => {
+    if (items.length === 1) {
+      alert("At least one expense item is required");
+      return;
+    }
     setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Download existing receipt
+  const downloadReceipt = (filename) => {
+    if (filename) {
+      window.open(`${KeyUri.BACKENDURI}/expenses/receipt/${filename}`, "_blank");
+    }
   };
 
   // Validate header + each item
@@ -92,7 +157,8 @@ export default function Expense() {
         errors[`${prefix}expenseCategory`] = "Category is required";
       if (!it.amount?.trim())
         errors[`${prefix}amount`] = "Amount is required";
-      if (!it.receiptFile)
+      // Receipt not required if existing receipt exists
+      if (!it.receiptFile && !it.existingReceiptFile)
         errors[`${prefix}receipt`] = "Receipt is required";
     });
 
@@ -134,53 +200,72 @@ export default function Expense() {
     setSaving(true);
 
     try {
-      // 🔹 Save each line item as a separate Expense in backend,
-      // but all share the same group header (Expense Title, Date, etc.)
-      for (const item of items) {
-        const formData = new FormData();
-        // header fields (common)
-        formData.append("expenseTitle", header.expenseTitle);
-        formData.append("projectCostCenter", header.projectCostCenter);
-        formData.append("expenseDate", header.expenseDate);
-        formData.append("currency", header.currency);
-        // we'll store per-item comment; if blank, fallback to header comment
-        formData.append("comment", item.comment || header.comment || "");
+      // 🔹 For edit, we're updating the main expense
+      // Backend stores items as array, so we'll send the first item
+      // (If you want to support multiple items, you'll need to update backend logic)
+      
+      const firstItem = items[0]; // Taking first item for now
+      const formData = new FormData();
+      
+      // header fields (common)
+      formData.append("expenseTitle", header.expenseTitle);
+      formData.append("projectCostCenter", header.projectCostCenter);
+      formData.append("expenseDate", header.expenseDate);
+      formData.append("currency", header.currency);
+      formData.append("comment", firstItem.comment || header.comment || "");
 
-        // line item fields
-        formData.append("expenseCategory", item.expenseCategory);
-        formData.append("amount", item.amount);
-        formData.append("status", "Submitted");
+      // line item fields
+      formData.append("expenseCategory", firstItem.expenseCategory);
+      formData.append("amount", firstItem.amount);
+      formData.append("notes", header.comment);
 
-        if (item.receiptFile) {
-          formData.append("receipt", item.receiptFile);
-        }
-
-        const res = await fetch(`${KeyUri.BACKENDURI}/expenses`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to save one of the expenses");
-        }
+      // Only append receipt if a new file was selected
+      if (firstItem.receiptFile) {
+        formData.append("receipt", firstItem.receiptFile);
       }
 
-      alert("Expenses saved successfully");
-      setHeader({
-        expenseTitle: "",
-        projectCostCenter: "",
-        expenseDate: "",
-        currency: "",
-        comment: "",
+      const res = await fetch(`${KeyUri.BACKENDURI}/expenses/${id}`, {
+        method: "PUT",
+        body: formData,
       });
-      setItems([emptyExpenseItem()]);
+
+      if (!res.ok) {
+        throw new Error("Failed to update expense");
+      }
+
+      alert("Expense updated successfully");
+      nav("/expenses");
     } catch (err) {
       console.error(err);
-      alert(err.message || "Something went wrong while saving expenses");
+      alert(err.message || "Something went wrong while updating expense");
     } finally {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p className="text-gray-600">Loading expense...</p>
+      </div>
+    );
+  }
+
+  if (error && !loading) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <p className="text-red-700">{error}</p>
+          <button
+            onClick={goBackToExpenses}
+            className="mt-4 text-blue-600 hover:underline"
+          >
+            Back to Expenses
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -199,16 +284,16 @@ export default function Expense() {
                 className="cursor-pointer"
               />
               <span className="text-sm font-semibold text-gray-700">
-                Add Expenses
+                Edit Expense
               </span>
             </div>
-            <div className="flex flex-wrap justify-end mr-5 gap-2 ">
+            <div className="flex flex-wrap justify-end mr-5 gap-2">
               <button
                 className="px-4 py-2 bg-blue-600 cursor-pointer text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
                 onClick={onExpenseDataSubmit}
                 disabled={saving}
               >
-                {saving ? "Saving..." : "💾 Save"}
+                {saving ? "Updating..." : "💾 Update"}
               </button>
             </div>
           </div>
@@ -221,9 +306,9 @@ export default function Expense() {
           Expense Details
         </h2>
 
-        {/* 🔹 Header section (one title under which multiple expenses) */}
+        {/* 🔹 Header section */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          {/* Expense Title (group) */}
+          {/* Expense Title */}
           <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Expense Title *
@@ -265,7 +350,7 @@ export default function Expense() {
             )}
           </div>
 
-          {/* Expense Date (common for all items) */}
+          {/* Expense Date */}
           <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Expense Date *
@@ -285,7 +370,7 @@ export default function Expense() {
             )}
           </div>
 
-          {/* Currency (common for all items) */}
+          {/* Currency */}
           <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Currency *
@@ -312,7 +397,7 @@ export default function Expense() {
           </div>
         </div>
 
-        {/* Group Comment (applies to all, but per-line comment can override) */}
+        {/* Overall Comment */}
         <div className="mb-6">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Overall Comment (optional)
@@ -323,11 +408,11 @@ export default function Expense() {
             value={header.comment}
             onChange={handleHeaderChange}
             className="border border-gray-300 rounded px-3 py-2 w-full text-sm h-20 placeholder:text-gray-400"
-            placeholder="Overall remarks for this expense group"
+            placeholder="Overall remarks for this expense"
           ></textarea>
         </div>
 
-        {/* 🔹 Multiple expense line items under the header */}
+        {/* 🔹 Expense line items */}
         <div className="space-y-6">
           {items.map((it, idx) => {
             const prefix = `row_${idx}_`;
@@ -419,6 +504,26 @@ export default function Expense() {
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Upload Receipt *
                   </label>
+
+                  {/* Show existing receipt info */}
+                  {it.existingReceiptFile && !it.receiptFile && (
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-blue-900">
+                          Current: {it.receiptName}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => downloadReceipt(it.existingReceiptFile)}
+                          className="flex items-center gap-1 text-blue-600 text-xs underline cursor-pointer"
+                        >
+                          <Eye className="w-3 h-3" />
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center space-x-3">
                     <input
                       type="file"
@@ -432,21 +537,25 @@ export default function Expense() {
                       htmlFor={`receiptUpload_${idx}`}
                       className="px-4 py-2 bg-gray-100 border border-gray-300 rounded cursor-pointer hover:bg-gray-200 text-sm"
                     >
-                      Choose File
+                      {it.receiptFile || it.existingReceiptFile
+                        ? "Change File"
+                        : "Choose File"}
                     </label>
                     <span className="text-sm text-gray-500">
-                      {it.receiptName || "No file chosen"}
+                      {it.receiptFile
+                        ? it.receiptFile.name
+                        : it.existingReceiptFile
+                        ? "Using existing receipt"
+                        : "No file chosen"}
                     </span>
                     {it.receiptPreviewUrl && (
                       <button
                         type="button"
                         className="flex items-center gap-1 text-blue-600 text-xs underline cursor-pointer"
-                        onClick={() =>
-                          window.open(it.receiptPreviewUrl, "_blank")
-                        }
+                        onClick={() => window.open(it.receiptPreviewUrl, "_blank")}
                       >
                         <Eye className="w-3 h-3" />
-                        Preview
+                        Preview New
                       </button>
                     )}
                   </div>
@@ -461,8 +570,8 @@ export default function Expense() {
           })}
         </div>
 
-        {/* Add row button */}
-        <div className="mt-6">
+        {/* Add row button - commented out for now since backend handles single item */}
+        {/* <div className="mt-6">
           <button
             type="button"
             onClick={addItemRow}
@@ -471,7 +580,7 @@ export default function Expense() {
             <CirclePlus className="w-4 h-4" />
             Add another expense
           </button>
-        </div>
+        </div> */}
       </div>
     </>
   );

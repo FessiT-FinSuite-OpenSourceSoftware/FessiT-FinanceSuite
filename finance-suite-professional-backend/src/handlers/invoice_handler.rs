@@ -16,6 +16,7 @@ pub async fn create_invoice(
     service: web::Data<InvoiceService>,
     req: Json<CreateInvoiceRequest>,
 ) -> actix_web::Result<impl Responder> {
+    // req already includes invoice_type, lut_no, iec_no, items with cgst/sgst/igst, etc.
     let invoice = service
         .create_invoice(req.into_inner())
         .await
