@@ -100,87 +100,96 @@ export default function Expense() {
   };
 
   const onExpenseDataSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const errors = validate();
-    if (Object.keys(errors).length > 0) {
-      setInputErrors(errors);
+  const errors = validate();
+  if (Object.keys(errors).length > 0) {
+    setInputErrors(errors);
 
-      // Scroll to first error
-      const firstKey = Object.keys(errors)[0];
+    // Scroll to first error
+    const firstKey = Object.keys(errors)[0];
 
-      if (firstKey.startsWith("header_")) {
-        const fieldName = firstKey.replace("header_", "");
-        const el = document.querySelector(`[data-header="true"][name="${fieldName}"]`);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.focus();
-        }
-      } else if (firstKey.startsWith("row_")) {
-        const [_, rowIdxStr, fieldName] = firstKey.split("_");
-        const rowIdx = parseInt(rowIdxStr, 10) || 0;
-        const el = document.querySelector(
-          `[data-row="${rowIdx}"][name="${fieldName}"]`
-        );
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.focus();
-        }
+    if (firstKey.startsWith("header_")) {
+      const fieldName = firstKey.replace("header_", "");
+      const el = document.querySelector(`[data-header="true"][name="${fieldName}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
       }
-      return;
+    } else if (firstKey.startsWith("row_")) {
+      const [_, rowIdxStr, fieldName] = firstKey.split("_");
+      const rowIdx = parseInt(rowIdxStr, 10) || 0;
+      const el = document.querySelector(
+        `[data-row="${rowIdx}"][name="${fieldName}"]`
+      );
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      }
+    }
+    return;
+  }
+
+  setInputErrors({});
+  setSaving(true);
+
+  try {
+    const formData = new FormData();
+    
+    // Header fields (common)
+    formData.append("expenseTitle", header.expenseTitle);
+    formData.append("projectCostCenter", header.projectCostCenter);
+    formData.append("expenseDate", header.expenseDate);
+    formData.append("currency", header.currency);
+    formData.append("notes", header.comment || "");
+
+    // Prepare items array as JSON (without files)
+    const itemsData = items.map((item) => ({
+      expenseCategory: item.expenseCategory,
+      amount: item.amount,
+      comment: item.comment || "",
+      paymentMethod: "",
+      vendor: "",
+      billable: false,
+      taxAmount: null,
+    }));
+
+    formData.append("items", JSON.stringify(itemsData));
+
+    // Append receipt files with indexed names
+    items.forEach((item, index) => {
+      if (item.receiptFile) {
+        formData.append(`receipt_${index}`, item.receiptFile);
+      }
+    });
+
+    const res = await fetch(`${KeyUri.BACKENDURI}/expenses`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errorData = await res.text();
+      throw new Error(`Failed to save expense: ${errorData}`);
     }
 
-    setInputErrors({});
-    setSaving(true);
-
-    try {
-      // 🔹 Save each line item as a separate Expense in backend,
-      // but all share the same group header (Expense Title, Date, etc.)
-      for (const item of items) {
-        const formData = new FormData();
-        // header fields (common)
-        formData.append("expenseTitle", header.expenseTitle);
-        formData.append("projectCostCenter", header.projectCostCenter);
-        formData.append("expenseDate", header.expenseDate);
-        formData.append("currency", header.currency);
-        // we'll store per-item comment; if blank, fallback to header comment
-        formData.append("comment", item.comment || header.comment || "");
-
-        // line item fields
-        formData.append("expenseCategory", item.expenseCategory);
-        formData.append("amount", item.amount);
-        formData.append("status", "Submitted");
-
-        if (item.receiptFile) {
-          formData.append("receipt", item.receiptFile);
-        }
-
-        const res = await fetch(`${KeyUri.BACKENDURI}/expenses`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to save one of the expenses");
-        }
-      }
-
-      alert("Expenses saved successfully");
-      setHeader({
-        expenseTitle: "",
-        projectCostCenter: "",
-        expenseDate: "",
-        currency: "",
-        comment: "",
-      });
-      setItems([emptyExpenseItem()]);
-    } catch (err) {
-      console.error(err);
-      alert(err.message || "Something went wrong while saving expenses");
-    } finally {
-      setSaving(false);
-    }
-  };
+    alert("Expense saved successfully");
+    setHeader({
+      expenseTitle: "",
+      projectCostCenter: "",
+      expenseDate: "",
+      currency: "",
+      comment: "",
+    });
+    setItems([emptyExpenseItem()]);
+    nav("/expenses");
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Something went wrong while saving expense");
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
     <>
