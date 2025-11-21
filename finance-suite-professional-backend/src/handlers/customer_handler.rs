@@ -16,7 +16,7 @@ pub struct DeleteQuery {
     email: Option<String>,
 }
 
-#[post("/api/v1/customers")]
+#[post("/customers")]
 pub async fn create_customer(
     service: web::Data<CustomerService>,
     req: web::Json<CreateCustomerRequest>,
@@ -27,7 +27,7 @@ pub async fn create_customer(
     })))
 }
 
-#[get("/api/v1/customers")]
+#[get("/customers")]
 pub async fn get_all_customers(
     service: web::Data<CustomerService>,
 ) -> Result<impl Responder, ApiError> {
@@ -35,7 +35,7 @@ pub async fn get_all_customers(
     Ok(HttpResponse::Ok().json(customers))
 }
 
-#[get("/api/v1/customers/{id}")]
+#[get("/customers/{id}")]
 pub async fn get_customer_by_id(
     service: web::Data<CustomerService>,
     id: web::Path<String>,
@@ -44,7 +44,7 @@ pub async fn get_customer_by_id(
     Ok(HttpResponse::Ok().json(customer))
 }
 
-#[put("/api/v1/customer/{id}")]
+#[put("/customer/{id}")]
 pub async fn update_customer(
     service: web::Data<CustomerService>,
     id: web::Path<String>,
@@ -56,7 +56,7 @@ pub async fn update_customer(
     })))
 }
 
-#[delete("/api/v1/customer/{id}")]
+#[delete("/customer/{id}")]
 pub async fn delete_customer_by_id(
     service: web::Data<CustomerService>,
     id: web::Path<String>,
@@ -71,7 +71,7 @@ pub async fn delete_customer_by_id(
     }
 }
 
-#[delete("/api/v1/customers")]
+#[delete("/customers")]
 pub async fn delete_customer_by_query(
     service: web::Data<CustomerService>,
     query: web::Query<DeleteQuery>,

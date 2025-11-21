@@ -285,3 +285,4 @@ const InvoiceReportGeneration = ({ invoiceData }) => {
 };
 
 export default InvoiceReportGeneration;
+

@@ -341,7 +341,7 @@ useEffect(()=>{
     organizationName:currentOrganisation?.organizationName,
     companyName:currentOrganisation?.companyName|| "",
     gstIN:currentOrganisation?.gstIN || "",
-    gstIN:currentOrganisation?.gstIN || "",
+    
     country: currentOrganisation.country || "",
     phone: currentOrganisation.phone || "",
     email: currentOrganisation.email || "",

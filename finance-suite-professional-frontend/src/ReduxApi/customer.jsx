@@ -73,7 +73,7 @@ export const createCustomer = (customerData) => async (dispatch) => {
 export const fetchCustomerData = () => async (dispatch) => {
   dispatch(getCustomer())
   try {
-    const { data } = await axios.get(`${KeyUri.BACKENDURI}/customers`, config)
+    const { data } = await axios.get(KeyUri.BACKENDURI + `/customers`, config)
     dispatch(getCustomerSuccess(data))
   } catch (error) {
     console.error('Error fetching customers:', error)
