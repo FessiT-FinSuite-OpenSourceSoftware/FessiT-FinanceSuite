@@ -40,3 +40,9 @@
 .read-the-docs {
   color: #888;
 }
+
+.scroll-to-top-btn {
+  position: fixed !important;
+  bottom: 20px !important;
+  right: 20px !important;
+}

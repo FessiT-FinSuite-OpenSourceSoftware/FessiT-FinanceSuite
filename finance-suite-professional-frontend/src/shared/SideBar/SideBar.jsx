@@ -13,6 +13,7 @@ import {
   X,
   ChevronRight,
   ChevronLeft,
+  ArrowUp,
 } from "lucide-react";
 
 export default function SideBar({ component }) {
@@ -21,11 +22,13 @@ export default function SideBar({ component }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const location = useLocation();
   const nav = useNavigate();
   const modalRef = useRef(null);
   const bellRef = useRef(null);
+  const mainRef = useRef(null);
 
   const navigation = [
     { id: "dashboard", label: "Dashboard", icon: TrendingUp },
@@ -52,6 +55,26 @@ export default function SideBar({ component }) {
   useEffect(() => {
     setNotifications(generateNotifications(20));
   }, []);
+
+  // Scroll to top on route change
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  // Show/hide scroll to top button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (mainRef.current) {
+        setShowScrollTop(mainRef.current.scrollTop > 300);
+      }
+    };
+    mainRef.current?.addEventListener('scroll', handleScroll);
+    return () => mainRef.current?.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Infinite scroll
   const handleScroll = (e) => {
@@ -169,7 +192,7 @@ export default function SideBar({ component }) {
                 key={item.id}
                 onClick={() => handleNavigate(item?.id)}
                 className={`w-full flex items-center  rounded-lg transition-colors ${
-                  location.pathname.includes(`/${item.id}`)
+                  (item.id === "dashboard" && location.pathname === "/") || location.pathname.includes(`/${item.id}`)
                     ? "bg-indigo-50 text-indigo-600 font-medium"
                     : "text-gray-700 hover:bg-gray-50"
                 } sider-button ${sidebarOpen ? "py-3 px-4 space-x-3" : ""}`}
@@ -187,13 +210,22 @@ export default function SideBar({ component }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="overflow-y-auto">
+        <main ref={mainRef} className="overflow-y-auto relative" id="main-scroll-container">
+          {showScrollTop && (
+            <button
+              onClick={scrollToTop}
+              className="fixed bottom-6 right-6 bg-indigo-500 text-white p-3 font-bold rounded-full shadow-lg transition-all duration-300 z-50"
+              aria-label="Scroll to top"
+            >
+              <ArrowUp size={20} />
+            </button>
+          )}
           <header className="bg-white border-b border-gray-200 px-6 h-22 py-4 sticky z-10 top-0 right-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="mb-4 ">
                   <h2 className="relative text-2xl font-bold text-gray-800 capitalize ">
-                    {location.pathname.includes("/dashboard") && (
+                    {(location.pathname === "/" || location.pathname.includes("/dashboard")) && (
                       <p>Dashboard</p>
                     )}
                     {location.pathname.includes("/invoices") && <p>Invoices</p>}
