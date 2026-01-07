@@ -47,6 +47,7 @@ export const orgamisationSelector = (state) => state.organisation
 export default organisationSlice.reducer
 
 export const createOrganisation = (orgaisationData) => async (dispatch) => {
+  console.log(orgaisationData)
   dispatch(getOrganisation())
   try {
     const { data } = await axios.post(

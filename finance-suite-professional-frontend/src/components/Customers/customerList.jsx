@@ -110,7 +110,7 @@ export default function CustomerList() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAction, setShowAction] = useState(null);
-  const [page,setPage] = useState(5)
+  const [page,setPage] = useState(10)
   const { id } = useParams();
   const dispatch = useDispatch();
   const nav = useNavigate();
@@ -400,7 +400,7 @@ export default function CustomerList() {
                 // value={page?page:""}
                 className="bg-gray-200 text-sm px-2 py-2 rounded-sm w-44"
                 >
-                 <option value={page}>All</option>
+                 <option value={10}>All</option>
                  <option value={1}>One</option>
                  <option value={2}>Two</option>
                  <option value={3}>Three</option>

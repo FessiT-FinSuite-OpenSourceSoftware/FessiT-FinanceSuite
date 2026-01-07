@@ -199,7 +199,7 @@ export default function Expense() {
           w-full sm:w-[90%] md:w-full lg:w-full 
           z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm"
       >
-        <div className="">
+        <div>
           <div className="flex justify-between">
             <div className="px-4 py-2 flex items-center gap-2">
               <ArrowLeft
