@@ -123,7 +123,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
   const isDomestic = invoiceType === "domestic";
   const isInternational = invoiceType === "international";
 
-  // 🔹 Group CGST / SGST / IGST by percentage slabs
+  // 🔹 Group CGST / SGST / IGST by percentage slabs (UPDATED to include 0%)
   const groupTaxValues = (itemsArr = []) => {
     const grouped = { cgst: {}, sgst: {}, igst: {} };
 
@@ -136,19 +136,19 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
       const sgstPercent = parseFloat(item?.sgst?.sgstPercent || 0);
       const igstPercent = parseFloat(item?.igst?.igstPercent || 0);
 
-      if (cgstPercent > 0 && isDomestic) {
+      // UPDATED: Removed > 0 check for domestic taxes
+      if (isDomestic) {
         const cgstValue = (baseAmount * cgstPercent) / 100;
         grouped.cgst[cgstPercent] =
           (grouped.cgst[cgstPercent] || 0) + cgstValue;
-      }
 
-      if (sgstPercent > 0 && isDomestic) {
         const sgstValue = (baseAmount * sgstPercent) / 100;
         grouped.sgst[sgstPercent] =
           (grouped.sgst[sgstPercent] || 0) + sgstValue;
       }
 
-      if (igstPercent > 0 && isInternational) {
+      // UPDATED: Removed > 0 check for international IGST
+      if (isInternational) {
         const igstValue = (baseAmount * igstPercent) / 100;
         grouped.igst[igstPercent] =
           (grouped.igst[igstPercent] || 0) + igstValue;
@@ -389,7 +389,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                   </p>
                   {isDomestic && (
                     <p className="text-xs text-gray-700 mt-1">
-                      GSTIN: {data.shipcustomer_gstin}
+                      {/* GSTIN: {data.shipcustomer_gstin} */}
                     </p>
                   )}
                 </td>
@@ -419,7 +419,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                 Item &amp; Description
               </th>
               <th className="border border-gray-400 px-2 py-1 text-center w-16">
-                Hour
+                Items
               </th>
               <th className="border border-gray-400 px-2 py-1 text-center w-20">
                 Rate
@@ -550,6 +550,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
               <div className="flex justify-between">
                 <span>Sub Total</span>
                 <span className="font-semibold">
+                  {/* € {formatNumber(subTotal || 0)} */}
                   ₹ {formatNumber(subTotal || 0)}
                 </span>
               </div>
@@ -558,7 +559,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
               <div className="border-t border-gray-400 my-1"></div>
 
               {(() => {
-                // Collect all distinct percentage slabs (only relevant taxes)
+                // Collect all distinct percentage slabs (UPDATED: including 0%)
                 const percentsSet = new Set();
 
                 if (isDomestic) {
@@ -574,9 +575,10 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                   );
                 }
 
+                // UPDATED: Removed the filter p > 0 to include 0% tax
                 const allPercents = Array.from(percentsSet)
                   .map((p) => parseFloat(p))
-                  .filter((p) => !Number.isNaN(p) && p > 0)
+                  .filter((p) => !Number.isNaN(p))
                   .sort((a, b) => a - b);
 
                 return (
@@ -591,23 +593,27 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                       const lines = [];
 
                       if (isDomestic) {
-                        if (cgstAmount > 0) {
+                        // UPDATED: Show CGST/SGST even if 0
+                        if (cgstAmount !== undefined) {
                           lines.push({
                             label: `CGST (${percent}%)`,
                             value: cgstAmount,
                           });
                         }
-                        if (sgstAmount > 0) {
+                        if (sgstAmount !== undefined) {
                           lines.push({
                             label: `SGST (${percent}%)`,
                             value: sgstAmount,
                           });
                         }
-                      } else if (isInternational && igstAmount > 0) {
-                        lines.push({
-                          label: `IGST (${percent}%)`,
-                          value: igstAmount,
-                        });
+                      } else if (isInternational) {
+                        // UPDATED: Show IGST even if 0
+                        if (igstAmount !== undefined) {
+                          lines.push({
+                            label: `IGST (${percent}%)`,
+                            value: igstAmount,
+                          });
+                        }
                       }
 
                       if (!lines.length) return null;
@@ -637,8 +643,9 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
 
               {/* Grand Total */}
               <div className="flex justify-between border-t border-gray-400 pt-2 mt-2 text-sm">
-                <span className="font-bold">Grand Total</span>
+                <span className="font-bold">Grand Total/Balance Due</span>
                 <span className="font-extrabold text-indigo-700">
+                  {/* € {formatNumber(total || 0)} */}
                   ₹ {formatNumber(total || 0)}
                 </span>
               </div>
