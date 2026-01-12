@@ -259,7 +259,97 @@ export default function SettingsCreation() {
     }));
   };
 
-  const handleOrganisationSubmit = (e) => {
+  const handleUpdate = async () => {
+    const newErrors = {};
+    if (!settings.organizationName.trim())
+      newErrors.organizationName = "Organization name is required";
+    if (!settings.country.trim()) newErrors.country = "Country is required";
+    if (!settings.companyName.trim())
+      newErrors.companyName = "Company name is required";
+    if (!settings.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
+    if (settings.addresses.every((addr) => !addr?.value?.trim()))
+      newErrors.address = "At least one address is required";
+    if (!settings.phone.trim()) newErrors.phone = "Phone number is required";
+    if (!settings.email.trim()) newErrors.email = "Email is required";
+
+    if (Object.keys(newErrors).length > 0) {
+      setInputErrors(newErrors);
+      return;
+    }
+
+    setInputErrors({});
+    
+    const updateData = {
+      organizationName: settings.organizationName,
+      companyName: settings.companyName,
+      gstIN: settings.gstIN,
+      addresses: settings.addresses,
+      country: settings.country,
+      countryCode: settings.countryCode,
+      phone: settings.phone,
+      email: settings.email,
+      invoicePrefix: settings.invoicePrefix,
+      startingInvoiceNo: settings.startingInvoiceNo,
+      dateFormat: settings.dateFormat,
+      currency: settings.currency,
+      paymentTerms: settings.paymentTerms,
+      latePaymentFee: settings.latePaymentFee,
+      earlyDiscount: settings.earlyDiscount,
+      discountDays: settings.discountDays,
+      paymentInstructions: settings.paymentInstructions,
+      accountHolder: settings.accountHolder,
+      bankName: settings.bankName,
+      accountNumber: settings.accountNumber,
+      ifscCode: settings.ifscCode,
+      upiId: settings.upiId,
+      footerNote: settings.footerNote,
+      taxRegime: settings.taxRegime,
+      taxType: settings.taxType,
+      cgst: settings.cgst,
+      sgst: settings.sgst,
+      igst: settings.igst,
+      inputTaxCredit: settings.inputTaxCredit,
+      requireHSN: settings.requireHSN,
+      roundingRule: settings.roundingRule,
+      taxNotes: settings.taxNotes,
+      enabledMethods: settings.enabledMethods,
+      paymentBankName: settings.paymentBankName,
+      paymentAccountNo: settings.paymentAccountNo,
+      paymentIFSC: settings.paymentIFSC,
+      paymentAccountHolder: settings.paymentAccountHolder,
+      paymentUpiId: settings.paymentUpiId,
+      paypalEmail: settings.paypalEmail,
+      paypalClientId: settings.paypalClientId,
+      cardProvider: settings.cardProvider,
+      cardApiKey: settings.cardApiKey,
+      cashInstructions: settings.cashInstructions,
+      customPaymentName: settings.customPaymentName
+    };
+    
+    console.log('Sending update data:', updateData);
+    console.log('Organization ID:', orgId);
+    
+    try {
+      const response = await axios.put(
+        `${KeyUri.BACKENDURI}/organisation/${orgId}`,
+        updateData
+      );
+      console.log('Update response:', response.data);
+      
+      // Check if the backend actually updated by fetching fresh data
+      const checkResponse = await axios.get(`${KeyUri.BACKENDURI}/organisation/${orgId}`);
+      console.log('Fresh data after update:', checkResponse.data);
+      
+      toast.success('Organization updated successfully!');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Update failed:', error);
+      console.error('Error response:', error.response?.data);
+      toast.error('Update failed: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleOrganisationSubmit = async (e) => {
     console.log("first")
     e.preventDefault();
 
@@ -288,30 +378,90 @@ export default function SettingsCreation() {
 
     //clear error message
     setInputErrors({});
-    // toast.success("Settings saved successfully!");
-    // console.log(settings);
-    // dispatch(createOrganisation(settings))
+    
+    // Map frontend field names to backend expected field names
+    const mappedSettings = {
+      organizationName: settings.organizationName,
+      companyName: settings.companyName,
+      gstIN: settings.gstIN,
+      addresses: settings.addresses,
+      country: settings.country,
+      countryCode: settings.countryCode,
+      phone: settings.phone,
+      email: settings.email,
+      // Invoice fields - use camelCase since backend returns camelCase
+      invoicePrefix: settings.invoicePrefix,
+      startingInvoiceNo: settings.startingInvoiceNo,
+      dateFormat: settings.dateFormat,
+      currency: settings.currency,
+      paymentTerms: settings.paymentTerms,
+      latePaymentFee: settings.latePaymentFee,
+      earlyDiscount: settings.earlyDiscount,
+      discountDays: settings.discountDays,
+      paymentInstructions: settings.paymentInstructions,
+      accountHolder: settings.accountHolder,
+      bankName: settings.bankName,
+      accountNumber: settings.accountNumber,
+      ifscCode: settings.ifscCode,
+      upiId: settings.upiId,
+      footerNote: settings.footerNote,
+      // Tax fields
+      taxRegime: settings.taxRegime,
+      taxType: settings.taxType,
+      cgst: settings.cgst,
+      sgst: settings.sgst,
+      igst: settings.igst,
+      inputTaxCredit: settings.inputTaxCredit,
+      requireHSN: settings.requireHSN,
+      roundingRule: settings.roundingRule,
+      taxNotes: settings.taxNotes,
+      // Payment fields
+      enabledMethods: settings.enabledMethods,
+      paymentBankName: settings.paymentBankName,
+      paymentAccountNo: settings.paymentAccountNo,
+      paymentIFSC: settings.paymentIFSC,
+      paymentAccountHolder: settings.paymentAccountHolder,
+      paymentUpiId: settings.paymentUpiId,
+      paypalEmail: settings.paypalEmail,
+      paypalClientId: settings.paypalClientId,
+      cardProvider: settings.cardProvider,
+      cardApiKey: settings.cardApiKey,
+      cashInstructions: settings.cashInstructions,
+      customPaymentName: settings.customPaymentName,
+      // User fields
+      newUserName: settings.newUserName,
+      newUserEmail: settings.newUserEmail,
+      newUserRole: settings.newUserRole,
+      newUserStatus: settings.newUserStatus,
+      permissions: settings.permissions
+    };
+    
     if(isEditing){
       console.log("editing mode")
-      dispatch(updateOrganisationData(orgId,settings))
-      JSON.stringify(localStorage.setItem("email",settings.email))
-
-      setIsEditing(false)
+      console.log("Sending data to API:", mappedSettings)
+      console.log("Organization ID:", orgId)
+      try {
+       dispatch(updateOrganisationData(orgId, mappedSettings))
+        // Don't refetch - just keep the current form data as it's already updated
+        JSON.stringify(localStorage.setItem("email",settings.email))
+        // setIsEditing(false)
+      } catch (error) {
+        console.error('Update failed:', error)
+      }
     }else{
-      
-      dispatch(createOrganisation(settings))
+      dispatch(createOrganisation(mappedSettings))
       JSON.stringify(localStorage.setItem("email",settings.email))
+      // Only reset form after creating new organization
+      setSettings({
+        ...initialSettings,
+        addresses: (initialSettings.addresses || []).map((addr) => ({
+          ...addr,
+          value: "",
+          isEditing: false,
+        })),
+      });
+      setSelected("");
     }
-    setSettings({
-      ...initialSettings,
-      addresses: (initialSettings.addresses || []).map((addr) => ({
-        ...addr,
-        value: "",
-        isEditing: false,
-      })),
-    });
-    setSelected("");
-    // if (!validateForm()) return;
   };
 
   const handleSave = (e) => {
@@ -342,14 +492,60 @@ useEffect(()=>{
  if(currentOrganisation){
   setSettings((prev)=>({
     ...prev,
-    organizationName:currentOrganisation?.organizationName || "",
-    companyName:currentOrganisation?.companyName || "",
-    gstIN:currentOrganisation?.gstIN || "",
+    // Organization fields
+    organizationName: currentOrganisation?.organizationName || "",
+    companyName: currentOrganisation?.companyName || "",
+    gstIN: currentOrganisation?.gstIN || "",
     country: currentOrganisation.country || "",
     countryCode: currentOrganisation.countryCode || "",
     phone: currentOrganisation.phone || "",
     email: currentOrganisation.email || "",
     addresses: currentOrganisation.addresses?.length ? currentOrganisation.addresses : prev.addresses,
+    // Invoice fields
+    invoicePrefix: currentOrganisation?.invoicePrefix || "INV",
+    startingInvoiceNo: currentOrganisation?.startingInvoiceNo || "1001",
+    dateFormat: currentOrganisation?.dateFormat || "DD/MM/YYYY",
+    currency: currentOrganisation?.currency || "INR",
+    paymentTerms: currentOrganisation?.paymentTerms || "30",
+    latePaymentFee: currentOrganisation?.latePaymentFee || "",
+    earlyDiscount: currentOrganisation?.earlyDiscount || "",
+    discountDays: currentOrganisation?.discountDays || "",
+    paymentInstructions: currentOrganisation?.paymentInstructions || "",
+    accountHolder: currentOrganisation?.accountHolder || "",
+    bankName: currentOrganisation?.bankName || "",
+    accountNumber: currentOrganisation?.accountNumber || "",
+    ifscCode: currentOrganisation?.ifscCode || "",
+    upiId: currentOrganisation?.upiId || "",
+    footerNote: currentOrganisation?.footerNote || "",
+    // Tax fields
+    taxRegime: currentOrganisation?.taxRegime || "GST",
+    taxType: currentOrganisation?.taxType || "exclusive",
+    cgst: currentOrganisation?.cgst || "",
+    sgst: currentOrganisation?.sgst || "",
+    igst: currentOrganisation?.igst || "",
+    inputTaxCredit: currentOrganisation?.inputTaxCredit || "enabled",
+    requireHSN: currentOrganisation?.requireHSN || "yes",
+    roundingRule: currentOrganisation?.roundingRule || "nearest",
+    taxNotes: currentOrganisation?.taxNotes || "",
+    // Payment fields
+    enabledMethods: currentOrganisation?.enabledMethods || prev.enabledMethods,
+    paymentBankName: currentOrganisation?.paymentBankName || "",
+    paymentAccountNo: currentOrganisation?.paymentAccountNo || "",
+    paymentIFSC: currentOrganisation?.paymentIFSC || "",
+    paymentAccountHolder: currentOrganisation?.paymentAccountHolder || "",
+    paymentUpiId: currentOrganisation?.paymentUpiId || "",
+    paypalEmail: currentOrganisation?.paypalEmail || "",
+    paypalClientId: currentOrganisation?.paypalClientId || "",
+    cardProvider: currentOrganisation?.cardProvider || "",
+    cardApiKey: currentOrganisation?.cardApiKey || "",
+    cashInstructions: currentOrganisation?.cashInstructions || "",
+    customPaymentName: currentOrganisation?.customPaymentName || "",
+    // User fields
+    newUserName: currentOrganisation?.newUserName || "",
+    newUserEmail: currentOrganisation?.newUserEmail || "",
+    newUserRole: currentOrganisation?.newUserRole || "Viewer",
+    newUserStatus: currentOrganisation?.newUserStatus || "Active",
+    permissions: currentOrganisation?.permissions || prev.permissions,
   }))
   const foundCountry = countriesData.countries.find(
           (c) =>
@@ -361,7 +557,7 @@ useEffect(()=>{
   
         setInputErrors({});
  }
-},[orgId,currentOrganisation])
+},[currentOrganisation]) // Remove orgId from dependency array
 
   const handleReset = () => {
     setSettings(initialSettings);
@@ -439,9 +635,9 @@ useEffect(()=>{
             <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 pb-3">
               <button
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
-                onClick={handleSave}
+                onClick={isEditing ? handleUpdate : handleSave}
               >
-                💾 Save
+                {isEditing ? "🔄 Update" : "💾 Save"}
               </button>
               <button
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"

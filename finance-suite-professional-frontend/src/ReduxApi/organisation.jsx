@@ -90,7 +90,7 @@ export const fetchOneOrganisation = (orgID) => async (dispatch) => {
   dispatch(getOrganisation())
   try {
     const { data } = await axios.get(
-      `${KeyUri.BACKENDURI}/organisation/${orgID}`,
+      `${KeyUri.BACKENDURI}/organisation/${orgID}?t=${Date.now()}`,
       config
     )
     dispatch(getOneOrganisation(data))
@@ -103,6 +103,8 @@ export const fetchOneOrganisation = (orgID) => async (dispatch) => {
 
 export const updateOrganisationData =
   (organID, organData) => async (dispatch) => {
+    console.log('Redux: Updating organization with ID:', organID)
+    console.log('Redux: Update data:', organData)
     dispatch(getOrganisation())
     try {
       const { data } = await axios.put(
@@ -110,15 +112,18 @@ export const updateOrganisationData =
         organData,
         config
       )
+      console.log('Redux: Update response:', data)
       toast.success(data.message)
-      dispatch(fetchOrganisationData())
+      // return data // Return the response for the component to handle
+      
     } catch (error) {
-      console.error('Error updating:', error)
+      console.error('Redux: Error updating:', error)
       toast.error(
         error?.response?.data?.message ||
           `Failed: ${error?.response?.statusText || 'Unknown error'}`
       )
       dispatch(getOrganisationFailure())
+      throw error // Re-throw for component error handling
     }
   }
 
