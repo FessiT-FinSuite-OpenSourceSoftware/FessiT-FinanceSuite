@@ -110,7 +110,7 @@ export default function CustomerList() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAction, setShowAction] = useState(null);
-  const [page,setPage] = useState(5)
+  const [page,setPage] = useState(10)
   const { id } = useParams();
   const dispatch = useDispatch();
   const nav = useNavigate();
@@ -131,6 +131,8 @@ export default function CustomerList() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentCustomer = filteredCustomers.slice(startIndex, endIndex);
+
+  
 
   useEffect(() => {
     setCurrentPage(1);
@@ -262,10 +264,10 @@ export default function CustomerList() {
         </div>
 
         {/* Customer Table */}
-        <div className="bg-white h-85 rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-50 border-b border-gray-200 ">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Customer
@@ -288,6 +290,7 @@ export default function CustomerList() {
               <tbody className="divide-y divide-gray-200">
                 {currentCustomer?.length > 0 ? (
                   currentCustomer?.map((item) => (
+                    
                     <tr
                       key={item?._id?.$oid}
                       className="hover:bg-gray-50 transition-colors"
@@ -388,7 +391,7 @@ export default function CustomerList() {
 
         </div>
                   {filteredCustomers?.length > 0 && (
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center ">
               <p className="text-sm text-gray-600">
                 Showing {startIndex + 1} to{" "}
                 {Math.min(endIndex, filteredCustomers?.length)} of{" "}
@@ -400,7 +403,7 @@ export default function CustomerList() {
                 // value={page?page:""}
                 className="bg-gray-200 text-sm px-2 py-2 rounded-sm w-44"
                 >
-                 <option value={page}>All</option>
+                 <option value={10}>All</option>
                  <option value={1}>One</option>
                  <option value={2}>Two</option>
                  <option value={3}>Three</option>

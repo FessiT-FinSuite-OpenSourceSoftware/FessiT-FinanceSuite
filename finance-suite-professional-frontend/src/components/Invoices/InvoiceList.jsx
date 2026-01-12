@@ -37,7 +37,7 @@ export default function InvoiceList() {
   const [showInvoiceOptions, setShowInvoiceOptions] = useState(false);
 
   const nav = useNavigate();
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   // Fetch invoices from backend on mount
   useEffect(() => {

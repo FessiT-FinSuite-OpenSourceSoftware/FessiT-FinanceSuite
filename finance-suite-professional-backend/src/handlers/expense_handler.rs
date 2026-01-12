@@ -43,7 +43,7 @@ pub struct ExpenseListResponse {
     pub limit: Option<i64>,
 }
 
-/// POST /api/v1/expenses
+/// POST /expenses
 /// multipart/form-data fields:
 ///   - expenseTitle
 ///   - projectCostCenter
@@ -52,7 +52,7 @@ pub struct ExpenseListResponse {
 ///   - notes
 ///   - items (JSON string array of expense items)
 ///   - receipt_0, receipt_1, etc. (files for each item)
-#[post("/expenses")]
+#[post("")]
 pub async fn create_expense(
     service: Data<ExpenseService>,
     mut payload: Multipart,
@@ -200,8 +200,8 @@ pub async fn create_expense(
     Ok(HttpResponse::Created().json(saved))
 }
 
-/// GET /api/v1/expenses
-#[get("/expenses")]
+/// GET /expenses
+#[get("")]
 pub async fn list_expenses(
     service: Data<ExpenseService>,
     query: Query<ExpenseQuery>,
@@ -255,8 +255,8 @@ pub async fn list_expenses(
     }))
 }
 
-/// GET /api/v1/expenses/{id}
-#[get("/expenses/{id}")]
+/// GET /expenses/{id}
+#[get("/{id}")]
 pub async fn get_expense(
     service: Data<ExpenseService>,
     id: Path<String>,
@@ -277,8 +277,8 @@ pub async fn get_expense(
     }
 }
 
-/// PUT /api/v1/expenses/{id}
-#[put("/expenses/{id}")]
+/// PUT /expenses/{id}
+#[put("/{id}")]
 pub async fn update_expense(
     service: Data<ExpenseService>,
     id: Path<String>,
@@ -451,8 +451,8 @@ pub async fn update_expense(
     }
 }
 
-/// DELETE /api/v1/expenses/{id}
-#[delete("/expenses/{id}")]
+/// DELETE /expenses/{id}
+#[delete("/{id}")]
 pub async fn delete_expense(
     service: Data<ExpenseService>,
     id: Path<String>,
@@ -490,9 +490,9 @@ pub async fn delete_expense(
     }
 }
 
-/// GET /api/v1/expenses/receipt/{filename}
+/// GET /expenses/receipt/{filename}
 /// Serves the stored receipt file so UI can preview/download
-#[get("/expenses/receipt/{filename}")]
+#[get("/receipt/{filename}")]
 pub async fn get_expense_receipt(path: Path<String>) -> actix_web::Result<NamedFile> {
     use std::path::Path;
 
@@ -506,9 +506,9 @@ pub async fn get_expense_receipt(path: Path<String>) -> actix_web::Result<NamedF
     Ok(NamedFile::open(filepath).map_err(actix_web::error::ErrorInternalServerError)?)
 }
 
-/// GET /api/v1/expenses/stats/summary
+/// GET /expenses/stats/summary
 /// Get overall expense statistics
-#[get("/expenses/stats/summary")]
+#[get("/stats/summary")]
 pub async fn get_expense_summary(
     service: Data<ExpenseService>,
 ) -> actix_web::Result<impl Responder> {
@@ -520,9 +520,9 @@ pub async fn get_expense_summary(
     Ok(HttpResponse::Ok().json(summary))
 }
 
-/// GET /api/v1/expenses/stats/project/{project}
+/// GET /expenses/stats/project/{project}
 /// Get statistics for a specific project
-#[get("/expenses/stats/project/{project}")]
+#[get("/stats/project/{project}")]
 pub async fn get_project_statistics(
     service: Data<ExpenseService>,
     project: Path<String>,
@@ -537,29 +537,29 @@ pub async fn get_project_statistics(
     Ok(HttpResponse::Ok().json(stats))
 }
 
-/// GET /api/v1/expenses/projects
+/// GET /expenses/projects
 /// Get all unique project names
-#[get("/expenses/projects")]
+#[get("/projects")]
 pub async fn get_all_projects(service: Data<ExpenseService>) -> actix_web::Result<impl Responder> {
     let projects = service
         .get_all_projects()
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    Ok(HttpResponse::Ok().json(json!({
-        "projects": projects
-    })))
+   Ok(HttpResponse::Ok().json(projects)) 
 }
 
-/// Register routes under /api/v1
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(create_expense)
-        .service(list_expenses)
-        .service(get_expense)
-        .service(update_expense)
-        .service(delete_expense)
-        .service(get_expense_receipt)
-        .service(get_expense_summary)
-        .service(get_project_statistics)
-        .service(get_all_projects);
+    cfg.service(
+        web::scope("/expenses")
+            .service(create_expense)
+            .service(list_expenses)
+            .service(get_expense_receipt)
+            .service(get_expense_summary)
+            .service(get_project_statistics)
+            .service(get_all_projects)
+            .service(get_expense)
+            .service(update_expense)
+            .service(delete_expense),
+    );
 }

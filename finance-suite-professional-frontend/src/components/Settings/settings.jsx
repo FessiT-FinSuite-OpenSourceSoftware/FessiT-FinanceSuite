@@ -294,6 +294,8 @@ export default function SettingsCreation() {
     if(isEditing){
       console.log("editing mode")
       dispatch(updateOrganisationData(orgId,settings))
+      JSON.stringify(localStorage.setItem("email",settings.email))
+
       setIsEditing(false)
     }else{
       
@@ -322,11 +324,13 @@ export default function SettingsCreation() {
     // handleInvoiceSubmit();
     console.log("invoice")
   }
+  console.log(settings)
+  // handleOrganisationSubmit(e)
 };
 
 const handleEdit = async()=>{
   setIsEditing(true)
-  const response =await axios.get(KeyUri.BACKENDURI + `/organisation/email/${localStorage.getItem('email')}`)
+  const response =await axios.get(KeyUri.BACKENDURI + `/organisation/by-email/${localStorage.getItem('email')}`)
   console.log(response?.data?._id?.$oid)
   setOrgID(response?.data?._id?.$oid)
   dispatch(fetchOneOrganisation(response?.data?._id?.$oid))
@@ -338,21 +342,14 @@ useEffect(()=>{
  if(currentOrganisation){
   setSettings((prev)=>({
     ...prev,
-    organizationName:currentOrganisation?.organizationName,
-    companyName:currentOrganisation?.companyName|| "",
+    organizationName:currentOrganisation?.organizationName || "",
+    companyName:currentOrganisation?.companyName || "",
     gstIN:currentOrganisation?.gstIN || "",
-    
     country: currentOrganisation.country || "",
+    countryCode: currentOrganisation.countryCode || "",
     phone: currentOrganisation.phone || "",
     email: currentOrganisation.email || "",
-    addresses: currentOrganisation.addresses?.length
-          ? currentOrganisation.addresses
-          : prev.addresses,
-
-
-    
-
-
+    addresses: currentOrganisation.addresses?.length ? currentOrganisation.addresses : prev.addresses,
   }))
   const foundCountry = countriesData.countries.find(
           (c) =>
@@ -797,7 +794,7 @@ useEffect(()=>{
                 <input
                   type="number"
                   name="startingInvoiceNo"
-                  value={settings.startingInvoiceNo || ""}
+                  value={settings.startingInvoiceNo}
                   onChange={handleChange}
                   className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
                   placeholder="e.g., 1001"

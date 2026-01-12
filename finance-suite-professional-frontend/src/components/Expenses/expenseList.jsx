@@ -121,9 +121,11 @@ export default function ExpenseList() {
     const fetchProjects = async () => {
       try {
         const res = await fetch(`${KeyUri.BACKENDURI}/expenses/projects`, config);
+        // console.log(res)
         if (res.ok) {
           const data = await res.json();
-          setProjects(data.projects || []);
+          // console.log(data)
+          setProjects(data|| []);
         }
       } catch (err) {
         console.error("Failed to fetch projects:", err);
@@ -218,7 +220,7 @@ export default function ExpenseList() {
                   }}
                 >
                   <option value="All">All Projects</option>
-                  {projects.map((proj) => (
+                  {projects?.map((proj) => (
                     <option key={proj} value={proj}>
                       {proj}
                     </option>

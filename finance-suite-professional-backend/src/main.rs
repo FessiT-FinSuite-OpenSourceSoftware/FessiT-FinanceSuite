@@ -13,7 +13,9 @@ use std::env;
 
 use db::MongoDbClient;
 use handlers::{
-    configure_customer_routes, configure_expense_routes, configure_invoice_routes,
+    configure_customer_routes, 
+    configure_expense_routes, 
+    configure_invoice_routes,
     configure_organisation_routes,
 };
 use repository::{
