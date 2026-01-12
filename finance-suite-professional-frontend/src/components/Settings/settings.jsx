@@ -315,17 +315,17 @@ export default function SettingsCreation() {
   };
 
   const handleSave = (e) => {
-  if (activeTab === "organization") {
-    handleOrganisationSubmit(e);
-  } else if (activeTab === "customer") {
-    // handleCustomerSubmit();
-    console.log(" customer")
-  } else if (activeTab === "invoice") {
-    // handleInvoiceSubmit();
-    console.log("invoice")
-  }
+  // if (activeTab === "organization") {
+  //   handleOrganisationSubmit(e);
+  // } else if (activeTab === "customer") {
+  //   // handleCustomerSubmit();
+  //   console.log(" customer")
+  // } else if (activeTab === "invoice") {
+  //   // handleInvoiceSubmit();
+  //   console.log("invoice")
+  // }
   console.log(settings)
-  // handleOrganisationSubmit(e)
+  handleOrganisationSubmit(e)
 };
 
 const handleEdit = async()=>{
