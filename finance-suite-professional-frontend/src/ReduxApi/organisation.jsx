@@ -108,7 +108,7 @@ export const updateOrganisationData =
     dispatch(getOrganisation())
     try {
       const { data } = await axios.put(
-        `${KeyUri.BACKENDURI}/organisation/${organID}`,
+        `${KeyUri.BACKENDURI}/organisationsUpdate/${organID}`,
         organData,
         config
       )

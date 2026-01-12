@@ -53,10 +53,10 @@ impl OrganisationService{
         req.validate()?;
 
         // Check if customer exists
-        self.repository
+       let _existing = self.repository
             .find_by_id(id)
             .await?
-            .ok_or_else(|| ApiError::NotFound(format!("Customer with id {} not found", id)))?;
+            .ok_or_else(|| ApiError::NotFound(format!("Organization with id {} not found", id)))?;
 
         // Validate addresses if provided
         if let Some(ref addresses) = req.addresses {
@@ -71,7 +71,8 @@ impl OrganisationService{
         }
 
     
-        self.repository.update(id, req).await
+       Ok(self.repository.update(id, req).await?)
+
     }
      pub async fn delete_organisation(&self, id: &str) -> Result<bool, ApiError> {
         // Check if customer exists

@@ -246,11 +246,20 @@ pub struct CreateOrganisationRequest {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateOrganizationRequest {
+    #[serde(rename = "organizationName")]
+
     pub organisation_name: Option<String>,
+    #[serde(rename = "companyName")]
+
     pub company_name: Option<String>,
+    #[serde(rename = "gstIN")]
+
     pub gst_in: Option<String>,
+
     pub addresses: Option<Vec<Address>>,
     pub country: Option<String>,
+        #[serde(rename = "countryCode")]
+
     pub country_code: Option<String>,
     pub phone: Option<String>,
     pub email: Option<String>,

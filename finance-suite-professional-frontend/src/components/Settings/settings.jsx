@@ -288,59 +288,54 @@ export default function SettingsCreation() {
       countryCode: settings.countryCode,
       phone: settings.phone,
       email: settings.email,
-      invoicePrefix: settings.invoicePrefix,
-      startingInvoiceNo: settings.startingInvoiceNo,
-      dateFormat: settings.dateFormat,
+      invoice_prefix: settings.invoicePrefix,
+      starting_invoice_no: settings.startingInvoiceNo,
+      date_format: settings.dateFormat,
       currency: settings.currency,
-      paymentTerms: settings.paymentTerms,
-      latePaymentFee: settings.latePaymentFee,
-      earlyDiscount: settings.earlyDiscount,
-      discountDays: settings.discountDays,
-      paymentInstructions: settings.paymentInstructions,
-      accountHolder: settings.accountHolder,
-      bankName: settings.bankName,
-      accountNumber: settings.accountNumber,
-      ifscCode: settings.ifscCode,
-      upiId: settings.upiId,
-      footerNote: settings.footerNote,
-      taxRegime: settings.taxRegime,
-      taxType: settings.taxType,
+      payment_terms: settings.paymentTerms,
+      late_payment_fee: settings.latePaymentFee,
+      early_discount: settings.earlyDiscount,
+      discount_days: settings.discountDays,
+      payment_instructions: settings.paymentInstructions,
+      account_holder: settings.accountHolder,
+      bank_name: settings.bankName,
+      account_number: settings.accountNumber,
+      ifsc_code: settings.ifscCode,
+      upi_id: settings.upiId,
+      footer_note: settings.footerNote,
+      tax_regime: settings.taxRegime,
+      tax_type: settings.taxType,
       cgst: settings.cgst,
       sgst: settings.sgst,
       igst: settings.igst,
-      inputTaxCredit: settings.inputTaxCredit,
-      requireHSN: settings.requireHSN,
-      roundingRule: settings.roundingRule,
-      taxNotes: settings.taxNotes,
-      enabledMethods: settings.enabledMethods,
-      paymentBankName: settings.paymentBankName,
-      paymentAccountNo: settings.paymentAccountNo,
-      paymentIFSC: settings.paymentIFSC,
-      paymentAccountHolder: settings.paymentAccountHolder,
-      paymentUpiId: settings.paymentUpiId,
-      paypalEmail: settings.paypalEmail,
-      paypalClientId: settings.paypalClientId,
-      cardProvider: settings.cardProvider,
-      cardApiKey: settings.cardApiKey,
-      cashInstructions: settings.cashInstructions,
-      customPaymentName: settings.customPaymentName
+      input_tax_credit: settings.inputTaxCredit,
+      require_hsn: settings.requireHSN,
+      rounding_rule: settings.roundingRule,
+      tax_notes: settings.taxNotes,
+      enabled_methods: settings.enabledMethods,
+      payment_bank_name: settings.paymentBankName,
+      payment_account_no: settings.paymentAccountNo,
+      payment_ifsc: settings.paymentIFSC,
+      payment_account_holder: settings.paymentAccountHolder,
+      payment_upi_id: settings.paymentUpiId,
+      paypal_email: settings.paypalEmail,
+      paypal_client_id: settings.paypalClientId,
+      card_provider: settings.cardProvider,
+      card_api_key: settings.cardApiKey,
+      cash_instructions: settings.cashInstructions,
+      custom_payment_name: settings.customPaymentName
     };
     
     console.log('Sending update data:', updateData);
     console.log('Organization ID:', orgId);
     
     try {
-      const response = await axios.put(
-        `${KeyUri.BACKENDURI}/organisation/${orgId}`,
-        updateData
-      );
-      console.log('Update response:', response.data);
+      dispatch(updateOrganisationData(orgId,updateData))
+   
       
-      // Check if the backend actually updated by fetching fresh data
-      const checkResponse = await axios.get(`${KeyUri.BACKENDURI}/organisation/${orgId}`);
-      console.log('Fresh data after update:', checkResponse.data);
       
-      toast.success('Organization updated successfully!');
+      
+     
       setIsEditing(false);
     } catch (error) {
       console.error('Update failed:', error);
@@ -389,50 +384,50 @@ export default function SettingsCreation() {
       countryCode: settings.countryCode,
       phone: settings.phone,
       email: settings.email,
-      // Invoice fields - use camelCase since backend returns camelCase
-      invoicePrefix: settings.invoicePrefix,
-      startingInvoiceNo: settings.startingInvoiceNo,
-      dateFormat: settings.dateFormat,
+      // Invoice fields - use snake_case to match backend expectations
+      invoice_prefix: settings.invoicePrefix,
+      starting_invoice_no: settings.startingInvoiceNo,
+      date_format: settings.dateFormat,
       currency: settings.currency,
-      paymentTerms: settings.paymentTerms,
-      latePaymentFee: settings.latePaymentFee,
-      earlyDiscount: settings.earlyDiscount,
-      discountDays: settings.discountDays,
-      paymentInstructions: settings.paymentInstructions,
-      accountHolder: settings.accountHolder,
-      bankName: settings.bankName,
-      accountNumber: settings.accountNumber,
-      ifscCode: settings.ifscCode,
-      upiId: settings.upiId,
-      footerNote: settings.footerNote,
-      // Tax fields
-      taxRegime: settings.taxRegime,
-      taxType: settings.taxType,
+      payment_terms: settings.paymentTerms,
+      late_payment_fee: settings.latePaymentFee,
+      early_discount: settings.earlyDiscount,
+      discount_days: settings.discountDays,
+      payment_instructions: settings.paymentInstructions,
+      account_holder: settings.accountHolder,
+      bank_name: settings.bankName,
+      account_number: settings.accountNumber,
+      ifsc_code: settings.ifscCode,
+      upi_id: settings.upiId,
+      footer_note: settings.footerNote,
+      // Tax fields - use snake_case to match backend expectations
+      tax_regime: settings.taxRegime,
+      tax_type: settings.taxType,
       cgst: settings.cgst,
       sgst: settings.sgst,
       igst: settings.igst,
-      inputTaxCredit: settings.inputTaxCredit,
-      requireHSN: settings.requireHSN,
-      roundingRule: settings.roundingRule,
-      taxNotes: settings.taxNotes,
-      // Payment fields
-      enabledMethods: settings.enabledMethods,
-      paymentBankName: settings.paymentBankName,
-      paymentAccountNo: settings.paymentAccountNo,
-      paymentIFSC: settings.paymentIFSC,
-      paymentAccountHolder: settings.paymentAccountHolder,
-      paymentUpiId: settings.paymentUpiId,
-      paypalEmail: settings.paypalEmail,
-      paypalClientId: settings.paypalClientId,
-      cardProvider: settings.cardProvider,
-      cardApiKey: settings.cardApiKey,
-      cashInstructions: settings.cashInstructions,
-      customPaymentName: settings.customPaymentName,
-      // User fields
-      newUserName: settings.newUserName,
-      newUserEmail: settings.newUserEmail,
-      newUserRole: settings.newUserRole,
-      newUserStatus: settings.newUserStatus,
+      input_tax_credit: settings.inputTaxCredit,
+      require_hsn: settings.requireHSN,
+      rounding_rule: settings.roundingRule,
+      tax_notes: settings.taxNotes,
+      // Payment fields - use snake_case to match backend expectations
+      enabled_methods: settings.enabledMethods,
+      payment_bank_name: settings.paymentBankName,
+      payment_account_no: settings.paymentAccountNo,
+      payment_ifsc: settings.paymentIFSC,
+      payment_account_holder: settings.paymentAccountHolder,
+      payment_upi_id: settings.paymentUpiId,
+      paypal_email: settings.paypalEmail,
+      paypal_client_id: settings.paypalClientId,
+      card_provider: settings.cardProvider,
+      card_api_key: settings.cardApiKey,
+      cash_instructions: settings.cashInstructions,
+      custom_payment_name: settings.customPaymentName,
+      // User fields - use snake_case to match backend expectations
+      new_user_name: settings.newUserName,
+      new_user_email: settings.newUserEmail,
+      new_user_role: settings.newUserRole,
+      new_user_status: settings.newUserStatus,
       permissions: settings.permissions
     };
     
