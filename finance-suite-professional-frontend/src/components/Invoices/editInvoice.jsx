@@ -84,6 +84,7 @@ export default function EditInvoice() {
         const sgstValue = (baseAmount * sgstPercent) / 100;
 
         grouped.cgst[cgstPercent] =
+          //(grouped.cgst[cgstPercent] || 0) + cgstValue;
           (grouped.cgst[cgstPercent] || 0) + cgstValue;
         grouped.sgst[sgstPercent] =
           (grouped.sgst[sgstPercent] || 0) + sgstValue;
@@ -99,47 +100,41 @@ export default function EditInvoice() {
   };
 
   // Recalculate totals when items or invoice_type change
-  useEffect(() => {
-    if (!invoiceData || !Array.isArray(invoiceData.items)) return;
+  // Recalculate totals when items or invoice_type change
+// Add this new useEffect after the fetchInvoice useEffect
+// Recalculate totals when items or invoice_type change
+useEffect(() => {
+  if (!invoiceData || !Array.isArray(invoiceData.items)) return;
 
-    const subTotal = invoiceData.items.reduce(
-      (sum, item) => sum + (parseFloat(item.itemTotal) || 0),
-      0
-    );
+  // Calculate subTotal as sum of all itemTotal values (hours * rate for each item)
+  const subTotal = invoiceData.items.reduce((sum, item) => {
+    return sum + (parseFloat(item.itemTotal) || 0);
+  }, 0);
 
-    const grouped = groupTaxValues(invoiceData.items);
+  const grouped = groupTaxValues(invoiceData.items);
 
-    let totalCgst = 0;
-    let totalSgst = 0;
-    let totalIgst = 0;
+  let totalCgst = 0;
+  let totalSgst = 0;
+  let totalIgst = 0;
 
-    if (isDomestic) {
-      totalCgst = Object.values(grouped.cgst).reduce(
-        (sum, val) => sum + val,
-        0
-      );
-      totalSgst = Object.values(grouped.sgst).reduce(
-        (sum, val) => sum + val,
-        0
-      );
-    } else if (isInternational) {
-      totalIgst = Object.values(grouped.igst).reduce(
-        (sum, val) => sum + val,
-        0
-      );
-    }
+  if (isDomestic) {
+    totalCgst = Object.values(grouped.cgst).reduce((sum, val) => sum + val, 0);
+    totalSgst = Object.values(grouped.sgst).reduce((sum, val) => sum + val, 0);
+  } else if (isInternational) {
+    totalIgst = Object.values(grouped.igst).reduce((sum, val) => sum + val, 0);
+  }
 
-    const total = subTotal + totalCgst + totalSgst + totalIgst;
+  const total = subTotal + totalCgst + totalSgst + totalIgst;
 
-    setInvoiceData((prev) => ({
-      ...prev,
-      subTotal: subTotal.toFixed(2),
-      totalcgst: totalCgst.toFixed(2),
-      totalsgst: totalSgst.toFixed(2),
-      totaligst: totalIgst.toFixed(2),
-      total: total.toFixed(2),
-    }));
-  }, [invoiceData.items, invoiceData.invoice_type, isDomestic, isInternational]);
+  setInvoiceData((prev) => ({
+    ...prev,
+    subTotal: subTotal.toFixed(2),
+    totalcgst: totalCgst.toFixed(2),
+    totalsgst: totalSgst.toFixed(2),
+    totaligst: totalIgst.toFixed(2),
+    total: total.toFixed(2),
+  }));
+}, [invoiceData.items, invoiceData.invoice_type, isDomestic, isInternational]);
 
   // Load invoice by id
   useEffect(() => {
@@ -261,7 +256,7 @@ export default function EditInvoice() {
     }
   };
 
-  const handleItemChange = (index, e) => {
+  /*const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const updatedItems = [...invoiceData.items];
     const item = updatedItems[index];
@@ -315,7 +310,7 @@ export default function EditInvoice() {
       total =
         baseSubTotal +
         (parseFloat(item.cgst.cgstAmount) || 0) +
-        (parseFloat(item.sgst.sgstAmount) || 0);
+        (parseFloat(item.sgst.cgstAmount) || 0);
     } else if (isInternational) {
       if (name === "igstPercent") {
         item.igst.igstAmount = ((baseSubTotal * igstPercent) / 100).toFixed(2);
@@ -327,7 +322,62 @@ export default function EditInvoice() {
     item.itemTotal = total.toFixed(2);
 
     setInvoiceData({ ...invoiceData, items: updatedItems });
-  };
+  };*/
+  const handleItemChange = (index, e) => {
+  const { name, value } = e.target;
+  const updatedItems = [...invoiceData.items];
+  const item = updatedItems[index];
+
+  if (
+    [
+      "hours",
+      "rate",
+      "cgstPercent",
+      "cgstAmount",
+      "sgstPercent",
+      "sgstAmount",
+      "igstPercent",
+      "igstAmount",
+      "itemTotal",
+    ].includes(name)
+  ) {
+    if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
+      if (name.startsWith("cgst")) {
+        item.cgst[name] = value;
+      } else if (name.startsWith("sgst")) {
+        item.sgst[name] = value;
+      } else if (name.startsWith("igst")) {
+        item.igst[name] = value;
+      } else {
+        item[name] = value;
+      }
+    }
+  } else {
+    item[name] = value;
+  }
+
+  const hours = parseFloat(item.hours) || 0;
+  const rate = parseFloat(item.rate) || 0;
+  const baseSubTotal = hours * rate;
+
+  // Always recalculate tax amounts based on current percentages
+  if (isDomestic) {
+    const cgstPercent = parseFloat(item.cgst?.cgstPercent) || 0;
+    const sgstPercent = parseFloat(item.sgst?.sgstPercent) || 0;
+
+    item.cgst.cgstAmount = ((baseSubTotal * cgstPercent) / 100).toFixed(2);
+    item.sgst.sgstAmount = ((baseSubTotal * sgstPercent) / 100).toFixed(2);
+  } else if (isInternational) {
+    const igstPercent = parseFloat(item.igst?.igstPercent) || 0;
+
+    item.igst.igstAmount = ((baseSubTotal * igstPercent) / 100).toFixed(2);
+  }
+
+  // itemTotal should be ONLY hours * rate (no GST)
+  item.itemTotal = baseSubTotal.toFixed(2);
+
+  setInvoiceData({ ...invoiceData, items: updatedItems });
+};
 
   const addItem = () => {
     setInvoiceData((prev) => ({
@@ -975,7 +1025,7 @@ export default function EditInvoice() {
 
               {/* Items */}
               <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
-                Items
+                Hours
               </h2>
               <div>
                 <table className="w-full border border-gray-300 border-collapse text-sm">
@@ -997,7 +1047,7 @@ export default function EditInvoice() {
                         rowSpan="2"
                         className="border border-gray-300 px-3 py-2 text-center"
                       >
-                        Hour
+                        Hours
                       </th>
                       <th
                         rowSpan="2"
@@ -1254,9 +1304,8 @@ export default function EditInvoice() {
                         </>
                       );
                     } else {
-                      const igstPercentages = Object.keys(grouped.igst).filter(
-                        (percent) => parseFloat(percent) > 0
-                      );
+                      // International - Show IGST (removed filter that excluded 0%)
+                      const igstPercentages = Object.keys(grouped.igst);
 
                       return (
                         <>
