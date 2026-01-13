@@ -191,6 +191,8 @@ pub struct CreateOrganisationRequest {
 
     // Invoice
     pub invoice_prefix: String,
+    #[serde(rename = "startingInvoiceNo")]
+
     pub starting_invoice_no: String,
     pub date_format: String,
     pub currency: String,

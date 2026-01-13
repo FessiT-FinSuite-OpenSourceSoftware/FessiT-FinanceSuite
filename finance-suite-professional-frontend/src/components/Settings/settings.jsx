@@ -20,8 +20,8 @@ const initialSettings = {
   phone: "",
   email: "",
   // --- Invoice Settings ---
-  invoicePrefix: "INV",
-  startingInvoiceNo: "1001",
+  invoicePrefix: "",
+  startingInvoiceNo: "",
   dateFormat: "DD/MM/YYYY",
   currency: "INR",
   paymentTerms: "30",
@@ -92,6 +92,7 @@ export default function SettingsCreation() {
   const [isEditing,setIsEditing] = useState(false)
   const {currentOrganisation} = useSelector(orgamisationSelector)
   const [orgId,setOrgID] = useState(null)
+  const [emailDisable,setEmailDisable] = useState(false)
   const dispatch = useDispatch()
 
   useEffect(() => {
@@ -323,7 +324,12 @@ export default function SettingsCreation() {
       card_provider: settings.cardProvider,
       card_api_key: settings.cardApiKey,
       cash_instructions: settings.cashInstructions,
-      custom_payment_name: settings.customPaymentName
+      custom_payment_name: settings.customPaymentName,
+      new_user_name:settings.newUserName,
+      new_user_email:settings.newUserEmail,
+      new_user_role:settings.newUserRole,
+      new_user_status:settings.newUserStatus,
+      permissions:settings.permissions
     };
     
     console.log('Sending update data:', updateData);
@@ -475,6 +481,7 @@ export default function SettingsCreation() {
 
 const handleEdit = async()=>{
   setIsEditing(true)
+  setEmailDisable(true)
   const response =await axios.get(KeyUri.BACKENDURI + `/organisation/by-email/${localStorage.getItem('email')}`)
   console.log(response?.data?._id?.$oid)
   setOrgID(response?.data?._id?.$oid)
@@ -497,8 +504,8 @@ useEffect(()=>{
     email: currentOrganisation.email || "",
     addresses: currentOrganisation.addresses?.length ? currentOrganisation.addresses : prev.addresses,
     // Invoice fields
-    invoicePrefix: currentOrganisation?.invoicePrefix || "INV",
-    startingInvoiceNo: currentOrganisation?.startingInvoiceNo || "1001",
+    invoicePrefix: currentOrganisation?.invoicePrefix || "",
+    startingInvoiceNo: currentOrganisation?.startingInvoiceNo || "",
     dateFormat: currentOrganisation?.dateFormat || "DD/MM/YYYY",
     currency: currentOrganisation?.currency || "INR",
     paymentTerms: currentOrganisation?.paymentTerms || "30",
@@ -542,6 +549,7 @@ useEffect(()=>{
     newUserStatus: currentOrganisation?.newUserStatus || "Active",
     permissions: currentOrganisation?.permissions || prev.permissions,
   }))
+  setEmailDisable(true)
   const foundCountry = countriesData.countries.find(
           (c) =>
             c.country === currentOrganisation.country ||
@@ -556,6 +564,7 @@ useEffect(()=>{
 
   const handleReset = () => {
     setSettings(initialSettings);
+    setEmailDisable(false)
     setErrors({});
   };
   const filteredCountries = countriesData?.countries?.filter((country) =>
@@ -850,8 +859,9 @@ useEffect(()=>{
                   name="email"
                   value={settings.email}
                   onChange={handleChange}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                  className={`border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500 ${emailDisable && "cursor-not-allowed bg-gray-50"}`}
                   placeholder="Enter organization email"
+                  disabled={emailDisable}
                 />
                 {inputErrors.email && (
                   <p className="absolute text-xs text-red-600 mt-1">
@@ -970,7 +980,7 @@ useEffect(()=>{
                 <input
                   type="text"
                   name="invoicePrefix"
-                  value={settings.invoicePrefix || ""}
+                  value={settings.invoicePrefix}
                   onChange={handleChange}
                   className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
                   placeholder="e.g., INV"
