@@ -312,7 +312,7 @@ console.log(currentCustomer)
       <div className="bg-white rounded-lg shadow-lg p-8 mt-10">
         <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-3 border-b">Customer Details</h2>
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{customer.customerName || 'N/A'}</h1>
+          <h1 className="text-3xl font-bold text-gray-900 capitalize">{customer.customerName || 'N/A'}</h1>
           <p className="text-xl text-gray-600 mt-1">{customer.companyName || 'N/A'}</p>
         </div>
 
