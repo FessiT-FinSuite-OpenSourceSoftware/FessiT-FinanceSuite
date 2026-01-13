@@ -51,12 +51,12 @@ async fn main() -> std::io::Result<()> {
     // 🔹 Organisations
     let organisation_collection = db_client.get_organisation_collection();
     let organisation_repository = OrganisationRepository::new(organisation_collection);
-    let organisation_service = OrganisationService::new(organisation_repository);
+    let organisation_service = OrganisationService::new(organisation_repository.clone());
 
     // 🔹 Invoices
     let invoice_collection = db_client.get_invoice_collection();
     let invoice_repository = InvoiceRepository::new(invoice_collection);
-    let invoice_service = InvoiceService::new(invoice_repository);
+    let invoice_service = InvoiceService::new(invoice_repository, organisation_repository);
 
     // 🔹 Expenses
     let expense_collection = db_client.get_expense_collection();

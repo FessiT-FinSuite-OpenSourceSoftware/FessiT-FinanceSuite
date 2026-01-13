@@ -116,16 +116,41 @@ export default function AddInvoice() {
 
   useEffect(()=>{
     if(currentOrganisation){
-      setInvoiceData((prev) => ({
-        ...prev,
-        company_name: currentOrganisation?.organizationName,
-        gstIN: currentOrganisation?.gstIN,
-        company_address: currentOrganisation?.addresses[0]?.value,
-        company_phone: currentOrganisation?.phone,
-        company_email: currentOrganisation?.email,
-      }));
+      // Fetch next invoice number
+      const fetchNextInvoiceNumber = async () => {
+        try {
+          const response = await axios.get(
+            `${KeyUri.BACKENDURI}/invoices/next-number?org_email=${localStorage.getItem('email')}`
+          );
+          const nextInvoiceNumber = response.data.invoice_number;
+          console.log(nextInvoiceNumber)
+          
+          setInvoiceData((prev) => ({
+            ...prev,
+            company_name: currentOrganisation?.organizationName,
+            gstIN: currentOrganisation?.gstIN,
+            company_address: currentOrganisation?.addresses[0]?.value,
+            company_phone: currentOrganisation?.phone,
+            company_email: currentOrganisation?.email,
+            invoice_number: nextInvoiceNumber
+          }));
+        } catch (error) {
+          console.error('Failed to fetch invoice number:', error);
+          // Fallback to manual format if API fails
+          setInvoiceData((prev) => ({
+            ...prev,
+            company_name: currentOrganisation?.organizationName,
+            gstIN: currentOrganisation?.gstIN,
+            company_address: currentOrganisation?.addresses[0]?.value,
+            company_phone: currentOrganisation?.phone,
+            company_email: currentOrganisation?.email,
+            invoice_number: `${currentOrganisation?.invoicePrefix}-${currentOrganisation?.startingInvoiceNo}`
+          }));
+        }
+      };
+      
+      fetchNextInvoiceNumber();
     }
-
   },[currentOrganisation])
 
   const groupTaxValues = (items = []) => {
@@ -295,7 +320,7 @@ export default function AddInvoice() {
     const { name, value } = e.target;
     
     // Prevent editing of auto-populated fields
-    const autoPopulatedFields = ['company_name', 'gstIN', 'company_address', 'company_phone', 'company_email'];
+    const autoPopulatedFields = ['company_name', 'gstIN', 'company_address', 'company_phone', 'company_email','invoice_number'];
     if (autoPopulatedFields.includes(name)) {
       return; // Don't allow changes to these fields
     }
@@ -535,7 +560,7 @@ export default function AddInvoice() {
     setInputErrors({});
 
     try {
-      const res = await fetch(`${KeyUri.BACKENDURI}/invoices`, {
+      const res = await fetch(`${KeyUri.BACKENDURI}/invoices?org_email=${localStorage.getItem('email')}`, {
         method: "POST",
         headers: config.headers,
         body: JSON.stringify(invoiceData),
@@ -801,10 +826,11 @@ export default function AddInvoice() {
               <input
                 type="text"
                 placeholder="Enter invoice number"
-                className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                className="border border-gray-300 rounded px-3 py-2  bg-gray-50 cursor-not-allowed w-full text-sm text-gray-700 placeholder:text-gray-400"
                 value={invoiceData.invoice_number}
                 name="invoice_number"
                 onChange={handleChange}
+                disabled
               />
               {inputErrors?.invoice_number && (
                 <p className="absolute text-[13px] text-[#f10404]">

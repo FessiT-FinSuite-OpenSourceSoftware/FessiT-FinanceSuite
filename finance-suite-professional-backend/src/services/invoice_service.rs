@@ -2,23 +2,72 @@ use std::sync::Arc;
 
 use crate::{
     models::invoice::Invoice,
-    repository::invoice_repository::InvoiceRepository,
+    repository::{invoice_repository::InvoiceRepository, organisation_repository::OrganisationRepository},
+    error::ApiError,
 };
 
 #[derive(Clone)]
 pub struct InvoiceService {
     repo: Arc<InvoiceRepository>,
+    org_repo: Arc<OrganisationRepository>,
 }
 
 impl InvoiceService {
-    pub fn new(repo: InvoiceRepository) -> Self {
+    pub fn new(repo: InvoiceRepository, org_repo: OrganisationRepository) -> Self {
         Self {
             repo: Arc::new(repo),
+            org_repo: Arc::new(org_repo),
         }
     }
 
-    pub async fn create_invoice(&self, invoice: Invoice) -> anyhow::Result<Invoice> {
+    pub async fn generate_invoice_number(&self, org_email: &str) -> anyhow::Result<String> {
+        let org = self.org_repo.get_organisation_by_email(org_email).await
+            .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))?;
+        let next_sequence = self.org_repo.get_next_invoice_sequence(org_email).await
+            .map_err(|e| anyhow::anyhow!("Failed to get next sequence: {}", e))?;
+        
+        let invoice_number = format!(
+            "{}-{}-{:03}",
+            org.invoice_prefix,
+            org.starting_invoice_no,
+            next_sequence
+        );
+        
+        Ok(invoice_number)
+    }
+
+    pub async fn peek_next_invoice_number(&self, org_email: &str) -> anyhow::Result<String> {
+        let org = self.org_repo.get_organisation_by_email(org_email).await
+            .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))?;
+        let next_sequence = self.org_repo.peek_next_invoice_sequence(org_email).await
+            .map_err(|e| anyhow::anyhow!("Failed to peek next sequence: {}", e))?;
+        
+        let invoice_number = format!(
+            "{}-{}-{:03}",
+            org.invoice_prefix,
+            org.starting_invoice_no,
+            next_sequence
+        );
+        
+        Ok(invoice_number)
+    }
+
+    pub async fn create_invoice(&self, mut invoice: Invoice, org_email: &str) -> anyhow::Result<Invoice> {
+        log::info!("Creating invoice for org_email: {}", org_email);
+        
+        match self.generate_invoice_number(org_email).await {
+            Ok(invoice_number) => {
+                log::info!("Generated invoice number: {}", invoice_number);
+                invoice.invoice_number = invoice_number;
+            }
+            Err(e) => {
+                log::error!("Failed to generate invoice number: {}", e);
+                return Err(e);
+            }
+        }
+        
         let created = self.repo.create_invoice(invoice).await?;
+        log::info!("Invoice created successfully with ID: {:?}", created.id);
         Ok(created)
     }
 

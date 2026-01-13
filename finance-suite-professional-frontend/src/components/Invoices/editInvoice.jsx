@@ -229,6 +229,13 @@ useEffect(() => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Prevent changes to disabled fields
+    const disabledFields = ['company_name', 'gstIN', 'company_address', 'company_email', 'invoice_number'];
+    if (disabledFields.includes(name)) {
+      return;
+    }
+    
     setInvoiceData({ ...invoiceData, [name]: value });
     validateField(name, value);
 
@@ -242,18 +249,8 @@ useEffect(() => {
   };
 
   const handlePhoneChange = (e) => {
-    let { name, value } = e.target;
-    value = value.replace(/\D/g, "");
-
-    setInvoiceData((prev) => ({ ...prev, company_phone: value }));
-    validateField("company_phone", value);
-    if (inputErrors[name]) {
-      setInputErrors((prevErrors) => {
-        const updated = { ...prevErrors };
-        delete updated[name];
-        return updated;
-      });
-    }
+    // Prevent changes to disabled phone field
+    return;
   };
 
   /*const handleItemChange = (index, e) => {
@@ -576,11 +573,12 @@ useEffect(() => {
                   <input
                     type="text"
                     className="border relative border-gray-300 rounded px-3 
-                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                     value={invoiceData.company_name}
                     name="company_name"
                     placeholder="Enter company name"
                     onChange={handleChange}
+                    disabled
                   />
                   {inputErrors?.company_name && (
                     <p className="absolute text-[13px] top-15 text-[#f10404]">
@@ -600,12 +598,13 @@ useEffect(() => {
                   <input
                     type="text"
                     className="border reltive border-gray-300 rounded px-3 
-                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                     value={invoiceData.gstIN}
                     name="gstIN"
                     placeholder="Enter GSTIN"
                     onChange={handleChange}
                     required
+                    disabled
                   />
                   {inputErrors?.gstIN && (
                     <p className="absolute text-[13px] text-[#f10404]">
@@ -625,10 +624,11 @@ useEffect(() => {
                   <textarea
                     placeholder="Enter company address"
                     className="border relative border-gray-300 rounded px-3 
-                      py-2 w-full text-sm text-gray-700 h-20 placeholder:text-gray-400"
+                      py-2 w-full text-sm text-gray-700 h-20 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                     name="company_address"
                     value={invoiceData.company_address}
                     onChange={handleChange}
+                    disabled
                   />
                   {inputErrors?.company_address && (
                     <p className="absolute text-[13px] top-27 text-[#f10404]">
@@ -664,10 +664,11 @@ useEffect(() => {
                         placeholder="Enter phone number"
                         className="border border-l-0 ml-2  border-gray-300 rounded-r-lg px-3 py-2 w-full 
                           text-sm text-gray-700 placeholder:text-gray-400 dark:bg-gray-800 
-                          dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-gray-300"
+                          dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-gray-300 bg-gray-50 cursor-not-allowed"
                         onChange={handlePhoneChange}
                         value={invoiceData?.company_phone}
                         name="company_phone"
+                        disabled
                       />
                     </div>
                   </div>
@@ -690,10 +691,11 @@ useEffect(() => {
                     type="email"
                     placeholder="Enter email"
                     className="border border-gray-300 rounded px-3 
-                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                     value={invoiceData.company_email}
                     name="company_email"
                     onChange={handleChange}
+                    disabled
                   />
                   {inputErrors?.company_email && (
                     <p className="absolute text-[13px] text-[#f10404]">
@@ -765,10 +767,11 @@ useEffect(() => {
                     type="text"
                     placeholder="Enter invoice number"
                     className="border border-gray-300 rounded px-3 
-                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                     value={invoiceData.invoice_number}
                     name="invoice_number"
                     onChange={handleChange}
+                    disabled
                   />
                   {inputErrors?.invoice_number && (
                     <p className="absolute text-[13px]  text-[#f10404]">

@@ -163,6 +163,10 @@ pub struct Organisation {
 
     #[serde(rename = "customPaymentName", default)]
     pub custom_payment_name: String,
+
+    // Invoice sequence tracking
+    #[serde(rename = "lastInvoiceSequence", default)]
+    pub last_invoice_sequence: i32,
 }
 
 //
@@ -408,6 +412,7 @@ impl Organisation {
             card_api_key: req.card_api_key,
             cash_instructions: req.cash_instructions,
             custom_payment_name: req.custom_payment_name,
+            last_invoice_sequence: 0,
         }
     }
 }

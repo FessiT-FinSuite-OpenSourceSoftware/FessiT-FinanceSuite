@@ -1,28 +1,50 @@
 use actix_web::{
     delete, get, post, put,
-    web::{self, Json, Path},
+    web::{self, Json, Path, Query},
     HttpResponse, Responder,
 };
 use serde_json::json;
+use serde::Deserialize;
 
 use crate::{
-    models::{CreateInvoiceRequest, UpdateInvoiceRequest},
+    models::invoice::{CreateInvoiceRequest, UpdateInvoiceRequest},
     services::InvoiceService,
 };
+
+#[derive(Deserialize)]
+struct OrgEmailQuery {
+    org_email: String,
+}
 
 /// POST /api/v1/invoices
 #[post("/invoices")]
 pub async fn create_invoice(
     service: web::Data<InvoiceService>,
     req: Json<CreateInvoiceRequest>,
+    query: Query<OrgEmailQuery>,
 ) -> actix_web::Result<impl Responder> {
-    // req already includes invoice_type, lut_no, iec_no, items with cgst/sgst/igst, etc.
     let invoice = service
-        .create_invoice(req.into_inner())
+        .create_invoice(req.into_inner(), &query.org_email)
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
     Ok(HttpResponse::Created().json(invoice))
+}
+
+/// GET /api/v1/invoices/next-number
+#[get("/invoices/next-number")]
+pub async fn get_next_invoice_number(
+    service: web::Data<InvoiceService>,
+    query: Query<OrgEmailQuery>,
+) -> actix_web::Result<impl Responder> {
+    let invoice_number = service
+        .peek_next_invoice_number(&query.org_email)
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "invoice_number": invoice_number
+    })))
 }
 
 /// GET /api/v1/invoices
@@ -107,7 +129,8 @@ pub async fn delete_invoice(
 
 /// Register invoice routes under /api/v1
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(create_invoice)
+    cfg.service(get_next_invoice_number)
+        .service(create_invoice)
         .service(list_invoices)
         .service(get_invoice)
         .service(update_invoice)

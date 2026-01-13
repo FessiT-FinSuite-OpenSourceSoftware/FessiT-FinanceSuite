@@ -280,4 +280,56 @@ impl OrganisationRepository{
 
         Ok(result.deleted_count > 0)
     }
+
+    pub async fn get_next_invoice_sequence(&self, org_email: &str) -> Result<i32, ApiError> {
+        log::info!("Getting next invoice sequence for: {}", org_email);
+        
+        let filter = doc! { "email": org_email };
+        let update = doc! {
+            "$inc": { "lastInvoiceSequence": 1 }
+        };
+        
+        let options = mongodb::options::FindOneAndUpdateOptions::builder()
+            .upsert(false)
+            .return_document(mongodb::options::ReturnDocument::After)
+            .build();
+
+        let result = self.collection.find_one_and_update(filter, update, options).await?;
+
+        match result {
+            Some(org) => {
+                if let Ok(doc) = mongodb::bson::to_document(&org) {
+                    if let Ok(sequence) = doc.get_i32("lastInvoiceSequence") {
+                        log::info!("Next sequence number: {}", sequence);
+                        return Ok(sequence);
+                    }
+                }
+                log::warn!("Could not get sequence from document, defaulting to 1");
+                Ok(1)
+            }
+            None => {
+                log::error!("Organisation not found for email: {}", org_email);
+                Err(ApiError::NotFound("Organisation not found".to_string()))
+            }
+        }
+    }
+
+    pub async fn peek_next_invoice_sequence(&self, org_email: &str) -> Result<i32, ApiError> {
+        let filter = doc! { "email": org_email };
+        let result = self.collection.find_one(filter, None).await?;
+
+        match result {
+            Some(org) => {
+                if let Ok(doc) = mongodb::bson::to_document(&org) {
+                    if let Ok(current_sequence) = doc.get_i32("lastInvoiceSequence") {
+                        return Ok(current_sequence + 1);
+                    }
+                }
+                Ok(1)
+            }
+            None => {
+                Err(ApiError::NotFound("Organisation not found".to_string()))
+            }
+        }
+    }
 }
