@@ -43,7 +43,7 @@ pub async fn get_organisation_by_id(
     Ok(HttpResponse::Ok().json(organisation))
 }
 
-#[put("/organisation/{id}")]
+#[put("/organisationsUpdate/{id}")]
 pub async fn update_organisation(
     service: web::Data<OrganisationService>,
     id: web::Path<String>,

@@ -163,6 +163,10 @@ pub struct Organisation {
 
     #[serde(rename = "customPaymentName", default)]
     pub custom_payment_name: String,
+
+    // Invoice sequence tracking
+    #[serde(rename = "lastInvoiceSequence", default)]
+    pub last_invoice_sequence: i32,
 }
 
 //
@@ -191,6 +195,8 @@ pub struct CreateOrganisationRequest {
 
     // Invoice
     pub invoice_prefix: String,
+    #[serde(rename = "startingInvoiceNo")]
+
     pub starting_invoice_no: String,
     pub date_format: String,
     pub currency: String,
@@ -246,11 +252,20 @@ pub struct CreateOrganisationRequest {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateOrganizationRequest {
+    #[serde(rename = "organizationName")]
+
     pub organisation_name: Option<String>,
+    #[serde(rename = "companyName")]
+
     pub company_name: Option<String>,
+    #[serde(rename = "gstIN")]
+
     pub gst_in: Option<String>,
+
     pub addresses: Option<Vec<Address>>,
     pub country: Option<String>,
+        #[serde(rename = "countryCode")]
+
     pub country_code: Option<String>,
     pub phone: Option<String>,
     pub email: Option<String>,
@@ -397,6 +412,7 @@ impl Organisation {
             card_api_key: req.card_api_key,
             cash_instructions: req.cash_instructions,
             custom_payment_name: req.custom_payment_name,
+            last_invoice_sequence: 0,
         }
     }
 }

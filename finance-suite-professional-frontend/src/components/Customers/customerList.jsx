@@ -167,7 +167,7 @@ export default function CustomerList() {
   };
 
   const onView = (id) => {
-    nav(`/customers/cutomer/${id}`);
+    nav(`/customers/customer/${id}`);
     console.log(id);
   };
   const handleDelete = (id) => {

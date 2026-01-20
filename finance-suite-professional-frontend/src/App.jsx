@@ -61,7 +61,7 @@ export default function App() {
               <Route path="/customers" element={<Customers />} />
               <Route path="/customers/addCustomer" element={<CustomerCreation />} />
               <Route path="/customers/editCustomer/:id" element={<EditCustomer />} />
-              <Route path="/customers/cutomer/:id" element={<ViewCustomer />} />
+              <Route path="/customers/customer/:id" element={<ViewCustomer />} />
 
               {/* Settings */}
               <Route path="/settings" element={<Settings />} />

@@ -5,6 +5,9 @@ import { countries } from "../../shared/countries";
 import { useNavigate, useLocation } from "react-router-dom";
 import { formatNumber } from "../../utils/formatNumber";
 import { KeyUri, config } from "../../shared/key";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchOneOrganisation, orgamisationSelector } from "../../ReduxApi/organisation";
+import axios from "axios";
 
 const initialInvoiceData = {
   invoice_type: "domestic", // "domestic" or "international"
@@ -52,6 +55,23 @@ const initialInvoiceData = {
 export default function AddInvoice() {
   const location = useLocation();
   const nav = useNavigate();
+  const { currentOrganisation } = useSelector(orgamisationSelector);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const fetch = async () => {
+      const response = await axios.get(
+        KeyUri.BACKENDURI +
+          `/organisation/by-email/${localStorage.getItem("email")}`
+      );
+      console.log(response?.data?._id?.$oid);
+      dispatch(fetchOneOrganisation(response?.data?._id?.$oid))
+      
+    };
+    fetch();
+  }, [dispatch]);
+
+  console.log(currentOrganisation)
 
   // ✅ Initialise invoice_type from query param or state
   const [invoiceData, setInvoiceData] = useState(() => {
@@ -93,6 +113,45 @@ export default function AddInvoice() {
       }));
     }
   }, [location.search]);
+
+  useEffect(()=>{
+    if(currentOrganisation){
+      // Fetch next invoice number
+      const fetchNextInvoiceNumber = async () => {
+        try {
+          const response = await axios.get(
+            `${KeyUri.BACKENDURI}/invoices/next-number?org_email=${localStorage.getItem('email')}`
+          );
+          const nextInvoiceNumber = response.data.invoice_number;
+          console.log(nextInvoiceNumber)
+          
+          setInvoiceData((prev) => ({
+            ...prev,
+            company_name: currentOrganisation?.organizationName,
+            gstIN: currentOrganisation?.gstIN,
+            company_address: currentOrganisation?.addresses[0]?.value,
+            company_phone: currentOrganisation?.phone,
+            company_email: currentOrganisation?.email,
+            invoice_number: nextInvoiceNumber
+          }));
+        } catch (error) {
+          console.error('Failed to fetch invoice number:', error);
+          // Fallback to manual format if API fails
+          setInvoiceData((prev) => ({
+            ...prev,
+            company_name: currentOrganisation?.organizationName,
+            gstIN: currentOrganisation?.gstIN,
+            company_address: currentOrganisation?.addresses[0]?.value,
+            company_phone: currentOrganisation?.phone,
+            company_email: currentOrganisation?.email,
+            invoice_number: `${currentOrganisation?.invoicePrefix}-${currentOrganisation?.startingInvoiceNo}`
+          }));
+        }
+      };
+      
+      fetchNextInvoiceNumber();
+    }
+  },[currentOrganisation])
 
   const groupTaxValues = (items = []) => {
     const grouped = { cgst: {}, sgst: {}, igst: {} };
@@ -166,37 +225,51 @@ export default function AddInvoice() {
   }, [invoiceData.items, invoiceData.invoice_type]);*/
 
   useEffect(() => {
-  if (!invoiceData || !Array.isArray(invoiceData.items)) return;
+    if (!invoiceData || !Array.isArray(invoiceData.items)) return;
 
-  // Calculate subTotal as sum of all itemTotal values (hours * rate for each item)
-  const subTotal = invoiceData.items.reduce((sum, item) => {
-    return sum + (parseFloat(item.itemTotal) || 0);
-  }, 0);
+    // Calculate subTotal as sum of all itemTotal values (hours * rate for each item)
+    const subTotal = invoiceData.items.reduce((sum, item) => {
+      return sum + (parseFloat(item.itemTotal) || 0);
+    }, 0);
 
-  const grouped = groupTaxValues(invoiceData.items);
+    const grouped = groupTaxValues(invoiceData.items);
 
-  let totalCgst = 0;
-  let totalSgst = 0;
-  let totalIgst = 0;
+    let totalCgst = 0;
+    let totalSgst = 0;
+    let totalIgst = 0;
 
-  if (isDomestic) {
-    totalCgst = Object.values(grouped.cgst).reduce((sum, val) => sum + val, 0);
-    totalSgst = Object.values(grouped.sgst).reduce((sum, val) => sum + val, 0);
-  } else {
-    totalIgst = Object.values(grouped.igst).reduce((sum, val) => sum + val, 0);
-  }
+    if (isDomestic) {
+      totalCgst = Object.values(grouped.cgst).reduce(
+        (sum, val) => sum + val,
+        0
+      );
+      totalSgst = Object.values(grouped.sgst).reduce(
+        (sum, val) => sum + val,
+        0
+      );
+    } else {
+      totalIgst = Object.values(grouped.igst).reduce(
+        (sum, val) => sum + val,
+        0
+      );
+    }
 
-  const total = subTotal + totalCgst + totalSgst + totalIgst;
+    const total = subTotal + totalCgst + totalSgst + totalIgst;
 
-  setInvoiceData((prev) => ({
-    ...prev,
-    subTotal: subTotal.toFixed(2),
-    totalcgst: totalCgst.toFixed(2),
-    totalsgst: totalSgst.toFixed(2),
-    totaligst: totalIgst.toFixed(2),
-    total: total.toFixed(2),
-  }));
-}, [invoiceData.items, invoiceData.invoice_type, isDomestic, isInternational]);
+    setInvoiceData((prev) => ({
+      ...prev,
+      subTotal: subTotal.toFixed(2),
+      totalcgst: totalCgst.toFixed(2),
+      totalsgst: totalSgst.toFixed(2),
+      totaligst: totalIgst.toFixed(2),
+      total: total.toFixed(2),
+    }));
+  }, [
+    invoiceData.items,
+    invoiceData.invoice_type,
+    isDomestic,
+    isInternational,
+  ]);
 
   const handleSelect = (e) => {
     const selected = countries.find((c) => c.code === e.target.value);
@@ -245,6 +318,13 @@ export default function AddInvoice() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Prevent editing of auto-populated fields
+    const autoPopulatedFields = ['company_name', 'gstIN', 'company_address', 'company_phone', 'company_email','invoice_number'];
+    if (autoPopulatedFields.includes(name)) {
+      return; // Don't allow changes to these fields
+    }
+    
     setInvoiceData({ ...invoiceData, [name]: value });
     validateField(name, value);
 
@@ -339,60 +419,60 @@ export default function AddInvoice() {
     setInvoiceData({ ...invoiceData, items: updatedItems });
   };*/
   const handleItemChange = (index, e) => {
-  const { name, value } = e.target;
-  const updatedItems = [...invoiceData.items];
-  const item = updatedItems[index];
+    const { name, value } = e.target;
+    const updatedItems = [...invoiceData.items];
+    const item = updatedItems[index];
 
-  if (
-    [
-      "hours",
-      "rate",
-      "cgstPercent",
-      "cgstAmount",
-      "sgstPercent",
-      "sgstAmount",
-      "igstPercent",
-      "igstAmount",
-      "itemTotal",
-    ].includes(name)
-  ) {
-    if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
-      if (name.startsWith("cgst")) {
-        item.cgst[name] = value;
-      } else if (name.startsWith("sgst")) {
-        item.sgst[name] = value;
-      } else if (name.startsWith("igst")) {
-        item.igst[name] = value;
-      } else {
-        item[name] = value;
+    if (
+      [
+        "hours",
+        "rate",
+        "cgstPercent",
+        "cgstAmount",
+        "sgstPercent",
+        "sgstAmount",
+        "igstPercent",
+        "igstAmount",
+        "itemTotal",
+      ].includes(name)
+    ) {
+      if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
+        if (name.startsWith("cgst")) {
+          item.cgst[name] = value;
+        } else if (name.startsWith("sgst")) {
+          item.sgst[name] = value;
+        } else if (name.startsWith("igst")) {
+          item.igst[name] = value;
+        } else {
+          item[name] = value;
+        }
       }
+    } else {
+      item[name] = value;
     }
-  } else {
-    item[name] = value;
-  }
 
-  const hours = parseFloat(item.hours) || 0;
-  const rate = parseFloat(item.rate) || 0;
-  const baseSubTotal = hours * rate;
+    const hours = parseFloat(item.hours) || 0;
+    const rate = parseFloat(item.rate) || 0;
+    const baseSubTotal = hours * rate;
 
-  // Always recalculate tax amounts based on current percentages
-  if (isDomestic) {
-    const cgstPercent = parseFloat(item.cgst?.cgstPercent) || 0;
-    const sgstPercent = parseFloat(item.sgst?.sgstPercent) || 0;
+    // Always recalculate tax amounts based on current percentages
+    if (isDomestic) {
+      const cgstPercent = parseFloat(item.cgst?.cgstPercent) || 0;
+      const sgstPercent = parseFloat(item.sgst?.sgstPercent) || 0;
 
-    item.cgst.cgstAmount = ((baseSubTotal * cgstPercent) / 100).toFixed(2);
-    item.sgst.sgstAmount = ((baseSubTotal * sgstPercent) / 100).toFixed(2);
-  } else if (isInternational) {
-    const igstPercent = parseFloat(item.igst?.igstPercent) || 0;
+      item.cgst.cgstAmount = ((baseSubTotal * cgstPercent) / 100).toFixed(2);
+      item.sgst.sgstAmount = ((baseSubTotal * sgstPercent) / 100).toFixed(2);
+    } else if (isInternational) {
+      const igstPercent = parseFloat(item.igst?.igstPercent) || 0;
 
-    item.igst.igstAmount = ((baseSubTotal * igstPercent) / 100).toFixed(2);
-  }
+      item.igst.igstAmount = ((baseSubTotal * igstPercent) / 100).toFixed(2);
+    }
 
-  // itemTotal should be ONLY hours * rate (no GST)
-  item.itemTotal = baseSubTotal.toFixed(2);
+    // itemTotal should be ONLY hours * rate (no GST)
+    item.itemTotal = baseSubTotal.toFixed(2);
 
-  setInvoiceData({ ...invoiceData, items: updatedItems });
-};
+    setInvoiceData({ ...invoiceData, items: updatedItems });
+  };
 
   const addItem = () => {
     setInvoiceData((prev) => ({
@@ -480,7 +560,7 @@ export default function AddInvoice() {
     setInputErrors({});
 
     try {
-      const res = await fetch(`${KeyUri.BACKENDURI}/invoices`, {
+      const res = await fetch(`${KeyUri.BACKENDURI}/invoices?org_email=${localStorage.getItem('email')}`, {
         method: "POST",
         headers: config.headers,
         body: JSON.stringify(invoiceData),
@@ -493,9 +573,7 @@ export default function AddInvoice() {
       nav("/invoices");
     } catch (err) {
       console.error(err);
-      toast.error(
-        err.message || "Something went wrong while creating invoice"
-      );
+      toast.error(err.message || "Something went wrong while creating invoice");
     }
   };
 
@@ -565,11 +643,12 @@ export default function AddInvoice() {
               </label>
               <input
                 type="text"
-                className="border relative border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                className="border relative border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                 value={invoiceData.company_name}
                 name="company_name"
                 placeholder="Enter company name"
                 onChange={handleChange}
+                disabled
               />
               {inputErrors?.company_name && (
                 <p className="absolute text-[13px] top-15 text-[#f10404]">
@@ -588,11 +667,12 @@ export default function AddInvoice() {
               </label>
               <input
                 type="text"
-                className="border reltive border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                className="border reltive border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                 value={invoiceData.gstIN}
                 name="gstIN"
                 placeholder="Enter GSTIN"
                 onChange={handleChange}
+                disabled
                 required
               />
               {inputErrors?.gstIN && (
@@ -612,10 +692,11 @@ export default function AddInvoice() {
               </label>
               <textarea
                 placeholder="Enter company address"
-                className="border relative border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 h-20 placeholder:text-gray-400"
+                className="border relative border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 h-20 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                 name="company_address"
                 value={invoiceData.company_address}
                 onChange={handleChange}
+                disabled
               />
               {inputErrors?.company_address && (
                 <p className="absolute text-[13px] top-27 text-[#f10404]">
@@ -632,7 +713,8 @@ export default function AddInvoice() {
                   <div className="flex items-center">
                     <select
                       onChange={handleSelect}
-                      className="flex items-center gap-2 py-2 px-6 text-sm font-medium text-gray-900 bg-gray-100 border border-gray-300 rounded-l-lg dark:text-gray-100 cursor-pointer appearance-none"
+                      className="flex items-center gap-2 py-2 px-6 text-sm font-medium text-gray-900 bg-gray-100 border border-gray-300 rounded-l-lg dark:text-gray-100 cursor-not-allowed appearance-none"
+                      disabled
                     >
                       {countries.map((country) => (
                         <option key={country.code} value={country.code}>
@@ -645,10 +727,11 @@ export default function AddInvoice() {
                   <input
                     type="text"
                     placeholder="Enter phone number"
-                    className="border border-l-0 ml-2 border-gray-300 rounded-r-lg px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-gray-300"
+                    className="border border-l-0 ml-2 border-gray-300 rounded-r-lg px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 focus:ring-2 focus:ring-gray-300 bg-gray-50 cursor-not-allowed"
                     onChange={handlePhoneChange}
                     value={invoiceData?.company_phone}
                     name="company_phone"
+                    disabled
                   />
                 </div>
               </div>
@@ -670,10 +753,11 @@ export default function AddInvoice() {
               <input
                 type="email"
                 placeholder="Enter email"
-                className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                 value={invoiceData.company_email}
                 name="company_email"
                 onChange={handleChange}
+                disabled
               />
               {inputErrors?.company_email && (
                 <p className="absolute text-[13px] text-[#f10404]">
@@ -742,10 +826,11 @@ export default function AddInvoice() {
               <input
                 type="text"
                 placeholder="Enter invoice number"
-                className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                className="border border-gray-300 rounded px-3 py-2  bg-gray-50 cursor-not-allowed w-full text-sm text-gray-700 placeholder:text-gray-400"
                 value={invoiceData.invoice_number}
                 name="invoice_number"
                 onChange={handleChange}
+                disabled
               />
               {inputErrors?.invoice_number && (
                 <p className="absolute text-[13px] text-[#f10404]">
@@ -1308,12 +1393,12 @@ export default function AddInvoice() {
               **Terms & Conditions, Notes**
             </label>
             <textarea
-            placeholder="Add any notes or special terms & conditions"
-            className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 h-24 placeholder:text-gray-400"
-            name="notes"
-            value={invoiceData.notes}
-            onChange={handleChange}
-           />
+              placeholder="Add any notes or special terms & conditions"
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 h-24 placeholder:text-gray-400"
+              name="notes"
+              value={invoiceData.notes}
+              onChange={handleChange}
+            />
           </div>
 
           {/* Signature */}

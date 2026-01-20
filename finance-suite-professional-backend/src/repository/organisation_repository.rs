@@ -122,6 +122,141 @@ impl OrganisationRepository{
                 .insert("email", email);
         }
 
+        // Invoice fields
+        if let Some(invoice_prefix) = req.invoice_prefix {
+            update_doc.get_document_mut("$set").unwrap().insert("invoicePrefix", invoice_prefix);
+        }
+        if let Some(starting_invoice_no) = req.starting_invoice_no {
+            update_doc.get_document_mut("$set").unwrap().insert("startingInvoiceNo", starting_invoice_no);
+        }
+        if let Some(date_format) = req.date_format {
+            update_doc.get_document_mut("$set").unwrap().insert("dateFormat", date_format);
+        }
+        if let Some(currency) = req.currency {
+            update_doc.get_document_mut("$set").unwrap().insert("currency", currency);
+        }
+        if let Some(payment_terms) = req.payment_terms {
+            update_doc.get_document_mut("$set").unwrap().insert("paymentTerms", payment_terms);
+        }
+        if let Some(late_payment_fee) = req.late_payment_fee {
+            update_doc.get_document_mut("$set").unwrap().insert("latePaymentFee", late_payment_fee);
+        }
+        if let Some(early_discount) = req.early_discount {
+            update_doc.get_document_mut("$set").unwrap().insert("earlyDiscount", early_discount);
+        }
+        if let Some(discount_days) = req.discount_days {
+            update_doc.get_document_mut("$set").unwrap().insert("discountDays", discount_days);
+        }
+        if let Some(payment_instructions) = req.payment_instructions {
+            update_doc.get_document_mut("$set").unwrap().insert("paymentInstructions", payment_instructions);
+        }
+        if let Some(account_holder) = req.account_holder {
+            update_doc.get_document_mut("$set").unwrap().insert("accountHolder", account_holder);
+        }
+        if let Some(bank_name) = req.bank_name {
+            update_doc.get_document_mut("$set").unwrap().insert("bankName", bank_name);
+        }
+        if let Some(account_number) = req.account_number {
+            update_doc.get_document_mut("$set").unwrap().insert("accountNumber", account_number);
+        }
+        if let Some(ifsc_code) = req.ifsc_code {
+            update_doc.get_document_mut("$set").unwrap().insert("ifscCode", ifsc_code);
+        }
+        if let Some(upi_id) = req.upi_id {
+            update_doc.get_document_mut("$set").unwrap().insert("upiId", upi_id);
+        }
+        if let Some(footer_note) = req.footer_note {
+            update_doc.get_document_mut("$set").unwrap().insert("footerNote", footer_note);
+        }
+
+        // Tax fields
+        if let Some(tax_regime) = req.tax_regime {
+            update_doc.get_document_mut("$set").unwrap().insert("taxRegime", tax_regime);
+        }
+        if let Some(tax_type) = req.tax_type {
+            update_doc.get_document_mut("$set").unwrap().insert("taxType", tax_type);
+        }
+        if let Some(cgst) = req.cgst {
+            update_doc.get_document_mut("$set").unwrap().insert("cgst", cgst);
+        }
+        if let Some(sgst) = req.sgst {
+            update_doc.get_document_mut("$set").unwrap().insert("sgst", sgst);
+        }
+        if let Some(igst) = req.igst {
+            update_doc.get_document_mut("$set").unwrap().insert("igst", igst);
+        }
+        if let Some(input_tax_credit) = req.input_tax_credit {
+            update_doc.get_document_mut("$set").unwrap().insert("inputTaxCredit", input_tax_credit);
+        }
+        if let Some(require_hsn) = req.require_hsn {
+            update_doc.get_document_mut("$set").unwrap().insert("requireHSN", require_hsn);
+        }
+        if let Some(rounding_rule) = req.rounding_rule {
+            update_doc.get_document_mut("$set").unwrap().insert("roundingRule", rounding_rule);
+        }
+        if let Some(tax_notes) = req.tax_notes {
+            update_doc.get_document_mut("$set").unwrap().insert("taxNotes", tax_notes);
+        }
+
+        // Payment fields
+        if let Some(enabled_methods) = req.enabled_methods {
+            let enabled_methods_bson = mongodb::bson::to_bson(&enabled_methods)
+                .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+            update_doc.get_document_mut("$set").unwrap().insert("enabledMethods", enabled_methods_bson);
+        }
+        if let Some(payment_bank_name) = req.payment_bank_name {
+            update_doc.get_document_mut("$set").unwrap().insert("paymentBankName", payment_bank_name);
+        }
+        if let Some(payment_account_no) = req.payment_account_no {
+            update_doc.get_document_mut("$set").unwrap().insert("paymentAccountNo", payment_account_no);
+        }
+        if let Some(payment_ifsc) = req.payment_ifsc {
+            update_doc.get_document_mut("$set").unwrap().insert("paymentIFSC", payment_ifsc);
+        }
+        if let Some(payment_account_holder) = req.payment_account_holder {
+            update_doc.get_document_mut("$set").unwrap().insert("paymentAccountHolder", payment_account_holder);
+        }
+        if let Some(payment_upi_id) = req.payment_upi_id {
+            update_doc.get_document_mut("$set").unwrap().insert("paymentUpiId", payment_upi_id);
+        }
+        if let Some(paypal_email) = req.paypal_email {
+            update_doc.get_document_mut("$set").unwrap().insert("paypalEmail", paypal_email);
+        }
+        if let Some(paypal_client_id) = req.paypal_client_id {
+            update_doc.get_document_mut("$set").unwrap().insert("paypalClientId", paypal_client_id);
+        }
+        if let Some(card_provider) = req.card_provider {
+            update_doc.get_document_mut("$set").unwrap().insert("cardProvider", card_provider);
+        }
+        if let Some(card_api_key) = req.card_api_key {
+            update_doc.get_document_mut("$set").unwrap().insert("cardApiKey", card_api_key);
+        }
+        if let Some(cash_instructions) = req.cash_instructions {
+            update_doc.get_document_mut("$set").unwrap().insert("cashInstructions", cash_instructions);
+        }
+        if let Some(custom_payment_name) = req.custom_payment_name {
+            update_doc.get_document_mut("$set").unwrap().insert("customPaymentName", custom_payment_name);
+        }
+        if let Some(new_user_name) = req.new_user_name {
+            update_doc.get_document_mut("$set").unwrap().insert("newUserName", new_user_name);
+        }
+        if let Some(new_user_email) = req.new_user_email {
+            update_doc.get_document_mut("$set").unwrap().insert("newUserEmail", new_user_email);
+        }
+        if let Some(new_user_role) = req.new_user_role {
+            update_doc.get_document_mut("$set").unwrap().insert("newUserRole", new_user_role);
+        }
+        if let Some(new_user_status) = req.new_user_status {
+            update_doc.get_document_mut("$set").unwrap().insert("newUserStatus", new_user_status);
+        }
+        if let Some(permissions) = req.permissions {
+            let permissions_bson = mongodb::bson::to_bson(&permissions)
+                .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+            update_doc.get_document_mut("$set").unwrap().insert("permissions", permissions_bson);
+        }
+
+
+
         self.collection
             .update_one(filter.clone(), update_doc, None)
             .await?;
@@ -144,5 +279,57 @@ impl OrganisationRepository{
         let result = self.collection.delete_one(filter, None).await?;
 
         Ok(result.deleted_count > 0)
+    }
+
+    pub async fn get_next_invoice_sequence(&self, org_email: &str) -> Result<i32, ApiError> {
+        log::info!("Getting next invoice sequence for: {}", org_email);
+        
+        let filter = doc! { "email": org_email };
+        let update = doc! {
+            "$inc": { "lastInvoiceSequence": 1 }
+        };
+        
+        let options = mongodb::options::FindOneAndUpdateOptions::builder()
+            .upsert(false)
+            .return_document(mongodb::options::ReturnDocument::After)
+            .build();
+
+        let result = self.collection.find_one_and_update(filter, update, options).await?;
+
+        match result {
+            Some(org) => {
+                if let Ok(doc) = mongodb::bson::to_document(&org) {
+                    if let Ok(sequence) = doc.get_i32("lastInvoiceSequence") {
+                        log::info!("Next sequence number: {}", sequence);
+                        return Ok(sequence);
+                    }
+                }
+                log::warn!("Could not get sequence from document, defaulting to 1");
+                Ok(1)
+            }
+            None => {
+                log::error!("Organisation not found for email: {}", org_email);
+                Err(ApiError::NotFound("Organisation not found".to_string()))
+            }
+        }
+    }
+
+    pub async fn peek_next_invoice_sequence(&self, org_email: &str) -> Result<i32, ApiError> {
+        let filter = doc! { "email": org_email };
+        let result = self.collection.find_one(filter, None).await?;
+
+        match result {
+            Some(org) => {
+                if let Ok(doc) = mongodb::bson::to_document(&org) {
+                    if let Ok(current_sequence) = doc.get_i32("lastInvoiceSequence") {
+                        return Ok(current_sequence + 1);
+                    }
+                }
+                Ok(1)
+            }
+            None => {
+                Err(ApiError::NotFound("Organisation not found".to_string()))
+            }
+        }
     }
 }

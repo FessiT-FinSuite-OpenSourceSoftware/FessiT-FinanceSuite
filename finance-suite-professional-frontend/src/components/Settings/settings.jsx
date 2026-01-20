@@ -20,8 +20,8 @@ const initialSettings = {
   phone: "",
   email: "",
   // --- Invoice Settings ---
-  invoicePrefix: "INV",
-  startingInvoiceNo: "1001",
+  invoicePrefix: "",
+  startingInvoiceNo: "",
   dateFormat: "DD/MM/YYYY",
   currency: "INR",
   paymentTerms: "30",
@@ -92,6 +92,7 @@ export default function SettingsCreation() {
   const [isEditing,setIsEditing] = useState(false)
   const {currentOrganisation} = useSelector(orgamisationSelector)
   const [orgId,setOrgID] = useState(null)
+  const [emailDisable,setEmailDisable] = useState(false)
   const dispatch = useDispatch()
 
   useEffect(() => {
@@ -259,7 +260,97 @@ export default function SettingsCreation() {
     }));
   };
 
-  const handleOrganisationSubmit = (e) => {
+  const handleUpdate = async () => {
+    const newErrors = {};
+    if (!settings.organizationName.trim())
+      newErrors.organizationName = "Organization name is required";
+    if (!settings.country.trim()) newErrors.country = "Country is required";
+    if (!settings.companyName.trim())
+      newErrors.companyName = "Company name is required";
+    if (!settings.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
+    if (settings.addresses.every((addr) => !addr?.value?.trim()))
+      newErrors.address = "At least one address is required";
+    if (!settings.phone.trim()) newErrors.phone = "Phone number is required";
+    if (!settings.email.trim()) newErrors.email = "Email is required";
+
+    if (Object.keys(newErrors).length > 0) {
+      setInputErrors(newErrors);
+      return;
+    }
+
+    setInputErrors({});
+    
+    const updateData = {
+      organizationName: settings.organizationName,
+      companyName: settings.companyName,
+      gstIN: settings.gstIN,
+      addresses: settings.addresses,
+      country: settings.country,
+      countryCode: settings.countryCode,
+      phone: settings.phone,
+      email: settings.email,
+      invoice_prefix: settings.invoicePrefix,
+      starting_invoice_no: settings.startingInvoiceNo,
+      date_format: settings.dateFormat,
+      currency: settings.currency,
+      payment_terms: settings.paymentTerms,
+      late_payment_fee: settings.latePaymentFee,
+      early_discount: settings.earlyDiscount,
+      discount_days: settings.discountDays,
+      payment_instructions: settings.paymentInstructions,
+      account_holder: settings.accountHolder,
+      bank_name: settings.bankName,
+      account_number: settings.accountNumber,
+      ifsc_code: settings.ifscCode,
+      upi_id: settings.upiId,
+      footer_note: settings.footerNote,
+      tax_regime: settings.taxRegime,
+      tax_type: settings.taxType,
+      cgst: settings.cgst,
+      sgst: settings.sgst,
+      igst: settings.igst,
+      input_tax_credit: settings.inputTaxCredit,
+      require_hsn: settings.requireHSN,
+      rounding_rule: settings.roundingRule,
+      tax_notes: settings.taxNotes,
+      enabled_methods: settings.enabledMethods,
+      payment_bank_name: settings.paymentBankName,
+      payment_account_no: settings.paymentAccountNo,
+      payment_ifsc: settings.paymentIFSC,
+      payment_account_holder: settings.paymentAccountHolder,
+      payment_upi_id: settings.paymentUpiId,
+      paypal_email: settings.paypalEmail,
+      paypal_client_id: settings.paypalClientId,
+      card_provider: settings.cardProvider,
+      card_api_key: settings.cardApiKey,
+      cash_instructions: settings.cashInstructions,
+      custom_payment_name: settings.customPaymentName,
+      new_user_name:settings.newUserName,
+      new_user_email:settings.newUserEmail,
+      new_user_role:settings.newUserRole,
+      new_user_status:settings.newUserStatus,
+      permissions:settings.permissions
+    };
+    
+    console.log('Sending update data:', updateData);
+    console.log('Organization ID:', orgId);
+    
+    try {
+      dispatch(updateOrganisationData(orgId,updateData))
+   
+      
+      
+      
+     
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Update failed:', error);
+      console.error('Error response:', error.response?.data);
+      toast.error('Update failed: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleOrganisationSubmit = async (e) => {
     console.log("first")
     e.preventDefault();
 
@@ -288,48 +379,109 @@ export default function SettingsCreation() {
 
     //clear error message
     setInputErrors({});
-    // toast.success("Settings saved successfully!");
-    // console.log(settings);
-    // dispatch(createOrganisation(settings))
+    
+    // Map frontend field names to backend expected field names
+    const mappedSettings = {
+      organizationName: settings.organizationName,
+      companyName: settings.companyName,
+      gstIN: settings.gstIN,
+      addresses: settings.addresses,
+      country: settings.country,
+      countryCode: settings.countryCode,
+      phone: settings.phone,
+      email: settings.email,
+      // Invoice fields - use snake_case to match backend expectations
+      invoice_prefix: settings.invoicePrefix,
+      starting_invoice_no: settings.startingInvoiceNo,
+      date_format: settings.dateFormat,
+      currency: settings.currency,
+      payment_terms: settings.paymentTerms,
+      late_payment_fee: settings.latePaymentFee,
+      early_discount: settings.earlyDiscount,
+      discount_days: settings.discountDays,
+      payment_instructions: settings.paymentInstructions,
+      account_holder: settings.accountHolder,
+      bank_name: settings.bankName,
+      account_number: settings.accountNumber,
+      ifsc_code: settings.ifscCode,
+      upi_id: settings.upiId,
+      footer_note: settings.footerNote,
+      // Tax fields - use snake_case to match backend expectations
+      tax_regime: settings.taxRegime,
+      tax_type: settings.taxType,
+      cgst: settings.cgst,
+      sgst: settings.sgst,
+      igst: settings.igst,
+      input_tax_credit: settings.inputTaxCredit,
+      require_hsn: settings.requireHSN,
+      rounding_rule: settings.roundingRule,
+      tax_notes: settings.taxNotes,
+      // Payment fields - use snake_case to match backend expectations
+      enabled_methods: settings.enabledMethods,
+      payment_bank_name: settings.paymentBankName,
+      payment_account_no: settings.paymentAccountNo,
+      payment_ifsc: settings.paymentIFSC,
+      payment_account_holder: settings.paymentAccountHolder,
+      payment_upi_id: settings.paymentUpiId,
+      paypal_email: settings.paypalEmail,
+      paypal_client_id: settings.paypalClientId,
+      card_provider: settings.cardProvider,
+      card_api_key: settings.cardApiKey,
+      cash_instructions: settings.cashInstructions,
+      custom_payment_name: settings.customPaymentName,
+      // User fields - use snake_case to match backend expectations
+      new_user_name: settings.newUserName,
+      new_user_email: settings.newUserEmail,
+      new_user_role: settings.newUserRole,
+      new_user_status: settings.newUserStatus,
+      permissions: settings.permissions
+    };
+    
     if(isEditing){
       console.log("editing mode")
-      dispatch(updateOrganisationData(orgId,settings))
-      JSON.stringify(localStorage.setItem("email",settings.email))
-
-      setIsEditing(false)
+      console.log("Sending data to API:", mappedSettings)
+      console.log("Organization ID:", orgId)
+      try {
+       dispatch(updateOrganisationData(orgId, mappedSettings))
+        // Don't refetch - just keep the current form data as it's already updated
+        JSON.stringify(localStorage.setItem("email",settings.email))
+        // setIsEditing(false)
+      } catch (error) {
+        console.error('Update failed:', error)
+      }
     }else{
-      
-      dispatch(createOrganisation(settings))
+      dispatch(createOrganisation(mappedSettings))
       JSON.stringify(localStorage.setItem("email",settings.email))
+      // Only reset form after creating new organization
+      setSettings({
+        ...initialSettings,
+        addresses: (initialSettings.addresses || []).map((addr) => ({
+          ...addr,
+          value: "",
+          isEditing: false,
+        })),
+      });
+      setSelected("");
     }
-    setSettings({
-      ...initialSettings,
-      addresses: (initialSettings.addresses || []).map((addr) => ({
-        ...addr,
-        value: "",
-        isEditing: false,
-      })),
-    });
-    setSelected("");
-    // if (!validateForm()) return;
   };
 
   const handleSave = (e) => {
-  if (activeTab === "organization") {
-    handleOrganisationSubmit(e);
-  } else if (activeTab === "customer") {
-    // handleCustomerSubmit();
-    console.log(" customer")
-  } else if (activeTab === "invoice") {
-    // handleInvoiceSubmit();
-    console.log("invoice")
-  }
+  // if (activeTab === "organization") {
+  //   handleOrganisationSubmit(e);
+  // } else if (activeTab === "customer") {
+  //   // handleCustomerSubmit();
+  //   console.log(" customer")
+  // } else if (activeTab === "invoice") {
+  //   // handleInvoiceSubmit();
+  //   console.log("invoice")
+  // }
   console.log(settings)
-  // handleOrganisationSubmit(e)
+  handleOrganisationSubmit(e)
 };
 
 const handleEdit = async()=>{
   setIsEditing(true)
+  setEmailDisable(true)
   const response =await axios.get(KeyUri.BACKENDURI + `/organisation/by-email/${localStorage.getItem('email')}`)
   console.log(response?.data?._id?.$oid)
   setOrgID(response?.data?._id?.$oid)
@@ -342,15 +494,62 @@ useEffect(()=>{
  if(currentOrganisation){
   setSettings((prev)=>({
     ...prev,
-    organizationName:currentOrganisation?.organizationName || "",
-    companyName:currentOrganisation?.companyName || "",
-    gstIN:currentOrganisation?.gstIN || "",
+    // Organization fields
+    organizationName: currentOrganisation?.organizationName || "",
+    companyName: currentOrganisation?.companyName || "",
+    gstIN: currentOrganisation?.gstIN || "",
     country: currentOrganisation.country || "",
     countryCode: currentOrganisation.countryCode || "",
     phone: currentOrganisation.phone || "",
     email: currentOrganisation.email || "",
     addresses: currentOrganisation.addresses?.length ? currentOrganisation.addresses : prev.addresses,
+    // Invoice fields
+    invoicePrefix: currentOrganisation?.invoicePrefix || "",
+    startingInvoiceNo: currentOrganisation?.startingInvoiceNo || "",
+    dateFormat: currentOrganisation?.dateFormat || "DD/MM/YYYY",
+    currency: currentOrganisation?.currency || "INR",
+    paymentTerms: currentOrganisation?.paymentTerms || "30",
+    latePaymentFee: currentOrganisation?.latePaymentFee || "",
+    earlyDiscount: currentOrganisation?.earlyDiscount || "",
+    discountDays: currentOrganisation?.discountDays || "",
+    paymentInstructions: currentOrganisation?.paymentInstructions || "",
+    accountHolder: currentOrganisation?.accountHolder || "",
+    bankName: currentOrganisation?.bankName || "",
+    accountNumber: currentOrganisation?.accountNumber || "",
+    ifscCode: currentOrganisation?.ifscCode || "",
+    upiId: currentOrganisation?.upiId || "",
+    footerNote: currentOrganisation?.footerNote || "",
+    // Tax fields
+    taxRegime: currentOrganisation?.taxRegime || "GST",
+    taxType: currentOrganisation?.taxType || "exclusive",
+    cgst: currentOrganisation?.cgst || "",
+    sgst: currentOrganisation?.sgst || "",
+    igst: currentOrganisation?.igst || "",
+    inputTaxCredit: currentOrganisation?.inputTaxCredit || "enabled",
+    requireHSN: currentOrganisation?.requireHSN || "yes",
+    roundingRule: currentOrganisation?.roundingRule || "nearest",
+    taxNotes: currentOrganisation?.taxNotes || "",
+    // Payment fields
+    enabledMethods: currentOrganisation?.enabledMethods || prev.enabledMethods,
+    paymentBankName: currentOrganisation?.paymentBankName || "",
+    paymentAccountNo: currentOrganisation?.paymentAccountNo || "",
+    paymentIFSC: currentOrganisation?.paymentIFSC || "",
+    paymentAccountHolder: currentOrganisation?.paymentAccountHolder || "",
+    paymentUpiId: currentOrganisation?.paymentUpiId || "",
+    paypalEmail: currentOrganisation?.paypalEmail || "",
+    paypalClientId: currentOrganisation?.paypalClientId || "",
+    cardProvider: currentOrganisation?.cardProvider || "",
+    cardApiKey: currentOrganisation?.cardApiKey || "",
+    cashInstructions: currentOrganisation?.cashInstructions || "",
+    customPaymentName: currentOrganisation?.customPaymentName || "",
+    // User fields
+    newUserName: currentOrganisation?.newUserName || "",
+    newUserEmail: currentOrganisation?.newUserEmail || "",
+    newUserRole: currentOrganisation?.newUserRole || "Viewer",
+    newUserStatus: currentOrganisation?.newUserStatus || "Active",
+    permissions: currentOrganisation?.permissions || prev.permissions,
   }))
+  setEmailDisable(true)
   const foundCountry = countriesData.countries.find(
           (c) =>
             c.country === currentOrganisation.country ||
@@ -361,10 +560,11 @@ useEffect(()=>{
   
         setInputErrors({});
  }
-},[orgId,currentOrganisation])
+},[currentOrganisation]) // Remove orgId from dependency array
 
   const handleReset = () => {
     setSettings(initialSettings);
+    setEmailDisable(false)
     setErrors({});
   };
   const filteredCountries = countriesData?.countries?.filter((country) =>
@@ -439,9 +639,9 @@ useEffect(()=>{
             <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 pb-3">
               <button
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
-                onClick={handleSave}
+                onClick={isEditing ? handleUpdate : handleSave}
               >
-                💾 Save
+                {isEditing ? "🔄 Update" : "💾 Save"}
               </button>
               <button
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"
@@ -659,8 +859,9 @@ useEffect(()=>{
                   name="email"
                   value={settings.email}
                   onChange={handleChange}
-                  className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                  className={`border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500 ${emailDisable && "cursor-not-allowed bg-gray-50"}`}
                   placeholder="Enter organization email"
+                  disabled={emailDisable}
                 />
                 {inputErrors.email && (
                   <p className="absolute text-xs text-red-600 mt-1">
@@ -779,7 +980,7 @@ useEffect(()=>{
                 <input
                   type="text"
                   name="invoicePrefix"
-                  value={settings.invoicePrefix || ""}
+                  value={settings.invoicePrefix}
                   onChange={handleChange}
                   className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
                   placeholder="e.g., INV"
