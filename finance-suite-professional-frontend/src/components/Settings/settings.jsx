@@ -492,6 +492,7 @@ console.log(currentOrganisation)
 
 useEffect(()=>{
  if(currentOrganisation){
+  
   setSettings((prev)=>({
     ...prev,
     // Organization fields
@@ -502,7 +503,12 @@ useEffect(()=>{
     countryCode: currentOrganisation.countryCode || "",
     phone: currentOrganisation.phone || "",
     email: currentOrganisation.email || "",
-    addresses: currentOrganisation.addresses?.length ? currentOrganisation.addresses : prev.addresses,
+    addresses: currentOrganisation.addresses?.length ? 
+      currentOrganisation.addresses.map(addr => ({
+        label: addr.label || "Address",
+        value: addr.value || addr,
+        isEditing: false
+      })) : prev.addresses,
     // Invoice fields
     invoicePrefix: currentOrganisation?.invoicePrefix || "",
     startingInvoiceNo: currentOrganisation?.startingInvoiceNo || "",
