@@ -173,7 +173,7 @@ pub struct Organisation {
 // ================= CREATE REQUEST =================
 //
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, Clone)]
 pub struct CreateOrganisationRequest {
     #[serde(rename = "organizationName")]
     pub organisation_name: String,
@@ -228,6 +228,7 @@ pub struct CreateOrganisationRequest {
     pub new_user_email: String,
     pub new_user_role: String,
     pub new_user_status: String,
+    pub new_user_password: String,
 
     pub permissions: Permissions,
 
@@ -300,6 +301,7 @@ pub struct UpdateOrganizationRequest {
     pub new_user_email: Option<String>,
     pub new_user_role: Option<String>,
     pub new_user_status: Option<String>,
+    pub new_user_password: Option<String>,
 
     pub permissions: Option<Permissions>,
     pub enabled_methods: Option<EnabledMethods>,

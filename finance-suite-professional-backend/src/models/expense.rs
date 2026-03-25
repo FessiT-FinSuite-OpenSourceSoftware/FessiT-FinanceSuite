@@ -169,6 +169,10 @@ pub struct Expense {
     /// When the expense was last updated
     #[serde(default)]
     pub updated_at: Option<DateTime>,
+
+    /// Organisation reference
+    #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
+    pub organisation_id: Option<ObjectId>,
 }
 
 impl Expense {
@@ -193,6 +197,7 @@ impl Expense {
             department: None,
             created_at: Some(now),
             updated_at: Some(now),
+            organisation_id: None,
         }
     }
     
@@ -372,6 +377,7 @@ impl From<CreateExpenseRequest> for Expense {
             department: req.department,
             created_at: Some(now),
             updated_at: Some(now),
+            organisation_id: None,
         };
         expense.calculate_total();
         expense

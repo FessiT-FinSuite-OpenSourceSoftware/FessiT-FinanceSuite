@@ -292,6 +292,123 @@ impl ExpenseRepository {
 
         Ok(ExpenseSummary::default())
     }
+
+    /// Get expenses by organisation
+    pub async fn get_expenses_by_organisation(
+        &self,
+        org_id: &ObjectId,
+        page: Option<u64>,
+        limit: Option<i64>,
+    ) -> mongodb::error::Result<Vec<Expense>> {
+        let filter = doc! { "organisationId": org_id };
+        log::info!("🔍 Filtering expenses by organisationId: {}", org_id);
+
+        let options = if let (Some(p), Some(l)) = (page, limit) {
+            let skip = p.saturating_sub(1) * (l as u64);
+            Some(
+                FindOptions::builder()
+                    .skip(skip)
+                    .limit(l)
+                    .sort(doc! { "created_at": -1 })
+                    .build(),
+            )
+        } else {
+            Some(FindOptions::builder().sort(doc! { "created_at": -1 }).build())
+        };
+
+        let mut cursor = self.collection.find(filter, options).await?;
+        let mut list = Vec::new();
+
+        while let Some(expense) = cursor.try_next().await? {
+            list.push(expense);
+        }
+
+        log::info!("📊 Found {} expenses for organisation {}", list.len(), org_id);
+        Ok(list)
+    }
+
+    /// Get expenses by project and organisation
+    pub async fn get_expenses_by_project_and_organisation(
+        &self,
+        org_id: &ObjectId,
+        project_cost_center: &str,
+        page: Option<u64>,
+        limit: Option<i64>,
+    ) -> mongodb::error::Result<Vec<Expense>> {
+        let filter = doc! { 
+            "organisationId": org_id,
+            "project_cost_center": project_cost_center 
+        };
+
+        let options = if let (Some(p), Some(l)) = (page, limit) {
+            let skip = p.saturating_sub(1) * (l as u64);
+            Some(
+                FindOptions::builder()
+                    .skip(skip)
+                    .limit(l)
+                    .sort(doc! { "created_at": -1 })
+                    .build(),
+            )
+        } else {
+            Some(FindOptions::builder().sort(doc! { "created_at": -1 }).build())
+        };
+
+        let mut cursor = self.collection.find(filter, options).await?;
+        let mut list = Vec::new();
+
+        while let Some(expense) = cursor.try_next().await? {
+            list.push(expense);
+        }
+
+        Ok(list)
+    }
+
+    /// Search expenses by organisation
+    pub async fn search_expenses_by_organisation(
+        &self,
+        org_id: &ObjectId,
+        search_term: &str,
+    ) -> mongodb::error::Result<Vec<Expense>> {
+        let filter = doc! {
+            "organisationId": org_id,
+            "expense_title": {
+                "$regex": search_term,
+                "$options": "i"
+            }
+        };
+
+        let options = FindOptions::builder()
+            .sort(doc! { "created_at": -1 })
+            .build();
+
+        let mut cursor = self.collection.find(filter, Some(options)).await?;
+        let mut list = Vec::new();
+
+        while let Some(expense) = cursor.try_next().await? {
+            list.push(expense);
+        }
+
+        Ok(list)
+    }
+
+    /// Count expenses by organisation
+    pub async fn count_expenses_by_organisation(&self, org_id: &ObjectId) -> mongodb::error::Result<u64> {
+        let filter = doc! { "organisationId": org_id };
+        self.collection.count_documents(filter, None).await
+    }
+
+    /// Count expenses by project and organisation
+    pub async fn count_expenses_by_project_and_organisation(
+        &self,
+        org_id: &ObjectId,
+        project_cost_center: &str,
+    ) -> mongodb::error::Result<u64> {
+        let filter = doc! { 
+            "organisationId": org_id,
+            "project_cost_center": project_cost_center 
+        };
+        self.collection.count_documents(filter, None).await
+    }
 }
 
 /// Summary statistics for expenses

@@ -17,6 +17,7 @@
     "html2canvas-pro": "^1.5.13",
     "jspdf": "^3.0.4",
     "lucide-react": "^0.546.0",
+    "pdfjs-dist": "^5.5.207",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-redux": "^9.2.0",
@@ -38,6 +39,7 @@
     "globals": "^16.4.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.15",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "vite-plugin-pwa": "^1.2.0"
   }
 }

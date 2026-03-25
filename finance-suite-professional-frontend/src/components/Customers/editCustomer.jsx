@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
-// import { countries } from "../../shared/countries";
-import { Pencil, Save } from "lucide-react"; // 🖊️ and 💾 icons
+import { Pencil, Save, X } from "lucide-react";
 import { ArrowLeft } from "lucide-react";
 import { countriesData } from "../../utils/countriesData";
-import { ChevronDown } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
@@ -13,17 +11,69 @@ import {
   fetchOneCustomer,
   updateCustomerData,
 } from "../../ReduxApi/customer";
-import { isAction } from "@reduxjs/toolkit";
+
+const emptyProject = { projectName: "", projectOwner: "", owner_email: "", description: "" };
+
+function ProjectModal({ project, existingProjects, onSave, onClose }) {
+  const [form, setForm] = useState(project ? { ...project } : { ...emptyProject });
+  const [nameError, setNameError] = useState('');
+  const handleSave = () => {
+    if (!form.projectName.trim() || !form.projectOwner.trim()) {
+      toast.error("Project name and owner are required");
+      return;
+    }
+    const isDuplicate = existingProjects
+      .some(p => p.projectName.trim().toLowerCase() === form.projectName.trim().toLowerCase());
+    if (isDuplicate) { setNameError('A project with this name already exists'); return; }
+    setNameError('');
+    onSave(form);
+  };
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-semibold text-gray-800">{project ? "Edit Project" : "Add Project"}</h3>
+          <button onClick={onClose}><X size={18} className="text-gray-500 hover:text-gray-800" /></button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Project Name *</label>
+            <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter project name" value={form.projectName} onChange={e => { setForm(p => ({ ...p, projectName: e.target.value })); setNameError(''); }} />
+            {nameError && <p className="text-xs text-red-600 mt-1">{nameError}</p>}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Project Owner *</label>
+            <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter project owner" value={form.projectOwner} onChange={e => setForm(p => ({ ...p, projectOwner: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Owner Email</label>
+            <input type="email" className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter owner email" value={form.owner_email || ""} onChange={e => setForm(p => ({ ...p, owner_email: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+            <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter description" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-300 rounded-full hover:border-gray-400">Cancel</button>
+          <button onClick={handleSave} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-full hover:bg-blue-700">{project ? "Update" : "Add"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 const initialCustomer = {
   customerName: "",
   companyName: "",
   gstIN: "",
+  CustomerCode: "",
   addresses: [{ label: "Primary Address", value: "", isEditing: false }],
   country: "",
   countryCode: "",
   phone: "",
   email: "",
-  isActive:""
+  isActive:"",
+  projects: [],
 };
 
 export default function EditCustomer() {
@@ -245,10 +295,12 @@ export default function EditCustomer() {
         customerName: currentCustomer.customerName || "",
         companyName: currentCustomer.companyName || "",
         gstIN: currentCustomer.gstIN || "",
+        CustomerCode: currentCustomer.CustomerCode || "",
         country: currentCustomer.country || "",
         phone: currentCustomer.phone || "",
         email: currentCustomer.email || "",
         isActive:currentCustomer.isActive||"",
+        projects: currentCustomer.projects || [],
         addresses: currentCustomer.addresses?.length
           ? currentCustomer.addresses
           : prev.addresses,
@@ -266,12 +318,28 @@ export default function EditCustomer() {
     }
   }, [id, currentCustomer]);
 
-  const handleStatus =(e)=>{
-    setCustomer((prev)=>({
-      ...prev,
-      isActive:e.target.value
-    }))
-  }
+  const [projectModal, setProjectModal] = useState(null);
+
+  const openAddProject = () => setProjectModal({ mode: "add" });
+  const openEditProject = (index) => setProjectModal({ mode: "edit", index });
+  const closeProjectModal = () => setProjectModal(null);
+
+  const handleProjectSave = (form) => {
+    if (projectModal.mode === "add") {
+      setCustomer((prev) => ({ ...prev, projects: [...prev.projects, form] }));
+    } else {
+      setCustomer((prev) => {
+        const updated = [...prev.projects];
+        updated[projectModal.index] = form;
+        return { ...prev, projects: updated };
+      });
+    }
+    closeProjectModal();
+  };
+
+  const removeProject = (index) => {
+    setCustomer((prev) => ({ ...prev, projects: prev.projects.filter((_, i) => i !== index) }));
+  };
 
   return (
     <div className="relative">
@@ -287,20 +355,21 @@ export default function EditCustomer() {
               />
             </div>
             <div className="flex flex-wrap justify-end gap-2 mr-5">
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+              {/* <button
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleSubmit}
               >
-                💾 Save
-              </button>
-              <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
-                ⬇️ Edit
-              </button>
+                Save
+              </button> */}
+              {/* <button 
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+ >                Edit
+              </button> */}
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleSubmit}
               >
-                ✉️ Create
+                Update
               </button>
             </div>
           </div>
@@ -330,7 +399,7 @@ export default function EditCustomer() {
 
           <div className="flex justify-center items-center">
             <select className=" bg-gray-100 px-3 py-2 rounded-sm text-sm "
-             onChange={handleStatus}
+             onChange={(e) => setCustomer((prev) => ({ ...prev, isActive: e.target.value }))}
              name="isActive"
              value={customer?.isActive}
             >
@@ -419,6 +488,21 @@ export default function EditCustomer() {
             )}
           </div>
 
+          {/* Customer Code */}
+          <div className="relative">
+            <label className="block text-gray-700 font-medium mb-1">
+              Customer Code
+            </label>
+            <input
+              type="text"
+              name="CustomerCode"
+              value={customer.CustomerCode}
+              onChange={handleChange}
+              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+              placeholder="Enter customer code"
+            />
+          </div>
+
           {/* Country */}
 
           <div className="relative w-full" ref={dropdownRef}>
@@ -480,7 +564,7 @@ export default function EditCustomer() {
           </div>
 
           {/* Phone */}
-          <div classNam e="relative">
+          <div className="relative">
             <label className="block text-gray-700 font-medium mb-1">
               Phone Number *
             </label>
@@ -622,7 +706,7 @@ export default function EditCustomer() {
               onClick={addAddress}
               className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:text-blue-800 mt-2"
             >
-              ➕ Add another address
+              Add another address
             </button>
 
             {inputErrors.address && (
@@ -631,8 +715,54 @@ export default function EditCustomer() {
               </p>
             )}
           </div>
+          {/* Projects */}
+          <div className="relative col-span-2">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-gray-700 font-medium">Projects</label>
+              <button type="button" onClick={openAddProject} className="text-blue-600 text-sm font-medium hover:text-blue-800">+ Add Project</button>
+            </div>
+            {customer.projects.length > 0 && (
+              <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+                  <tr>
+                    <th className="px-3 py-2 text-left">#</th>
+                    <th className="px-3 py-2 text-left">Project Name</th>
+                    <th className="px-3 py-2 text-left">Owner</th>
+                    <th className="px-3 py-2 text-left">Owner Email</th>
+                    <th className="px-3 py-2 text-left">Description</th>
+                    <th className="px-3 py-2 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customer.projects.map((proj, index) => (
+                    <tr key={index} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-3 py-2 text-gray-500">{index + 1}</td>
+                      <td className="px-3 py-2 font-medium text-gray-800">{proj.projectName}</td>
+                      <td className="px-3 py-2 text-gray-600">{proj.projectOwner}</td>
+                      <td className="px-3 py-2 text-gray-500">{proj.owner_email || "—"}</td>
+                      <td className="px-3 py-2 text-gray-500">{proj.description || "—"}</td>
+                      <td className="px-3 py-2 text-center">
+                        <div className="flex justify-center gap-3">
+                          <button type="button" onClick={() => openEditProject(index)} className="text-blue-600 hover:text-blue-800"><Pencil size={14} /></button>
+                          <button type="button" onClick={() => removeProject(index)} className="text-red-500 hover:text-red-700"><X size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
+      {projectModal && (
+        <ProjectModal
+          project={projectModal.mode === "edit" ? customer.projects[projectModal.index] : null}
+          existingProjects={projectModal.mode === "edit" ? customer.projects.filter((_, i) => i !== projectModal.index) : customer.projects}
+          onSave={handleProjectSave}
+          onClose={closeProjectModal}
+        />
+      )}
     </div>
   );
 }

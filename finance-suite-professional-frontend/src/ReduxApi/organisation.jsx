@@ -1,6 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit'
-import { config, KeyUri } from '../shared/key'
-import axios from 'axios'
+import axiosInstance from '../utils/axiosInstance'
 import { toast } from 'react-toastify'
 
 const initialState = {
@@ -8,6 +7,8 @@ const initialState = {
   organsationData: [],
   isError: false,
   currentOrganisation: null,
+  lastFetchedEmail: null, // Cache the last fetched email
+  lastFetchTime: null, // Cache timestamp
 }
 
 const organisationSlice = createSlice({
@@ -27,11 +28,24 @@ const organisationSlice = createSlice({
       state.isLoading = false
       state.isError = false
       state.currentOrganisation = payload
+      state.lastFetchTime = Date.now()
     },
     getOrganisationFailure: (state) => {
       state.isLoading = false
       state.isError = true
       state.organsationData = []
+    },
+    updateCache: (state, { payload }) => {
+      state.lastFetchedEmail = payload.email
+    },
+    updateOrganisationSuccess: (state, { payload }) => {
+      state.isLoading = false
+      state.isError = false
+      state.currentOrganisation = payload
+      state.lastFetchTime = Date.now()
+    },
+    clearLoading: (state) => {
+      state.isLoading = false
     },
   },
 })
@@ -41,24 +55,20 @@ export const {
   getOrganisationFailure,
   getOrganisationSuccess,
   getOneOrganisation,
+  updateOrganisationSuccess,
+  clearLoading,
 } = organisationSlice.actions
 
 export const orgamisationSelector = (state) => state.organisation
 export default organisationSlice.reducer
 
 export const createOrganisation = (orgaisationData) => async (dispatch) => {
-  console.log(orgaisationData)
   dispatch(getOrganisation())
   try {
-    const { data } = await axios.post(
-      `${KeyUri.BACKENDURI}/organisation`,
-      orgaisationData,
-      config
-    )
-    console.log(data)
-    toast.success(data.message)
-    
-    dispatch(fetchOrganisationData()) // Refresh list after creation
+    const { data } = await axiosInstance.post('/organisation', orgaisationData)
+    toast.success(data.message || 'Organisation created successfully')
+    dispatch(getOneOrganisation(data))
+    return data
   } catch (error) {
     console.error('Error creating organisation:', error)
     toast.error(
@@ -66,14 +76,46 @@ export const createOrganisation = (orgaisationData) => async (dispatch) => {
         `Failed: ${error?.response?.statusText || 'Unknown error'}`
     )
     dispatch(getOrganisationFailure())
+    throw error
   }
 }
 
 
+// Fetch Organisation by Email
+export const fetchOrganisationByEmail = (email) => async (dispatch, getState) => {
+  const { organisation } = getState()
+  const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes cache
+  
+  // Check if we have cached data for this email
+  if (
+    organisation.currentOrganisation &&
+    organisation.lastFetchedEmail === email &&
+    organisation.lastFetchTime &&
+    Date.now() - organisation.lastFetchTime < CACHE_DURATION
+  ) {
+    // Return cached data without making API call
+    return organisation.currentOrganisation
+  }
+  
+  dispatch(getOrganisation())
+  try {
+    const { data } = await axiosInstance.get(`/organisation/by-email/${email}`)
+    // Directly set the organisation data instead of making another API call
+    dispatch(getOneOrganisation(data))
+    // Update cache info
+    dispatch({ type: 'organisation/updateCache', payload: { email } })
+    return data
+  } catch (error) {
+    console.error('Error fetching organisation by email:', error)
+    dispatch(getOrganisationFailure())
+    throw error
+  }
+}
+
 export const fetchOrganisationData = () => async (dispatch) => {
   dispatch(getOrganisation())
   try {
-    const { data } = await axios.get(`${KeyUri.BACKENDURI}/organisation`, config)
+    const { data } = await axiosInstance.get('/organisation')
     dispatch(getOrganisationSuccess(data))
   } catch (error) {
     console.error('Error fetching :', error)
@@ -89,10 +131,7 @@ export const fetchOrganisationData = () => async (dispatch) => {
 export const fetchOneOrganisation = (orgID) => async (dispatch) => {
   dispatch(getOrganisation())
   try {
-    const { data } = await axios.get(
-      `${KeyUri.BACKENDURI}/organisation/${orgID}?t=${Date.now()}`,
-      config
-    )
+    const { data } = await axiosInstance.get(`/organisation/${orgID}?t=${Date.now()}`)
     dispatch(getOneOrganisation(data))
   } catch (error) {
     console.error('Error fetching', error)
@@ -102,20 +141,25 @@ export const fetchOneOrganisation = (orgID) => async (dispatch) => {
 
 
 export const updateOrganisationData =
-  (organID, organData) => async (dispatch) => {
-    console.log('Redux: Updating organization with ID:', organID)
-    console.log('Redux: Update data:', organData)
+  (organID, organData) => async (dispatch, getState) => {
     dispatch(getOrganisation())
     try {
-      const { data } = await axios.put(
-        `${KeyUri.BACKENDURI}/organisationsUpdate/${organID}`,
-        organData,
-        config
-      )
-      console.log('Redux: Update response:', data)
+      const { data } = await axiosInstance.put(`/organisationsUpdate/${organID}`, organData)
       toast.success(data.message)
-      // return data // Return the response for the component to handle
       
+      // If the API returns the updated organisation data, use it
+      if (data.organisation || data._id) {
+        dispatch(updateOrganisationSuccess(data.organisation || data))
+      } else {
+        // If API doesn't return updated data, merge with current state
+        const { organisation } = getState()
+        const updatedOrg = {
+          ...organisation.currentOrganisation,
+          ...organData,
+          _id: organisation.currentOrganisation._id
+        }
+        dispatch(updateOrganisationSuccess(updatedOrg))
+      }
     } catch (error) {
       console.error('Redux: Error updating:', error)
       toast.error(
@@ -123,7 +167,7 @@ export const updateOrganisationData =
           `Failed: ${error?.response?.statusText || 'Unknown error'}`
       )
       dispatch(getOrganisationFailure())
-      throw error // Re-throw for component error handling
+      throw error
     }
   }
 
@@ -131,11 +175,7 @@ export const updateOrganisationData =
 export const deleteCustomer = (id) => async (dispatch) => {
   dispatch(getOrganisation())
   try {
-    const { data } = await axios.delete(
-      `${KeyUri.BACKENDURI}/organisation/${id}`,
-      config
-    )
-    // console.log(data)
+    const { data } = await axiosInstance.delete(`/organisation/${id}`)
     toast.success(data.message)
     dispatch(fetchOrganisationData())
   } catch (error) {
