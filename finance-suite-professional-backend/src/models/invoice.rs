@@ -60,16 +60,13 @@ pub struct InvoiceItem {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Invoice {
     /// MongoDB document _id
-    #[serde(rename = "_id", skip_serializing_if = "Option::is_none", skip_deserializing)]
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
 
     // Domestic / International
     #[serde(default)]
     pub invoice_type: String,
-    
-    // Currency Type
-    #[serde(default)]
-    pub currency_type: String,
+
     // Company Info
     #[serde(default)]
     pub company_name: String,
@@ -147,12 +144,6 @@ pub struct Invoice {
     #[serde(rename = "subTotal", default)]
     pub sub_total: String,
 
-    #[serde(rename = "conversionRate", default)]
-    pub conversion_rate: String,
-
-    #[serde(rename = "approxconversionRate", default)]
-    pub approx_conversion_rate: String,
-
     #[serde(default)]
     pub totalcgst: String,
 
@@ -171,10 +162,6 @@ pub struct Invoice {
 
     #[serde(default)]
     pub status: String,
-
-    // Organisation reference
-    #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
-    pub organisation_id: Option<ObjectId>,
 }
 
 /// For creation (POST /invoices)

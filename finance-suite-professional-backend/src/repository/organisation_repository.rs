@@ -37,29 +37,13 @@ impl OrganisationRepository{
     }
  pub async fn get_organisation_by_email(&self, email: &str) -> Result<Organisation, ApiError> {
     let filter = doc! { "email": email };
-    log::info!("🔍 Searching for organisation with email: '{}'", email);
-    log::info!("📋 Filter: {:?}", filter);
 
     match self.collection.find_one(filter, None).await? {
-        Some(organisation) => {
-            log::info!("✅ Found organisation: {:?} with email: {}", organisation.id, organisation.email);
-            Ok(organisation)
-        }
-        None => {
-            log::error!("❌ No organisation found with email: '{}'", email);
-            // Let's also check what organisations exist
-            let mut cursor = self.collection.find(None, None).await?;
-            log::info!("📊 Listing all organisations in database:");
-            while cursor.advance().await? {
-                if let Ok(org) = cursor.deserialize_current() {
-                    log::info!("  - ID: {:?}, Email: {}", org.id, org.email);
-                }
-            }
-            Err(ApiError::NotFound(format!(
-                "Organisation with email '{}' not found",
-                email
-            )))
-        }
+        Some(organisation) => Ok(organisation),
+        None => Err(ApiError::NotFound(format!(
+            "Customer with email '{}' not found",
+            email
+        ))),
     }
 }
 
@@ -72,20 +56,6 @@ impl OrganisationRepository{
         let organisation = self.collection.find_one(filter, None).await?;
 
         Ok(organisation)
-    }
-
-    pub async fn get_organisation_by_id(&self, id: &str) -> Result<Organisation, ApiError> {
-        let object_id = ObjectId::parse_str(id)
-            .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
-
-        let filter = doc! { "_id": object_id };
-        match self.collection.find_one(filter, None).await? {
-            Some(organisation) => Ok(organisation),
-            None => Err(ApiError::NotFound(format!(
-                "Organisation with id '{}' not found",
-                id
-            ))),
-        }
     }
     pub async fn update(&self, id: &str, req: UpdateOrganizationRequest) -> Result<Organisation, ApiError> {
         let object_id = ObjectId::parse_str(id)
@@ -361,63 +331,5 @@ impl OrganisationRepository{
                 Err(ApiError::NotFound("Organisation not found".to_string()))
             }
         }
-    }
-
-    pub async fn get_next_invoice_sequence_by_id(&self, org_id: &ObjectId) -> Result<i32, ApiError> {
-        log::info!("Getting next invoice sequence for org_id: {}", org_id);
-        
-        let filter = doc! { "_id": org_id };
-        let update = doc! {
-            "$inc": { "lastInvoiceSequence": 1 }
-        };
-        
-        let options = mongodb::options::FindOneAndUpdateOptions::builder()
-            .upsert(false)
-            .return_document(mongodb::options::ReturnDocument::After)
-            .build();
-
-        let result = self.collection.find_one_and_update(filter, update, options).await?;
-
-        match result {
-            Some(org) => {
-                if let Ok(doc) = mongodb::bson::to_document(&org) {
-                    if let Ok(sequence) = doc.get_i32("lastInvoiceSequence") {
-                        log::info!("Next sequence number: {}", sequence);
-                        return Ok(sequence);
-                    }
-                }
-                log::warn!("Could not get sequence from document, defaulting to 1");
-                Ok(1)
-            }
-            None => {
-                log::error!("Organisation not found for id: {}", org_id);
-                Err(ApiError::NotFound("Organisation not found".to_string()))
-            }
-        }
-    }
-
-    pub async fn peek_next_invoice_sequence_by_id(&self, org_id: &ObjectId) -> Result<i32, ApiError> {
-        let filter = doc! { "_id": org_id };
-        let result = self.collection.find_one(filter, None).await?;
-
-        match result {
-            Some(org) => {
-                if let Ok(doc) = mongodb::bson::to_document(&org) {
-                    if let Ok(current_sequence) = doc.get_i32("lastInvoiceSequence") {
-                        return Ok(current_sequence + 1);
-                    }
-                }
-                Ok(1)
-            }
-            None => {
-                Err(ApiError::NotFound("Organisation not found".to_string()))
-            }
-        }
-    }
-
-    pub async fn get_user_by_id(&self, _user_id: &str) -> Result<Option<crate::models::users::User>, ApiError> {
-        // This would need a users collection reference
-        // For now, returning None as this should be called from UserRepository
-        Ok(None)
     }
 }

@@ -1,12 +1,7 @@
-import React, { useEffect, useState, useRef } from "react";
-import { ArrowLeft, CirclePlus, CircleMinus, Eye, Search } from "lucide-react";
+import React, { useState } from "react";
+import { ArrowLeft, CirclePlus, CircleMinus, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
-import { useDispatch, useSelector } from "react-redux";
-import { expenseSelector, fetchExpenseData, createExpense } from "../../ReduxApi/expense";
-import { fetchCostCenters, costCenterSelector } from "../../ReduxApi/costCenter";
-import { fetchCustomerData } from "../../ReduxApi/customer";
-import axiosInstance from "../../utils/axiosInstance";
+import { KeyUri } from "../../shared/key";
 
 const emptyExpenseItem = () => ({
   expenseCategory: "",
@@ -21,7 +16,6 @@ export default function Expense() {
   // 🔹 Header / group-level fields
   const [header, setHeader] = useState({
     expenseTitle: "",
-    customerId: "",
     projectCostCenter: "",
     expenseDate: "",
     currency: "",
@@ -32,63 +26,12 @@ export default function Expense() {
   const [items, setItems] = useState([emptyExpenseItem()]);
   const [inputErrors, setInputErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const dispatch = useDispatch()
+
   const nav = useNavigate();
-  const { currentExpense } = useSelector(expenseSelector)
-  const { costCenters } = useSelector(costCenterSelector)
-  const allCostCenters = Array.isArray(costCenters) ? costCenters : []
 
-  const { customersData } = useSelector((state) => state.customer)
-  const allCustomers = Array.isArray(customersData) ? customersData : []
-
-  // cost centers filtered to the selected customer
-  const customerCostCenters = header.customerId
-    ? allCostCenters.filter((cc) => {
-        const ccCustId = cc.customerId?.$oid || cc.customerId || ''
-        return ccCustId === header.customerId
-      })
-    : []
-
-  const [ccSearch, setCcSearch] = useState("")
-  const [ccOpen, setCcOpen] = useState(false)
-  const ccRef = useRef(null)
-
-  const filteredCC = customerCostCenters.filter(
-    (cc) =>
-      (cc.costCenterNumber || "").toLowerCase().includes(ccSearch.toLowerCase()) ||
-      (cc.projectName || "").toLowerCase().includes(ccSearch.toLowerCase())
-  )
-  
   const goBackToExpenses = () => {
     nav("/expenses");
   };
-
-  useEffect(() => {
-    setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "" });
-    setItems([emptyExpenseItem()]);
-    setInputErrors({});
-    setCcSearch("");
-  }, []);
-
-  useEffect(() => {
-    dispatch(fetchExpenseData())
-    dispatch(fetchCostCenters())
-    dispatch(fetchCustomerData())
-  }, [dispatch])
-
-  // Close CC dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => { if (ccRef.current && !ccRef.current.contains(e.target)) setCcOpen(false) }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
-
-  
-  const handleCustomerChange = (e) => {
-    const customerId = e.target.value
-    setHeader((prev) => ({ ...prev, customerId, projectCostCenter: '' }))
-    setCcSearch('')
-  }
 
   // Header changes
   const handleHeaderChange = (e) => {
@@ -193,10 +136,9 @@ export default function Expense() {
   try {
     const formData = new FormData();
     
-    // Header fields - try to match original working format exactly
+    // Header fields (common)
     formData.append("expenseTitle", header.expenseTitle);
     formData.append("projectCostCenter", header.projectCostCenter);
-    formData.append("customerId", header.customerId);
     formData.append("expenseDate", header.expenseDate);
     formData.append("currency", header.currency);
     formData.append("notes", header.comment || "");
@@ -204,7 +146,7 @@ export default function Expense() {
     // Prepare items array as JSON (without files)
     const itemsData = items.map((item) => ({
       expenseCategory: item.expenseCategory,
-      amount: parseFloat(item.amount) || 0,
+      amount: item.amount,
       comment: item.comment || "",
       paymentMethod: "",
       vendor: "",
@@ -221,21 +163,29 @@ export default function Expense() {
       }
     });
 
-    // Add org_email
-    const orgEmail = localStorage.getItem('email');
-    formData.append('org_email', orgEmail);
+    const res = await fetch(`${KeyUri.BACKENDURI}/expenses`, {
+      method: "POST",
+      body: formData,
+    });
 
-    const response = await axiosInstance.post('/expenses', formData);
-    toast.success(response.data.message || 'Expense created successfully!');
-    dispatch(fetchExpenseData());
+    if (!res.ok) {
+      const errorData = await res.text();
+      throw new Error(`Failed to save expense: ${errorData}`);
+    }
 
-    setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "" });
+    alert("Expense saved successfully");
+    setHeader({
+      expenseTitle: "",
+      projectCostCenter: "",
+      expenseDate: "",
+      currency: "",
+      comment: "",
+    });
     setItems([emptyExpenseItem()]);
     nav("/expenses");
   } catch (err) {
-    console.error('Full error object:', err);
-    console.error('Error response:', err.response?.data);
-    toast.error(err.response?.data?.message || err.message || "Something went wrong while saving expense");
+    console.error(err);
+    alert(err.message || "Something went wrong while saving expense");
   } finally {
     setSaving(false);
   }
@@ -263,11 +213,11 @@ export default function Expense() {
             </div>
             <div className="flex flex-wrap justify-end mr-5 gap-2 ">
               <button
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+                className="px-4 py-2 bg-blue-600 cursor-pointer text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
                 onClick={onExpenseDataSubmit}
                 disabled={saving}
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving..." : "💾 Save"}
               </button>
             </div>
           </div>
@@ -275,7 +225,7 @@ export default function Expense() {
       </div>
 
       {/* Expense Form */}
-      <div className="bg-white rounded-lg border-g shadow-lg p-4 pb-6 mt-10">
+      <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
         <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
           Expense Details
         </h2>
@@ -303,88 +253,20 @@ export default function Expense() {
             )}
           </div>
 
-          {/* Customer */}
-          <div className="relative">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Customer *
-            </label>
-            <select
-              name="customerId"
-              data-header="true"
-              value={header.customerId}
-              onChange={handleCustomerChange}
-              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
-            >
-              <option value="">Select a customer</option>
-              {allCustomers.map((c) => {
-                const id = c._id?.$oid || c._id || ''
-                return (
-                  <option key={id} value={id}>
-                    {c.customerName} {c.CustomerCode ? `(${c.CustomerCode})` : ''}
-                  </option>
-                )
-              })}
-            </select>
-          </div>
-
           {/* Project / Cost Center */}
-          <div className="relative" ref={ccRef}>
+          <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Project / Cost Center *
             </label>
-            <div
-              className={`border border-gray-300 rounded px-3 py-2 w-full text-sm flex justify-between items-center ${
-                header.customerId ? 'cursor-pointer' : 'cursor-not-allowed bg-gray-100'
-              }`}
-              onClick={() => header.customerId && setCcOpen((p) => !p)}
-            >
-              <span className={header.projectCostCenter ? "text-gray-800" : "text-gray-400"}>
-                {header.projectCostCenter
-                  ? (() => {
-                      const cc = customerCostCenters.find((c) => c.costCenterNumber === header.projectCostCenter)
-                      return cc ? `${cc.costCenterNumber} — ${cc.projectName}` : header.projectCostCenter
-                    })()
-                  : header.customerId ? "Select a cost center" : "Select a customer first"}
-              </span>
-              <Search className="w-4 h-4 text-gray-400" />
-            </div>
-            {ccOpen && (
-              <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
-                <div className="p-2 border-b border-gray-100">
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Search by number or project..."
-                    value={ccSearch}
-                    onChange={(e) => setCcSearch(e.target.value)}
-                    className="w-full text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none"
-                  />
-                </div>
-                <ul className="max-h-48 overflow-y-auto">
-                  {filteredCC.length === 0 ? (
-                    <li className="px-3 py-2 text-sm text-gray-400">No cost centers found</li>
-                  ) : filteredCC.map((cc) => {
-                    const id = cc._id?.$oid || cc._id || cc.id || ""
-                    return (
-                      <li
-                        key={id}
-                        onClick={() => {
-                          setHeader((p) => ({ ...p, projectCostCenter: cc.costCenterNumber }))
-                          setCcOpen(false)
-                          setCcSearch("")
-                        }}
-                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 flex justify-between items-center ${
-                          header.projectCostCenter === cc.costCenterNumber ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700"
-                        }`}
-                      >
-                        <span>{cc.projectName}</span>
-                        <span className="text-xs text-gray-400">{cc.costCenterNumber}</span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            )}
+            <input
+              type="text"
+              name="projectCostCenter"
+              data-header="true"
+              value={header.projectCostCenter}
+              onChange={handleHeaderChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm placeholder:text-gray-400"
+              placeholder="Enter project or cost center"
+            />
             {inputErrors["header_projectCostCenter"] && (
               <p className="absolute text-[13px] top-15 text-[#f10404]">
                 {inputErrors["header_projectCostCenter"]}

@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit'
-import { getConfig, KeyUri } from '../shared/key'
-import axiosInstance from '../utils/axiosInstance'
+import { config, KeyUri } from '../shared/key'
+import axios from 'axios'
 import { toast } from 'react-toastify'
 
 const initialState = {
@@ -8,7 +8,6 @@ const initialState = {
   customersData: [],
   isError: false,
   currentCustomer: null,
-  customerProjects: [],
 }
 
 const customerSlice = createSlice({
@@ -29,9 +28,6 @@ const customerSlice = createSlice({
       state.isError = false
       state.currentCustomer = payload
     },
-    setCustomerProjects: (state, { payload }) => {
-      state.customerProjects = payload
-    },
     getCustomerFailure: (state) => {
       state.isLoading = false
       state.isError = true
@@ -45,7 +41,6 @@ export const {
   getCustomerFailure,
   getCustomerSuccess,
   getOneCustomer,
-  setCustomerProjects,
 } = customerSlice.actions
 
 export const customerSelector = (state) => state.customer
@@ -55,9 +50,15 @@ export default customerSlice.reducer
 export const createCustomer = (customerData) => async (dispatch) => {
   dispatch(getCustomer())
   try {
-    const { data } = await axiosInstance.post('/customers', customerData)
+    const { data } = await axios.post(
+      `${KeyUri.BACKENDURI}/customers`,
+      customerData,
+      config
+    )
+    // console.log('Customer created:', data)
     toast.success(data.message)
-    dispatch(fetchCustomerData())
+    // console.log(data.message)
+    dispatch(fetchCustomerData()) // Refresh list after creation
   } catch (error) {
     console.error('Error creating customer:', error)
     toast.error(
@@ -72,7 +73,7 @@ export const createCustomer = (customerData) => async (dispatch) => {
 export const fetchCustomerData = () => async (dispatch) => {
   dispatch(getCustomer())
   try {
-    const { data } = await axiosInstance.get('/customers')
+    const { data } = await axios.get(KeyUri.BACKENDURI + `/customers`, config)
     dispatch(getCustomerSuccess(data))
   } catch (error) {
     console.error('Error fetching customers:', error)
@@ -88,7 +89,10 @@ export const fetchCustomerData = () => async (dispatch) => {
 export const fetchOneCustomer = (customerID) => async (dispatch) => {
   dispatch(getCustomer())
   try {
-    const { data } = await axiosInstance.get(`/customers/${customerID}`)
+    const { data } = await axios.get(
+      `${KeyUri.BACKENDURI}/customers/${customerID}`,
+      config
+    )
     dispatch(getOneCustomer(data))
   } catch (error) {
     console.error('Error fetching customer:', error)
@@ -101,9 +105,10 @@ export const updateCustomerData =
   (customerID, customerData) => async (dispatch) => {
     dispatch(getCustomer())
     try {
-      const { data } = await axiosInstance.put(
-        `/customer/${customerID}`,
-        customerData
+      const { data } = await axios.put(
+        `${KeyUri.BACKENDURI}/customer/${customerID}`,
+        customerData,
+        config
       )
       toast.success(data.message)
       dispatch(fetchCustomerData())
@@ -121,7 +126,11 @@ export const updateCustomerData =
 export const deleteCustomer = (id) => async (dispatch) => {
   dispatch(getCustomer())
   try {
-    const { data } = await axiosInstance.delete(`/customer/${id}`)
+    const { data } = await axios.delete(
+      `${KeyUri.BACKENDURI}/customer/${id}`,
+      config
+    )
+    // console.log(data)
     toast.success(data.message)
     dispatch(fetchCustomerData())
   } catch (error) {
@@ -131,16 +140,5 @@ export const deleteCustomer = (id) => async (dispatch) => {
         `Failed: ${error?.response?.statusText || 'Unknown error'}`
     )
     dispatch(getCustomerFailure())
-  }
-}
-
-// ✅ Fetch projects for a specific customer
-export const fetchCustomerProjects = (customerId) => async (dispatch) => {
-  try {
-    const { data } = await axiosInstance.get(`/customers/${customerId}/projects`)
-    dispatch(setCustomerProjects(data))
-  } catch (error) {
-    console.error('Error fetching customer projects:', error)
-    dispatch(setCustomerProjects([]))
   }
 }
