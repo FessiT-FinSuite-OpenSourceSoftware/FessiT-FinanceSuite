@@ -170,8 +170,8 @@ export default function TDSCompliance() {
     });
   };
 
-  const filteredReturns = filterStatus === "all" 
-    ? tdsReturns 
+  const filteredReturns = filterStatus === "all"
+    ? tdsReturns
     : tdsReturns.filter(r => r.status === filterStatus);
 
   const handleFileReturn = (returnId) => {
@@ -201,65 +201,61 @@ export default function TDSCompliance() {
             <div className="flex flex-wrap gap-2 flex-none border-b border-gray-200 pb-0">
               <button
                 onClick={() => setActiveTab("returns")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                  activeTab === "returns"
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === "returns"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                  }`}
               >
-                📋 Returns
+                Returns
               </button>
               <button
                 onClick={() => setActiveTab("deductions")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                  activeTab === "deductions"
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === "deductions"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                  }`}
               >
-                💰 Deductions
+                Deductions
               </button>
               <button
                 onClick={() => setActiveTab("challans")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                  activeTab === "challans"
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === "challans"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                  }`}
               >
-                🧾 Challans
+                Challans
               </button>
               <button
                 onClick={() => setActiveTab("certificates")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                  activeTab === "certificates"
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === "certificates"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                  }`}
               >
-                📜 Certificates
+                Certificates
               </button>
             </div>
 
             {/* Action Buttons - Right Aligned */}
             <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 pb-3">
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleGenerateReport}
               >
-                📥 Export Report
-              </button>
-              <button 
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"
-                onClick={handlePayChallan}
-              >
-                💳 Pay Challan
+                Export Report
               </button>
               <button
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 w-full sm:w-auto"
+                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+                onClick={handlePayChallan}
+              >
+                Pay Challan
+              </button>
+              <button
+                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={() => alert("Opening TRACES portal...")}
               >
-                📝 File Return
+                File Return
               </button>
             </div>
           </div>
@@ -275,19 +271,19 @@ export default function TDSCompliance() {
             <p className="text-3xl font-bold text-blue-900">{formatCurrency(initialTDSData.totalTDSDeducted)}</p>
             <p className="text-xs text-blue-600 mt-1">This financial year</p>
           </div>
-          
+
           <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
             <h3 className="text-sm font-medium text-green-700 mb-2">Total TDS Deposited</h3>
             <p className="text-3xl font-bold text-green-900">{formatCurrency(initialTDSData.totalTDSDeposited)}</p>
             <p className="text-xs text-green-600 mt-1">Deposited to government</p>
           </div>
-          
+
           <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
             <h3 className="text-sm font-medium text-orange-700 mb-2">Pending Deposit</h3>
             <p className="text-3xl font-bold text-orange-900">{formatCurrency(initialTDSData.pendingDeposit)}</p>
             <p className="text-xs text-orange-600 mt-1">Due for deposit</p>
           </div>
-          
+
           <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-lg border border-red-200">
             <h3 className="text-sm font-medium text-red-700 mb-2">Returns Pending</h3>
             <p className="text-3xl font-bold text-red-900">{initialTDSData.pendingReturns}</p>
@@ -302,36 +298,33 @@ export default function TDSCompliance() {
               <h2 className="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-2">
                 TDS Returns
               </h2>
-              
+
               {/* Filter Buttons */}
               <div className="flex gap-2">
                 <button
                   onClick={() => setFilterStatus("all")}
-                  className={`px-3 py-1 rounded-md text-sm font-medium ${
-                    filterStatus === "all"
+                  className={`px-3 py-1 rounded-md text-sm font-medium ${filterStatus === "all"
                       ? "bg-blue-600 text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
+                    }`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setFilterStatus("pending")}
-                  className={`px-3 py-1 rounded-md text-sm font-medium ${
-                    filterStatus === "pending"
+                  className={`px-3 py-1 rounded-md text-sm font-medium ${filterStatus === "pending"
                       ? "bg-orange-600 text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
+                    }`}
                 >
                   Pending
                 </button>
                 <button
                   onClick={() => setFilterStatus("filed")}
-                  className={`px-3 py-1 rounded-md text-sm font-medium ${
-                    filterStatus === "filed"
+                  className={`px-3 py-1 rounded-md text-sm font-medium ${filterStatus === "filed"
                       ? "bg-green-600 text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
+                    }`}
                 >
                   Filed
                 </button>
@@ -368,13 +361,12 @@ export default function TDSCompliance() {
                           {ret.type} - {ret.quarter}
                         </h4>
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${
-                            ret.status === "filed"
+                          className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${ret.status === "filed"
                               ? "bg-green-100 text-green-800"
                               : ret.status === "pending"
-                              ? "bg-orange-100 text-orange-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+                                ? "bg-orange-100 text-orange-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {ret.status}
                         </span>
@@ -390,7 +382,7 @@ export default function TDSCompliance() {
                         TDS Amount: {formatCurrency(ret.amount)}
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-2">
                       {ret.status === "pending" ? (
                         <button
@@ -421,7 +413,7 @@ export default function TDSCompliance() {
             <h2 className="text-lg font-semibold text-gray-800 mb-6 border-b border-gray-300 pb-2">
               TDS Deductions
             </h2>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -452,11 +444,10 @@ export default function TDSCompliance() {
                       <td className="px-4 py-3 text-sm text-gray-700">{ded.challan}</td>
                       <td className="px-4 py-3 text-center">
                         <span
-                          className={`px-2 py-1 rounded-md text-xs font-semibold ${
-                            ded.status === "deposited"
+                          className={`px-2 py-1 rounded-md text-xs font-semibold ${ded.status === "deposited"
                               ? "bg-green-100 text-green-800"
                               : "bg-orange-100 text-orange-800"
-                          }`}
+                            }`}
                         >
                           {ded.status}
                         </span>
@@ -475,7 +466,7 @@ export default function TDSCompliance() {
             <h2 className="text-lg font-semibold text-gray-800 mb-6 border-b border-gray-300 pb-2">
               TDS Challans
             </h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {challans.map((challan) => (
                 <div
@@ -491,7 +482,7 @@ export default function TDSCompliance() {
                       {challan.status}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Payment Date:</span>
@@ -506,7 +497,7 @@ export default function TDSCompliance() {
                       <span className="font-bold text-gray-900">{formatCurrency(challan.amount)}</span>
                     </div>
                   </div>
-                  
+
                   <button
                     onClick={() => alert(`Downloading challan ${challan.challanNo}`)}
                     className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
@@ -525,7 +516,7 @@ export default function TDSCompliance() {
             <h2 className="text-lg font-semibold text-gray-800 mb-6 border-b border-gray-300 pb-2">
               TDS Certificates & Forms
             </h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <button
                 onClick={() => alert("Generating Form 16...")}

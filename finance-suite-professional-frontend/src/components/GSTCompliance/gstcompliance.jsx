@@ -174,7 +174,7 @@ export default function GSTCompliance() {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                📋 Returns
+                Returns
               </button>
               <button
                 onClick={() => setActiveTab("transactions")}
@@ -184,7 +184,7 @@ export default function GSTCompliance() {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                💳 Transactions
+                Transactions
               </button>
               <button
                 onClick={() => setActiveTab("compliance")}
@@ -194,7 +194,7 @@ export default function GSTCompliance() {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                ✅ Compliance
+                Compliance
               </button>
               <button
                 onClick={() => setActiveTab("reports")}
@@ -204,29 +204,29 @@ export default function GSTCompliance() {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                📊 Reports
+                Reports
               </button>
             </div>
 
             {/* Action Buttons - Right Aligned */}
             <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 pb-3">
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleGenerateReport}
               >
-                📥 Export Report
+                Export Report
               </button>
               <button 
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleReconcile}
               >
-                🔄 Reconcile
+                Reconcile
               </button>
               <button
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 w-full sm:w-auto"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={() => alert("Opening filing portal...")}
               >
-                📝 File Return
+                File Return
               </button>
             </div>
           </div>

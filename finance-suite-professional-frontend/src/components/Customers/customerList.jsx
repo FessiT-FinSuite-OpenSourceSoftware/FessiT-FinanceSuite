@@ -1,22 +1,53 @@
 import React, { useState, useEffect } from "react";
-
-import {
-  Search,
-  Plus,
-  Eye,
-  Edit2,
-  Trash2,
-  Download,
-  Mail,
-  Filter,
-} from "lucide-react";
+import { Search, Plus, Eye, Edit2, Trash2, Filter, FolderPlus, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import {
-  fetchCustomerData,
-  customerSelector,
-  deleteCustomer,
-} from "../../ReduxApi/customer";
+import { fetchCustomerData, customerSelector, deleteCustomer, updateCustomerData } from "../../ReduxApi/customer";
+import { authSelector } from "../../ReduxApi/auth";
+import { canWrite, canDelete, Module } from "../../utils/permissions";
+import { toast } from "react-toastify";
+
+const emptyProject = { projectName: "", projectOwner: "", description: "" };
+
+function ProjectModal({ customerName, onSave, onClose }) {
+  const [form, setForm] = useState({ ...emptyProject });
+  const handleSave = () => {
+    if (!form.projectName.trim() || !form.projectOwner.trim()) {
+      toast.error("Project name and owner are required");
+      return;
+    }
+    onSave(form);
+  };
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <div className="flex justify-between items-center mb-1">
+          <h3 className="text-base font-semibold text-gray-800">Add Project</h3>
+          <button onClick={onClose}><X size={18} className="text-gray-500 hover:text-gray-800" /></button>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">for <span className="font-medium capitalize">{customerName}</span></p>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Project Name *</label>
+            <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter project name" value={form.projectName} onChange={e => setForm(p => ({ ...p, projectName: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Project Owner *</label>
+            <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter project owner" value={form.projectOwner} onChange={e => setForm(p => ({ ...p, projectOwner: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+            <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter description" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-300 rounded-full hover:border-gray-400">Cancel</button>
+          <button onClick={handleSave} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-full hover:bg-blue-700">Add</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Sample invoice data - replace with your actual data/API call
 const sampleCustomers = [
@@ -104,13 +135,17 @@ const sampleCustomers = [
 
 export default function CustomerList() {
   const { customersData } = useSelector(customerSelector);
+  const { user } = useSelector(authSelector);
+  const hasWrite = canWrite(user, Module.Customers);
+  const hasDelete = canDelete(user, Module.Customers);
 
   // const [customers,setCustomers] = useState(customersData);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAction, setShowAction] = useState(null);
-  const [page,setPage] = useState(10)
+  const [page, setPage] = useState(10);
+  const [projectModal, setProjectModal] = useState(null); // { id, customerName, projects }
   const { id } = useParams();
   const dispatch = useDispatch();
   const nav = useNavigate();
@@ -132,7 +167,7 @@ export default function CustomerList() {
   const endIndex = startIndex + itemsPerPage;
   const currentCustomer = filteredCustomers.slice(startIndex, endIndex);
 
-  
+
 
   useEffect(() => {
     setCurrentPage(1);
@@ -156,6 +191,14 @@ export default function CustomerList() {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const handleAddProject = (form) => {
+    const target = customersData.find(c => c._id?.$oid === projectModal.id);
+    if (!target) return;
+    const updated = { ...target, projects: [...(target.projects || []), form] };
+    dispatch(updateCustomerData(projectModal.id, updated));
+    setProjectModal(null);
   };
 
   const onCreateNew = () => {
@@ -184,7 +227,7 @@ export default function CustomerList() {
     setShowAction((prev) => (prev === id ? null : id));
   };
 
-  const onPageItemSet = (e)=>{
+  const onPageItemSet = (e) => {
     setPage(e.target.value)
   }
 
@@ -223,13 +266,17 @@ export default function CustomerList() {
                 </select>
               </div>
 
-              {/* ✅ Create Customer triggers invoice.jsx */}
               <button
                 onClick={onCreateNew}
-                className="flex cursor-pointer items-center mr-2 gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={!hasWrite}
+                className={`flex items-center mr-2 gap-2 px-4 py-2 rounded-lg transition-colors ${hasWrite
+                  ? "cursor-pointer bg-blue-600 text-white hover:bg-blue-700"
+                  : "cursor-not-allowed bg-gray-200 text-gray-400"
+                  }`}
+                title={!hasWrite ? "You don't have permission to create customers" : ""}
               >
                 <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Create Customer</span>
+                <span className="hidden sm:inline">Create</span>
               </button>
             </div>
           </div>
@@ -265,7 +312,7 @@ export default function CustomerList() {
 
         {/* Customer Table */}
         <div className="bg-white rounded-lg shadow-sm">
-          <div className="overflow-x-auto">
+          <div className="overflow-visible">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200 ">
                 <tr>
@@ -278,9 +325,12 @@ export default function CustomerList() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
                     GSTIN
                   </th>
-                 
+
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Status
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Projects
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Actions
@@ -290,7 +340,7 @@ export default function CustomerList() {
               <tbody className="divide-y divide-gray-200">
                 {currentCustomer?.length > 0 ? (
                   currentCustomer?.map((item) => (
-                    
+
                     <tr
                       key={item?._id?.$oid}
                       className="hover:bg-gray-50 transition-colors"
@@ -307,7 +357,8 @@ export default function CustomerList() {
                       <td className="px-6 py-4 capitalize whitespace-nowrap hidden md:table-cell">
                         {item?.gstIN}
                       </td>
-                      
+
+
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex px-2 py-1 capitalize text-xs font-semibold rounded-full ${getStatusColor(
@@ -317,38 +368,54 @@ export default function CustomerList() {
                           {item?.isActive}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                        <div className="flex justify-center items-center w-full">
+                          {item?.projects?.length > 0 ? item.projects.length : "No Project"}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-3 ">
-                        
+
+                          <button
+                            onClick={() => setProjectModal({ id: item?._id?.$oid, customerName: item?.customerName, projects: item?.projects || [] })}
+                            className="text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
+                            title="Add Project"
+                          >
+                            <FolderPlus className="w-4 h-4" />
+                          </button>
                           <div>
                             <button
-                             
-                              className="cursor-pointer text-gray-600 hover:text-green-600 transition-colors"
-                              title="Edit"
+                              onClick={() => hasWrite && onEdit(item?._id?.$oid)}
+                              disabled={!hasWrite}
+                              className={`transition-colors ${hasWrite
+                                ? "cursor-pointer text-gray-600 hover:text-green-600"
+                                : "cursor-not-allowed text-gray-300"
+                                }`}
+                              title={!hasWrite ? "No write permission" : "Edit"}
                             >
-                              <Edit2
-                                className="w-4 h-4"
-                                onClick={() => onEdit(item?._id?.$oid)}
-                              />
+                              <Edit2 className="w-4 h-4" />
                             </button>
                           </div>
                           <div className="relative">
                             <button
-                              
-                              onClick={(e) => onShowAction(item?._id?.$oid, e)}
-                              className="text-gray-600 cursor-pointer hover:text-red-600 transition-colors"
-                              title="Delete"
+                              onClick={(e) => hasDelete && onShowAction(item?._id?.$oid, e)}
+                              disabled={!hasDelete}
+                              className={`transition-colors ${hasDelete
+                                ? "cursor-pointer text-gray-600 hover:text-red-600"
+                                : "cursor-not-allowed text-gray-300"
+                                }`}
+                              title={!hasDelete ? "No delete permission" : "Delete"}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                             {showAction === item?._id?.$oid && (
-                              <div className="absolute right-5 top-1/2 -translate-y-1/2 bg-white shadow-xl border border-gray-200 rounded-lg p-5  z-50">
+                              <div className="absolute right-5 top-1/2 -translate-y-1/2 bg-white shadow-xl border border-gray-200 rounded-lg p-5 pb-8">
                                 <div className="text-center ">
-                                 <div className="">
-                                   <p className="text-gray-800 font-sm">
-                                     Are you sure you want to delete <span className="font-bold capitalize">{item?.customerName}</span> ?
-                                  </p>
-                                 </div>
+                                  <div className="">
+                                    <p className="text-gray-800 font-sm">
+                                      Are you sure you want to delete <span className="font-bold capitalize">{item?.customerName}</span> ?
+                                    </p>
+                                  </div>
                                   <div className="flex justify-end gap-3 mt-4">
                                     <button
                                       onClick={() => setShowAction(null)}
@@ -390,47 +457,53 @@ export default function CustomerList() {
           {/* Pagination */}
 
         </div>
-                  {filteredCustomers?.length > 0 && (
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center ">
-              <p className="text-sm text-gray-600">
-                Showing {startIndex + 1} to{" "}
-                {Math.min(endIndex, filteredCustomers?.length)} of{" "}
-                {filteredCustomers?.length} results
-              </p>
-              <div>
-                <select
+        {filteredCustomers?.length > 0 && (
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center ">
+            <p className="text-sm text-gray-600">
+              Showing {startIndex + 1} to{" "}
+              {Math.min(endIndex, filteredCustomers?.length)} of{" "}
+              {filteredCustomers?.length} results
+            </p>
+            <div>
+              <select
                 onChange={onPageItemSet}
                 // value={page?page:""}
                 className="bg-gray-200 text-sm px-2 py-2 rounded-sm w-44"
-                >
-                 <option value={10}>All</option>
-                 <option value={1}>One</option>
-                 <option value={2}>Two</option>
-                 <option value={3}>Three</option>
-                 
+              >
+                <option value={10}>All</option>
+                <option value={1}>One</option>
+                <option value={2}>Two</option>
+                <option value={3}>Three</option>
 
 
 
-                </select>
-              </div>
-              <div className="flex gap-1">
-                {[...Array(totalPages)].map((_, index) => (
-                  <button
-                    key={index + 1}
-                    onClick={() => setCurrentPage(index + 1)}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === index + 1
-                        ? "bg-blue-600 text-white"
-                        : "border border-gray-300 text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
+
+              </select>
             </div>
-          )}
+            <div className="flex gap-1">
+              {[...Array(totalPages)].map((_, index) => (
+                <button
+                  key={index + 1}
+                  onClick={() => setCurrentPage(index + 1)}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === index + 1
+                    ? "bg-blue-600 text-white"
+                    : "border border-gray-300 text-gray-700 hover:bg-gray-100"
+                    }`}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+      {projectModal && (
+        <ProjectModal
+          customerName={projectModal.customerName}
+          onSave={handleAddProject}
+          onClose={() => setProjectModal(null)}
+        />
+      )}
     </div>
   );
 }

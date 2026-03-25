@@ -3,10 +3,8 @@ import { toast } from "react-toastify";
 import { countriesData } from "../../utils/countriesData";
 import { Search } from "lucide-react";
 import { Pencil, Save } from "lucide-react"; // 🖊️ and 💾 icons
-import { useSelector,useDispatch } from "react-redux";
-import { createOrganisation,fetchOneOrganisation,orgamisationSelector, updateOrganisationData } from "../../ReduxApi/organisation";
-import axios from "axios";
-import { KeyUri } from "../../shared/key";
+import { useSelector, useDispatch } from "react-redux";
+import { createOrganisation, fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector, updateOrganisationData, clearLoading } from "../../ReduxApi/organisation";
 
 
 const initialSettings = {
@@ -49,6 +47,7 @@ const initialSettings = {
   // --- Users & Roles ---
   newUserName: "",
   newUserEmail: "",
+  newUserPassword: "",
   newUserRole: "Viewer",
   newUserStatus: "Active",
   permissions: {
@@ -89,11 +88,14 @@ export default function SettingsCreation() {
   const [selected, setSelected] = useState(null);
   const dropdownRef = useRef(null);
   const [activeTab, setActiveTab] = useState("organization");
-  const [isEditing,setIsEditing] = useState(false)
-  const {currentOrganisation} = useSelector(orgamisationSelector)
-  const [orgId,setOrgID] = useState(null)
-  const [emailDisable,setEmailDisable] = useState(false)
-  const dispatch = useDispatch()
+  const [isEditing, setIsEditing] = useState(false);
+  const { currentOrganisation, isLoading, isError } = useSelector(orgamisationSelector);
+  const [orgId, setOrgID] = useState(null);
+  const [emailDisable, setEmailDisable] = useState(false);
+  const dispatch = useDispatch();
+
+  // Debug logging
+  console.log('Settings component - isLoading:', isLoading, 'currentOrganisation:', !!currentOrganisation);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -104,6 +106,28 @@ export default function SettingsCreation() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const loadOrganisation = async () => {
+      const email = localStorage.getItem("email");
+
+      if (!email) return;
+
+      try {
+        setEmailDisable(true);
+        // Use Redux action instead of direct API call
+        await dispatch(fetchOrganisationByEmail(email));
+      } catch (error) {
+        console.error("Failed to fetch organisation:", error);
+        setEmailDisable(false);
+      }
+    };
+
+    // Only load if we don't already have the data
+    if (!currentOrganisation) {
+      loadOrganisation();
+    }
+  }, [dispatch, currentOrganisation]);
 
   const validateForm = (name, value) => {
     let error = "";
@@ -327,6 +351,7 @@ export default function SettingsCreation() {
       custom_payment_name: settings.customPaymentName,
       new_user_name:settings.newUserName,
       new_user_email:settings.newUserEmail,
+      new_user_password:settings.newUserPassword,
       new_user_role:settings.newUserRole,
       new_user_status:settings.newUserStatus,
       permissions:settings.permissions
@@ -336,17 +361,18 @@ export default function SettingsCreation() {
     console.log('Organization ID:', orgId);
     
     try {
-      dispatch(updateOrganisationData(orgId,updateData))
-   
-      
-      
-      
-     
-      setIsEditing(false);
+      await dispatch(updateOrganisationData(orgId, updateData))
+      localStorage.setItem("email", settings.email)
+      // Force clear loading state after successful update
+      setTimeout(() => {
+        dispatch(clearLoading())
+      }, 100)
     } catch (error) {
       console.error('Update failed:', error);
       console.error('Error response:', error.response?.data);
       toast.error('Update failed: ' + (error.response?.data?.message || error.message));
+      // Clear loading state on error too
+      dispatch(clearLoading())
     }
   };
 
@@ -432,6 +458,7 @@ export default function SettingsCreation() {
       // User fields - use snake_case to match backend expectations
       new_user_name: settings.newUserName,
       new_user_email: settings.newUserEmail,
+      new_user_password: settings.newUserPassword,
       new_user_role: settings.newUserRole,
       new_user_status: settings.newUserStatus,
       permissions: settings.permissions
@@ -442,136 +469,154 @@ export default function SettingsCreation() {
       console.log("Sending data to API:", mappedSettings)
       console.log("Organization ID:", orgId)
       try {
-       dispatch(updateOrganisationData(orgId, mappedSettings))
-        // Don't refetch - just keep the current form data as it's already updated
-        JSON.stringify(localStorage.setItem("email",settings.email))
-        // setIsEditing(false)
+        await dispatch(updateOrganisationData(orgId, mappedSettings))
+        localStorage.setItem("email", settings.email)
       } catch (error) {
         console.error('Update failed:', error)
       }
     }else{
-      dispatch(createOrganisation(mappedSettings))
-      JSON.stringify(localStorage.setItem("email",settings.email))
-      // Only reset form after creating new organization
-      setSettings({
-        ...initialSettings,
-        addresses: (initialSettings.addresses || []).map((addr) => ({
-          ...addr,
-          value: "",
-          isEditing: false,
-        })),
-      });
-      setSelected("");
+      console.log('Creating new organisation with data:', mappedSettings)
+      try {
+        const result = await dispatch(createOrganisation(mappedSettings))
+        console.log('Create result:', result)
+        localStorage.setItem("email", settings.email)
+        console.log('Email stored in localStorage:', settings.email)
+        
+        // Set the organization ID and switch to edit mode
+        if (result?._id?.$oid) {
+          console.log('Setting org ID:', result._id.$oid)
+          setOrgID(result._id.$oid)
+          setIsEditing(true)
+        } else {
+          console.warn('No _id.$oid found in result:', result)
+        }
+      } catch (error) {
+        console.error('Create failed:', error)
+      }
     }
   };
 
   const handleSave = (e) => {
-  // if (activeTab === "organization") {
-  //   handleOrganisationSubmit(e);
-  // } else if (activeTab === "customer") {
-  //   // handleCustomerSubmit();
-  //   console.log(" customer")
-  // } else if (activeTab === "invoice") {
-  //   // handleInvoiceSubmit();
-  //   console.log("invoice")
-  // }
-  console.log(settings)
+  console.log('handleSave called, isEditing:', isEditing)
+  console.log('orgId:', orgId)
   handleOrganisationSubmit(e)
 };
 
-const handleEdit = async()=>{
-  setIsEditing(true)
-  setEmailDisable(true)
-  const response =await axios.get(KeyUri.BACKENDURI + `/organisation/by-email/${localStorage.getItem('email')}`)
-  console.log(response?.data?._id?.$oid)
-  setOrgID(response?.data?._id?.$oid)
-  dispatch(fetchOneOrganisation(response?.data?._id?.$oid))
-}
+const handleEdit = async () => {
+  setIsEditing(true);
+  setEmailDisable(true);
+  
+  // Only fetch if we don't have current organisation data
+  if (!currentOrganisation) {
+    try {
+      // Use Redux action instead of direct API call
+      await dispatch(fetchOrganisationByEmail(localStorage.getItem('email')));
+    } catch (error) {
+      console.error('Error fetching organisation for edit:', error);
+    }
+  }
+};
 console.log(currentOrganisation)
 
 
-useEffect(()=>{
- if(currentOrganisation){
-  
-  setSettings((prev)=>({
-    ...prev,
-    // Organization fields
-    organizationName: currentOrganisation?.organizationName || "",
-    companyName: currentOrganisation?.companyName || "",
-    gstIN: currentOrganisation?.gstIN || "",
-    country: currentOrganisation.country || "",
-    countryCode: currentOrganisation.countryCode || "",
-    phone: currentOrganisation.phone || "",
-    email: currentOrganisation.email || "",
-    addresses: currentOrganisation.addresses?.length ? 
-      currentOrganisation.addresses.map(addr => ({
-        label: addr.label || "Address",
-        value: addr.value || addr,
-        isEditing: false
-      })) : prev.addresses,
-    // Invoice fields
-    invoicePrefix: currentOrganisation?.invoicePrefix || "",
-    startingInvoiceNo: currentOrganisation?.startingInvoiceNo || "",
-    dateFormat: currentOrganisation?.dateFormat || "DD/MM/YYYY",
-    currency: currentOrganisation?.currency || "INR",
-    paymentTerms: currentOrganisation?.paymentTerms || "30",
-    latePaymentFee: currentOrganisation?.latePaymentFee || "",
-    earlyDiscount: currentOrganisation?.earlyDiscount || "",
-    discountDays: currentOrganisation?.discountDays || "",
-    paymentInstructions: currentOrganisation?.paymentInstructions || "",
-    accountHolder: currentOrganisation?.accountHolder || "",
-    bankName: currentOrganisation?.bankName || "",
-    accountNumber: currentOrganisation?.accountNumber || "",
-    ifscCode: currentOrganisation?.ifscCode || "",
-    upiId: currentOrganisation?.upiId || "",
-    footerNote: currentOrganisation?.footerNote || "",
-    // Tax fields
-    taxRegime: currentOrganisation?.taxRegime || "GST",
-    taxType: currentOrganisation?.taxType || "exclusive",
-    cgst: currentOrganisation?.cgst || "",
-    sgst: currentOrganisation?.sgst || "",
-    igst: currentOrganisation?.igst || "",
-    inputTaxCredit: currentOrganisation?.inputTaxCredit || "enabled",
-    requireHSN: currentOrganisation?.requireHSN || "yes",
-    roundingRule: currentOrganisation?.roundingRule || "nearest",
-    taxNotes: currentOrganisation?.taxNotes || "",
-    // Payment fields
-    enabledMethods: currentOrganisation?.enabledMethods || prev.enabledMethods,
-    paymentBankName: currentOrganisation?.paymentBankName || "",
-    paymentAccountNo: currentOrganisation?.paymentAccountNo || "",
-    paymentIFSC: currentOrganisation?.paymentIFSC || "",
-    paymentAccountHolder: currentOrganisation?.paymentAccountHolder || "",
-    paymentUpiId: currentOrganisation?.paymentUpiId || "",
-    paypalEmail: currentOrganisation?.paypalEmail || "",
-    paypalClientId: currentOrganisation?.paypalClientId || "",
-    cardProvider: currentOrganisation?.cardProvider || "",
-    cardApiKey: currentOrganisation?.cardApiKey || "",
-    cashInstructions: currentOrganisation?.cashInstructions || "",
-    customPaymentName: currentOrganisation?.customPaymentName || "",
-    // User fields
-    newUserName: currentOrganisation?.newUserName || "",
-    newUserEmail: currentOrganisation?.newUserEmail || "",
-    newUserRole: currentOrganisation?.newUserRole || "Viewer",
-    newUserStatus: currentOrganisation?.newUserStatus || "Active",
-    permissions: currentOrganisation?.permissions || prev.permissions,
-  }))
-  setEmailDisable(true)
-  const foundCountry = countriesData.countries.find(
-          (c) =>
-            c.country === currentOrganisation.country ||
-            c.code === currentOrganisation.countryCode
-        );
-  
-        if (foundCountry) setSelected(foundCountry);
-  
-        setInputErrors({});
- }
-},[currentOrganisation]) // Remove orgId from dependency array
+useEffect(() => {
+  if (currentOrganisation) {
+    // Set the organization ID when we get the data
+    if (currentOrganisation._id?.$oid) {
+      setOrgID(currentOrganisation._id.$oid);
+    } else if (currentOrganisation._id) {
+      setOrgID(currentOrganisation._id);
+    }
+    
+    // Batch all state updates together to avoid multiple re-renders
+    const newSettings = {
+      ...initialSettings,
+      // Organization fields
+      organizationName: currentOrganisation?.organizationName || "",
+      companyName: currentOrganisation?.companyName || "",
+      gstIN: currentOrganisation?.gstIN || "",
+      country: currentOrganisation.country || "",
+      countryCode: currentOrganisation.countryCode || "",
+      phone: currentOrganisation.phone || "",
+      email: currentOrganisation.email || "",
+      addresses: currentOrganisation.addresses?.length ? 
+        currentOrganisation.addresses.map(addr => ({
+          label: addr.label || "Address",
+          value: addr.value || addr,
+          isEditing: false
+        })) : initialSettings.addresses,
+      // Invoice fields
+      invoicePrefix: currentOrganisation?.invoicePrefix || "",
+      startingInvoiceNo: currentOrganisation?.startingInvoiceNo || "",
+      dateFormat: currentOrganisation?.dateFormat || "DD/MM/YYYY",
+      currency: currentOrganisation?.currency || "INR",
+      paymentTerms: currentOrganisation?.paymentTerms || "30",
+      latePaymentFee: currentOrganisation?.latePaymentFee || "",
+      earlyDiscount: currentOrganisation?.earlyDiscount || "",
+      discountDays: currentOrganisation?.discountDays || "",
+      paymentInstructions: currentOrganisation?.paymentInstructions || "",
+      accountHolder: currentOrganisation?.accountHolder || "",
+      bankName: currentOrganisation?.bankName || "",
+      accountNumber: currentOrganisation?.accountNumber || "",
+      ifscCode: currentOrganisation?.ifscCode || "",
+      upiId: currentOrganisation?.upiId || "",
+      footerNote: currentOrganisation?.footerNote || "",
+      // Tax fields
+      taxRegime: currentOrganisation?.taxRegime || "GST",
+      taxType: currentOrganisation?.taxType || "exclusive",
+      cgst: currentOrganisation?.cgst || "",
+      sgst: currentOrganisation?.sgst || "",
+      igst: currentOrganisation?.igst || "",
+      inputTaxCredit: currentOrganisation?.inputTaxCredit || "enabled",
+      requireHSN: currentOrganisation?.requireHSN || "yes",
+      roundingRule: currentOrganisation?.roundingRule || "nearest",
+      taxNotes: currentOrganisation?.taxNotes || "",
+      // Payment fields
+      enabledMethods: currentOrganisation?.enabledMethods || initialSettings.enabledMethods,
+      paymentBankName: currentOrganisation?.paymentBankName || "",
+      paymentAccountNo: currentOrganisation?.paymentAccountNo || "",
+      paymentIFSC: currentOrganisation?.paymentIFSC || "",
+      paymentAccountHolder: currentOrganisation?.paymentAccountHolder || "",
+      paymentUpiId: currentOrganisation?.paymentUpiId || "",
+      paypalEmail: currentOrganisation?.paypalEmail || "",
+      paypalClientId: currentOrganisation?.paypalClientId || "",
+      cardProvider: currentOrganisation?.cardProvider || "",
+      cardApiKey: currentOrganisation?.cardApiKey || "",
+      cashInstructions: currentOrganisation?.cashInstructions || "",
+      customPaymentName: currentOrganisation?.customPaymentName || "",
+      // User fields
+      newUserName: currentOrganisation?.newUserName || "",
+      newUserEmail: currentOrganisation?.newUserEmail || "",
+      newUserPassword: currentOrganisation?.newUserPassword || "",
+      newUserRole: currentOrganisation?.newUserRole || "Viewer",
+      newUserStatus: currentOrganisation?.newUserStatus || "Active",
+      permissions: currentOrganisation?.permissions || initialSettings.permissions,
+    };
+    
+    setSettings(newSettings);
+    setIsEditing(true);
+    setEmailDisable(true);
+    
+    const foundCountry = countriesData.countries.find(
+      (c) =>
+        c.country === currentOrganisation.country ||
+        c.code === currentOrganisation.countryCode
+    );
+    
+    if (foundCountry) setSelected(foundCountry);
+    
+    setInputErrors({});
+  }
+}, [currentOrganisation]);
 
   const handleReset = () => {
     setSettings(initialSettings);
-    setEmailDisable(false)
+    setEmailDisable(false);
+    setIsEditing(false);
+    setOrgID(null);
     setErrors({});
+    setInputErrors({});
+    setSelected(null);
   };
   const filteredCountries = countriesData?.countries?.filter((country) =>
     country.country.toLowerCase().includes(query.toLowerCase())
@@ -581,7 +626,7 @@ useEffect(()=>{
       {/* Fixed Buttons at Top */}
       <div
         className="sticky
-      w-[100%] sm:w-[90%] md:w-[85%] lg:w-[98%] xl:max-w-8xl
+      w-full sm:w-[90%] md:w-[85%] lg:w-[98%] xl:max-w-8xl
       top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 px-4 py-4 -mt-15 shadow-sm"
       >
         <div className="">
@@ -597,7 +642,7 @@ useEffect(()=>{
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                🏢 Organization
+                Organization
               </button>
               <button
                 onClick={() => setActiveTab("invoice")}
@@ -607,7 +652,7 @@ useEffect(()=>{
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                🧾 Invoice Settings
+                Invoice Settings
               </button>
               <button
                 onClick={() => setActiveTab("tax")}
@@ -617,7 +662,7 @@ useEffect(()=>{
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                💰 Tax Settings
+                Tax Settings
               </button>
               <button
                 onClick={() => setActiveTab("payment")}
@@ -627,7 +672,7 @@ useEffect(()=>{
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                💳 Payment Methods
+                Payment Methods
               </button>
               <button
                 onClick={() => setActiveTab("users")}
@@ -637,29 +682,29 @@ useEffect(()=>{
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                👥 Users & Roles
+                Users & Roles
               </button>
             </div>
 
             {/* Action Buttons - Right Aligned */}
-            <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 pb-3">
+            <div className="flex flex-wrap gap-2 justify-end shrink-0 pb-3">
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={isEditing ? handleUpdate : handleSave}
               >
-                {isEditing ? "🔄 Update" : "💾 Save"}
+                {isEditing ? "Update" : "Save"}
               </button>
               <button
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleEdit}
               >
-                ⬇️ Edit
+                Edit
               </button>
               <button
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleReset}
               >
-                🔄 Reset
+                Reset
               </button>
             </div>
           </div>
@@ -668,6 +713,34 @@ useEffect(()=>{
 
       {/* Settings Form */}
       <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
+        {/* Loading State */}
+        {isLoading && (
+          <div className="space-y-6">
+            {/* Loading skeleton for form fields */}
+            <div className="grid grid-cols-2 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div>
+                  <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+            <div className="text-center text-gray-600 text-sm mt-4">
+              Loading organization details...
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {isError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-700 text-sm">Error loading organization details. Please try again.</p>
+          </div>
+        )}
+
+        {/* Form Content - Only show when not loading */}
+        {!isLoading && (
+          <>
         {activeTab === "organization" && (
           <>
             <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
@@ -958,7 +1031,7 @@ useEffect(()=>{
                   onClick={addAddress}
                   className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:text-blue-800 mt-2"
                 >
-                  ➕ Add another address
+                  Add another address
                 </button>
 
                 {inputErrors.address && (
@@ -1671,7 +1744,7 @@ useEffect(()=>{
                     }}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
-                    ➕ Add
+                    Add
                   </button>
                 </div>
               </div>
@@ -1680,13 +1753,13 @@ useEffect(()=>{
         )}
         {activeTab === "users" && (
           <>
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
+            {/* <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
               Users & Roles
-            </h2>
+            </h2> */}
 
             <div className="space-y-8">
               {/* User List Section */}
-              <div>
+              {/* <div>
                 <h3 className="text-md font-semibold text-gray-700 mb-3">
                   Existing Users
                 </h3>
@@ -1712,7 +1785,6 @@ useEffect(()=>{
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Example Static Rows (replace with mapped users) */}
                     <tr className="hover:bg-gray-50">
                       <td className="py-2 px-4 text-sm text-gray-800 border-b">
                         John Doe
@@ -1735,36 +1807,15 @@ useEffect(()=>{
                         </button>
                       </td>
                     </tr>
-                    <tr className="hover:bg-gray-50">
-                      <td className="py-2 px-4 text-sm text-gray-800 border-b">
-                        Jane Smith
-                      </td>
-                      <td className="py-2 px-4 text-sm text-gray-800 border-b">
-                        jane@company.com
-                      </td>
-                      <td className="py-2 px-4 text-sm text-gray-800 border-b">
-                        Manager
-                      </td>
-                      <td className="py-2 px-4 text-sm text-yellow-600 font-semibold border-b">
-                        Pending
-                      </td>
-                      <td className="py-2 px-4 text-center border-b">
-                        <button className="text-blue-600 hover:text-blue-800 text-sm mr-2">
-                          Edit
-                        </button>
-                        <button className="text-red-600 hover:text-red-800 text-sm">
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
+                    
                   </tbody>
                 </table>
-              </div>
+              </div> */}
 
               {/* Add New User Form */}
               <div>
                 <h3 className="text-md font-semibold text-gray-700 mb-3 border-b border-gray-300 pb-1">
-                  Add New User
+                  Add User
                 </h3>
 
                 <div className="grid grid-cols-2 gap-4 mt-3">
@@ -1798,8 +1849,23 @@ useEffect(()=>{
                     />
                   </div>
 
-                  {/* Role */}
+                  {/* Password */}
                   <div className="relative">
+                    <label className="block text-gray-700 font-medium mb-1">
+                      Password *
+                    </label>
+                    <input
+                      type="password"
+                      name="newUserPassword"
+                      value={settings.newUserPassword || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="Enter password"
+                    />
+                  </div>
+
+                  {/* Role */}
+                  {/* <div className="relative">
                     <label className="block text-gray-700 font-medium mb-1">
                       Role *
                     </label>
@@ -1815,10 +1881,10 @@ useEffect(()=>{
                       <option value="Viewer">Viewer</option>
                       <option value="Custom">Custom</option>
                     </select>
-                  </div>
+                  </div> */}
 
                   {/* Status */}
-                  <div className="relative">
+                  {/* <div className="relative">
                     <label className="block text-gray-700 font-medium mb-1">
                       Status
                     </label>
@@ -1832,23 +1898,23 @@ useEffect(()=>{
                       <option value="Pending">Pending</option>
                       <option value="Disabled">Disabled</option>
                     </select>
-                  </div>
+                  </div> */}
                 </div>
 
-                <div className="mt-4">
+                {/* <div className="mt-4">
                   <button
                     onClick={() =>
                       toast.success("New user added successfully!")
                     }
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700"
                   >
-                    ➕ Add User
+                  Add User
                   </button>
-                </div>
+                </div> */}
               </div>
 
               {/* Roles & Permissions Section */}
-              <div>
+              {/* <div>
                 <h3 className="text-md font-semibold text-gray-700 mb-3 border-b border-gray-300 pb-1">
                   Roles & Permissions
                 </h3>
@@ -1917,8 +1983,10 @@ useEffect(()=>{
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </div> */}
             </div>
+          </>
+        )}
           </>
         )}
       </div>

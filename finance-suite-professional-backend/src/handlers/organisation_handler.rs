@@ -29,9 +29,27 @@ pub async fn get_organisation_by_email(
     email: web::Path<String>,
 ) -> Result<HttpResponse, ApiError> {
     let email = email.into_inner();
-    log::info!("📧 Looking up organisation by email: {}", email);
-    let organisation = service.get_organisation_by_email(&email).await?;
-    Ok(HttpResponse::Ok().json(organisation))
+    log::info!("📧 Looking up organisation by email: '{}'", email);
+    match service.get_organisation_by_email(&email).await {
+        Ok(organisation) => {
+            log::info!("✅ Found organisation: {:?}", organisation.id);
+            Ok(HttpResponse::Ok().json(organisation))
+        }
+        Err(_) => {
+            log::info!("🔄 Organisation not found by email, trying to find user with email: '{}'", email);
+            // Fallback: Search for user with this email and get their organisation
+            match service.get_organisation_by_user_email(&email).await {
+                Ok(organisation) => {
+                    log::info!("✅ Found organisation via user email: {:?}", organisation.id);
+                    Ok(HttpResponse::Ok().json(organisation))
+                }
+                Err(e) => {
+                    log::error!("❌ Organisation not found for email '{}': {:?}", email, e);
+                    Err(e)
+                }
+            }
+        }
+    }
 }
 
 #[get("/organisation/{id}")]
@@ -66,9 +84,14 @@ pub async fn delete_organisation_by_id(
     })))
 }
 
+/// Public routes (no JWT required)
+pub fn configure_public_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(create_organisation);
+}
+
+/// Protected routes (JWT required)
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(create_organisation)
-        .service(get_all_organisation)
+    cfg.service(get_all_organisation)
         .service(get_organisation_by_email) // ✅ BEFORE {id}
         .service(get_organisation_by_id)
         .service(update_organisation)

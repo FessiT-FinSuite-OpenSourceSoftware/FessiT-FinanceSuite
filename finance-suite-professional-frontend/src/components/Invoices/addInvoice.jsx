@@ -3,11 +3,11 @@ import { CirclePlus, CircleMinus, ChevronDown, ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
 import { countries } from "../../shared/countries";
 import { useNavigate, useLocation } from "react-router-dom";
-import { formatNumber } from "../../utils/formatNumber";
-import { KeyUri, config } from "../../shared/key";
+import { formatNumber, getCurrencySymbol, formatCurrency } from "../../utils/formatNumber";
+import { KeyUri } from "../../shared/key";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchOneOrganisation, orgamisationSelector } from "../../ReduxApi/organisation";
-import axios from "axios";
+import { fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector } from "../../ReduxApi/organisation";
+import { createInvoice, fetchNextInvoiceNumber, invoiceSelector } from "../../ReduxApi/invoice";
 
 const initialInvoiceData = {
   invoice_type: "domestic", // "domestic" or "international"
@@ -25,6 +25,7 @@ const initialInvoiceData = {
   po_number: "",
   po_date: "",
   place_of_supply: "",
+  currency_type: "",
   billcustomer_name: "",
   billcustomer_address: "",
   billcustomer_gstin: "",
@@ -49,26 +50,44 @@ const initialInvoiceData = {
   totalsgst: "",
   totaligst: "",
   total: "",
-  status: "Draft",
+  status: "Created",
 };
 
 export default function AddInvoice() {
   const location = useLocation();
   const nav = useNavigate();
   const { currentOrganisation } = useSelector(orgamisationSelector);
+  const { nextInvoiceNumber } = useSelector(invoiceSelector);
   const dispatch = useDispatch();
 
+  // Reset form on mount so stale data from previous session is cleared
   useEffect(() => {
-    const fetch = async () => {
-      const response = await axios.get(
-        KeyUri.BACKENDURI +
-          `/organisation/by-email/${localStorage.getItem("email")}`
-      );
-      console.log(response?.data?._id?.$oid);
-      dispatch(fetchOneOrganisation(response?.data?._id?.$oid))
-      
+    const params = new URLSearchParams(location.search);
+    const typeFromQuery = params.get("type");
+    const invoiceType =
+      typeFromQuery === "international" || typeFromQuery === "domestic"
+        ? typeFromQuery
+        : location.state?.invoiceType || "domestic";
+    setInvoiceData({
+      ...initialInvoiceData,
+      invoice_type: invoiceType,
+      currency_type: invoiceType === "international" ? "EUR" : "INR",
+    });
+    setInputErrors({});
+    setErrors({});
+    setShowCustomCurrency(false);
+    setCustomCurrency("");
+  }, []);
+
+  useEffect(() => {
+    const fetchOrgData = async () => {
+      try {
+        await dispatch(fetchOrganisationByEmail(localStorage.getItem("email")));
+      } catch (error) {
+        console.error('Error fetching organisation:', error);
+      }
     };
-    fetch();
+    fetchOrgData();
   }, [dispatch]);
 
   console.log(currentOrganisation)
@@ -86,12 +105,18 @@ export default function AddInvoice() {
     const invoiceType =
       normalizedType || location.state?.invoiceType || "domestic";
 
-    return { ...initialInvoiceData, invoice_type: invoiceType };
+    return { 
+      ...initialInvoiceData, 
+      invoice_type: invoiceType,
+      currency_type: invoiceType === "international" ? "EUR" : "INR"
+    };
   });
 
   const [inputErrors, setInputErrors] = useState({});
   const [errors, setErrors] = useState({});
   const [selectedCountry, setSelectedCountry] = useState(countries[0]);
+  const [showCustomCurrency, setShowCustomCurrency] = useState(false);
+  const [customCurrency, setCustomCurrency] = useState("");
 
   const isDomestic = invoiceData.invoice_type === "domestic";
   const isInternational = invoiceData.invoice_type === "international";
@@ -110,20 +135,17 @@ export default function AddInvoice() {
       setInvoiceData((prev) => ({
         ...prev,
         invoice_type: normalizedType,
+        currency_type: normalizedType === "international" ? "EUR" : "INR"
       }));
     }
   }, [location.search]);
 
-  useEffect(()=>{
-    if(currentOrganisation){
-      // Fetch next invoice number
-      const fetchNextInvoiceNumber = async () => {
+  useEffect(() => {
+    if (currentOrganisation) {
+      // Fetch next invoice number using Redux
+      const getNextInvoiceNumber = async () => {
         try {
-          const response = await axios.get(
-            `${KeyUri.BACKENDURI}/invoices/next-number?org_email=${localStorage.getItem('email')}`
-          );
-          const nextInvoiceNumber = response.data.invoice_number;
-          console.log(nextInvoiceNumber)
+          const nextNumber = await dispatch(fetchNextInvoiceNumber());
           
           setInvoiceData((prev) => ({
             ...prev,
@@ -132,7 +154,7 @@ export default function AddInvoice() {
             company_address: currentOrganisation?.addresses[0]?.value,
             company_phone: currentOrganisation?.phone,
             company_email: currentOrganisation?.email,
-            invoice_number: nextInvoiceNumber
+            invoice_number: nextNumber
           }));
         } catch (error) {
           console.error('Failed to fetch invoice number:', error);
@@ -148,10 +170,10 @@ export default function AddInvoice() {
           }));
         }
       };
-      
-      fetchNextInvoiceNumber();
+
+      getNextInvoiceNumber();
     }
-  },[currentOrganisation])
+  }, [currentOrganisation, dispatch])
 
   const groupTaxValues = (items = []) => {
     const grouped = { cgst: {}, sgst: {}, igst: {} };
@@ -318,13 +340,27 @@ export default function AddInvoice() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Prevent editing of auto-populated fields
-    const autoPopulatedFields = ['company_name', 'gstIN', 'company_address', 'company_phone', 'company_email','invoice_number'];
+    const autoPopulatedFields = ['company_name', 'gstIN', 'company_address', 'company_phone', 'company_email', 'invoice_number'];
     if (autoPopulatedFields.includes(name)) {
       return; // Don't allow changes to these fields
     }
-    
+
+    // Handle currency type selection
+    if (name === 'currency_type') {
+      if (value === 'Others') {
+        setShowCustomCurrency(true);
+        setCustomCurrency("");
+        setInvoiceData({ ...invoiceData, [name]: "" });
+      } else {
+        setShowCustomCurrency(false);
+        setCustomCurrency("");
+        setInvoiceData({ ...invoiceData, [name]: value });
+      }
+      return;
+    }
+
     setInvoiceData({ ...invoiceData, [name]: value });
     validateField(name, value);
 
@@ -335,6 +371,12 @@ export default function AddInvoice() {
         return updated;
       });
     }
+  };
+
+  const handleCustomCurrencyChange = (e) => {
+    const value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    setCustomCurrency(value);
+    setInvoiceData({ ...invoiceData, currency_type: value });
   };
 
   const handlePhoneChange = (e) => {
@@ -560,20 +602,11 @@ export default function AddInvoice() {
     setInputErrors({});
 
     try {
-      const res = await fetch(`${KeyUri.BACKENDURI}/invoices?org_email=${localStorage.getItem('email')}`, {
-        method: "POST",
-        headers: config.headers,
-        body: JSON.stringify(invoiceData),
-      });
-
-      if (!res.ok) throw new Error("Failed to create invoice");
-
-      toast.success("Invoice created successfully");
+      await dispatch(createInvoice(invoiceData));
       setInvoiceData(initialInvoiceData);
       nav("/invoices");
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Something went wrong while creating invoice");
     }
   };
 
@@ -598,11 +631,10 @@ export default function AddInvoice() {
                   Invoice Type:
                 </span>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    isDomestic
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${isDomestic
                       ? "bg-blue-100 text-blue-700"
                       : "bg-green-100 text-green-700"
-                  }`}
+                    }`}
                 >
                   {isDomestic ? "₹ Domestic" : "$ International"}
                 </span>
@@ -610,19 +642,25 @@ export default function AddInvoice() {
             </div>
             <div className="flex flex-wrap justify-end mr-5 gap-2">
               <button
-                className="px-4 py-2 bg-blue-600 cursor-pointer text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={invoiceDataSubmit}
               >
-                💾 Save
+                Save
               </button>
-              <button className="px-4 py-2 cursor-pointer bg-green-600 text-white rounded-lg hover:bg-green-700 w-full sm:w-auto">
-                ⬇️ Download
+              <button 
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+              >
+                Download
               </button>
-              <button className="px-4 py-2 cursor-pointer bg-gray-600 text-white rounded-lg hover:bg-gray-700 w-full sm:w-auto">
-                🖨️ Print
+              <button 
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+              >
+                Print
               </button>
-              <button className="px-4 py-2 cursor-pointer bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto">
-                ✉️ Email
+              <button 
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+              >
+                Email
               </button>
             </div>
           </div>
@@ -631,7 +669,7 @@ export default function AddInvoice() {
 
       {/* Main form */}
       <div>
-        <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
+        <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-5">
           {/* Organization Details */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">
             Organization Details
@@ -938,6 +976,42 @@ export default function AddInvoice() {
                 <p className="absolute text-[13px] text-[#f10404]">
                   {inputErrors?.place_of_supply}
                 </p>
+              )}
+            </div>
+            <div className="relative">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Currency *
+              </label>
+              <select
+                className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700"
+                value={showCustomCurrency ? 'Others' : invoiceData.currency_type}
+                name="currency_type"
+                onChange={handleChange}
+              >
+                <option value="INR">INR (₹)</option>
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="JPY">JPY (¥)</option>
+                <option value="CAD">CAD (C$)</option>
+                <option value="AUD">AUD (A$)</option>
+                <option value="CHF">CHF</option>
+                <option value="CNY">CNY (¥)</option>
+                <option value="SGD">SGD (S$)</option>
+                <option value="Others">Others</option>
+              </select>
+              {showCustomCurrency && (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    placeholder="Enter 3-letter currency code (e.g., AED)"
+                    className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                    value={customCurrency}
+                    onChange={handleCustomCurrencyChange}
+                    maxLength={3}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter 3-character currency code (e.g., AED, SAR, THB)</p>
+                </div>
               )}
             </div>
           </div>
@@ -1296,7 +1370,7 @@ export default function AddInvoice() {
                 <input
                   type="text"
                   className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                  value={formatNumber(invoiceData.subTotal)}
+                  value={formatNumber(invoiceData.subTotal, invoiceData.currency_type)}
                   disabled
                 />
               </div>
@@ -1323,7 +1397,8 @@ export default function AddInvoice() {
                                 type="text"
                                 className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
                                 value={formatNumber(
-                                  grouped.cgst[percent]?.toFixed(2)
+                                  grouped.cgst[percent]?.toFixed(2),
+                                  invoiceData.currency_type
                                 )}
                                 disabled
                               />
@@ -1339,7 +1414,8 @@ export default function AddInvoice() {
                                 type="text"
                                 className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
                                 value={formatNumber(
-                                  grouped.sgst[percent]?.toFixed(2)
+                                  grouped.sgst[percent]?.toFixed(2),
+                                  invoiceData.currency_type
                                 )}
                                 disabled
                               />
@@ -1364,7 +1440,8 @@ export default function AddInvoice() {
                             type="text"
                             className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
                             value={formatNumber(
-                              grouped.igst[percent]?.toFixed(2)
+                              grouped.igst[percent]?.toFixed(2),
+                              invoiceData.currency_type
                             )}
                             disabled
                           />
@@ -1380,7 +1457,7 @@ export default function AddInvoice() {
                 <input
                   type="text"
                   className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-bold text-indigo-700"
-                  value={formatNumber(invoiceData.total) || 0}
+                  value={formatNumber(invoiceData.total, invoiceData.currency_type) || formatNumber(0, invoiceData.currency_type)}
                   disabled
                 />
               </div>

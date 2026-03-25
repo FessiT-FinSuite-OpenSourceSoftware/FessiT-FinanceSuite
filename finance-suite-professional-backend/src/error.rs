@@ -8,7 +8,9 @@ pub enum ApiError {
     ValidationError(String),
     NotFound(String),
     InternalServerError(String),
-    BadRequest(String),  // Added this variant
+    BadRequest(String),
+    Unauthorized(String),
+    Forbidden(String),
 }
 
 #[derive(Serialize)]
@@ -24,7 +26,9 @@ impl fmt::Display for ApiError {
             ApiError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
             ApiError::NotFound(msg) => write!(f, "Not found: {}", msg),
             ApiError::InternalServerError(msg) => write!(f, "Internal server error: {}", msg),
-            ApiError::BadRequest(msg) => write!(f, "Bad request: {}", msg),  // Added this
+            ApiError::BadRequest(msg) => write!(f, "Bad request: {}", msg),
+            ApiError::Unauthorized(msg) => write!(f, "Unauthorized: {}", msg),
+            ApiError::Forbidden(msg) => write!(f, "Forbidden: {}", msg),
         }
     }
 }
@@ -36,7 +40,9 @@ impl ResponseError for ApiError {
             ApiError::ValidationError(_) => StatusCode::BAD_REQUEST,
             ApiError::NotFound(_) => StatusCode::NOT_FOUND,
             ApiError::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,  // Added this
+            ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            ApiError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            ApiError::Forbidden(_) => StatusCode::FORBIDDEN,
         }
     }
 
@@ -48,7 +54,9 @@ impl ResponseError for ApiError {
                 ApiError::ValidationError(_) => "VALIDATION_ERROR".to_string(),
                 ApiError::NotFound(_) => "NOT_FOUND".to_string(),
                 ApiError::InternalServerError(_) => "INTERNAL_SERVER_ERROR".to_string(),
-                ApiError::BadRequest(_) => "BAD_REQUEST".to_string(),  // Added this
+                ApiError::BadRequest(_) => "BAD_REQUEST".to_string(),
+                ApiError::Unauthorized(_) => "UNAUTHORIZED".to_string(),
+                ApiError::Forbidden(_) => "FORBIDDEN".to_string(),
             },
             message: self.to_string(),
         };

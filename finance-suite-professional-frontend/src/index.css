@@ -37,7 +37,7 @@
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    color-adjust: exact !important;
+    color-scheme: exact !important;
   }
 
   html, body {
@@ -199,4 +199,15 @@ h1 {
 }
 .custom-scroll::-webkit-scrollbar-track {
   background: transparent;
+}
+/* Chrome, Safari, Edge */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
 }

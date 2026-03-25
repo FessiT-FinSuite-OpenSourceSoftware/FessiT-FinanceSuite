@@ -1,15 +1,70 @@
 use crate::models::expense::Expense;
 use crate::repository::expense_repository::{ExpenseRepository, ExpenseSummary};
-use mongodb::bson::DateTime;
+use crate::repository::user_repository::UserRepository;
+use mongodb::bson::{DateTime, oid::ObjectId};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct ExpenseService {
     repo: ExpenseRepository,
+    user_repo: Arc<UserRepository>,
 }
 
 impl ExpenseService {
-    pub fn new(repo: ExpenseRepository) -> Self {
-        Self { repo }
+    pub fn new(repo: ExpenseRepository, user_repo: UserRepository) -> Self {
+        Self { 
+            repo,
+            user_repo: Arc::new(user_repo),
+        }
+    }
+
+    /// Get user permissions
+    pub async fn get_user_permissions(&self, user_id: &str) -> mongodb::error::Result<Option<crate::models::users::User>> {
+        self.user_repo.get_user_by_id(user_id).await
+    }
+
+    /// Get expenses by organisation
+    pub async fn get_expenses_by_organisation(
+        &self,
+        org_id: &ObjectId,
+        page: Option<u64>,
+        limit: Option<i64>,
+    ) -> mongodb::error::Result<Vec<Expense>> {
+        self.repo.get_expenses_by_organisation(org_id, page, limit).await
+    }
+
+    /// Get expenses by project and organisation
+    pub async fn get_expenses_by_project_and_organisation(
+        &self,
+        org_id: &ObjectId,
+        project_cost_center: &str,
+        page: Option<u64>,
+        limit: Option<i64>,
+    ) -> mongodb::error::Result<Vec<Expense>> {
+        self.repo.get_expenses_by_project_and_organisation(org_id, project_cost_center, page, limit).await
+    }
+
+    /// Search expenses by organisation
+    pub async fn search_expenses_by_organisation(
+        &self,
+        org_id: &ObjectId,
+        search_term: &str,
+    ) -> mongodb::error::Result<Vec<Expense>> {
+        self.repo.search_expenses_by_organisation(org_id, search_term).await
+    }
+
+    /// Count expenses by organisation
+    pub async fn count_expenses_by_organisation(&self, org_id: &ObjectId) -> mongodb::error::Result<u64> {
+        self.repo.count_expenses_by_organisation(org_id).await
+    }
+
+    /// Count expenses by project and organisation
+    pub async fn count_expenses_by_project_and_organisation(
+        &self,
+        org_id: &ObjectId,
+        project_cost_center: &str,
+    ) -> mongodb::error::Result<u64> {
+        self.repo.count_expenses_by_project_and_organisation(org_id, project_cost_center).await
     }
 
     /// Create a new expense with validation

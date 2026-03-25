@@ -1,7 +1,7 @@
 import React from "react";
 import Logo from "../../assets/FessitLogoTrans.png";
 import { sampleData, bankDetails, terms } from "./SampleInvoiceData";
-import { formatNumber } from "../../utils/formatNumber";
+import { formatNumber, getCurrencySymbol, formatCurrency } from "../../utils/formatNumber";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
 
@@ -229,13 +229,13 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
             onClick={handlePrint}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors cursor-pointer"
           >
-            🖨️ Print
+          Print
           </button>
           <button
             onClick={handleDownload}
             className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors cursor-pointer"
           >
-            ⬇️ Download
+            Download
           </button>
         </div>
       </div>
@@ -267,7 +267,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                 GSTIN: {data.gstIN}
               </p>
               <p className="text-xs text-gray-700">
-                Email: {data.company_email} | Ph: {data.company_phone}
+                Email: {data.company_email} | Ph: +91 {data.company_phone}
               </p>
             </div>
           </div>
@@ -470,7 +470,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                     {item.hours}
                   </td>
                   <td className="border border-gray-400 px-2 py-1 text-right">
-                    {formatNumber(item.rate || 0)}
+                    {formatNumber(item.rate || 0, data.currency_type)}
                   </td>
 
                   {isDomestic ? (
@@ -479,13 +479,13 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                         {item?.cgst?.cgstPercent || "0"}
                       </td>
                       <td className="border border-gray-400 px-2 py-1 text-right">
-                        {formatNumber(item?.cgst?.cgstAmount || 0)}
+                        {formatNumber(item?.cgst?.cgstAmount || 0, data.currency_type)}
                       </td>
                       <td className="border border-gray-400 px-2 py-1 text-center">
                         {item?.sgst?.sgstPercent || "0"}
                       </td>
                       <td className="border border-gray-400 px-2 py-1 text-right">
-                        {formatNumber(item?.sgst?.sgstAmount || 0)}
+                        {formatNumber(item?.sgst?.sgstAmount || 0, data.currency_type)}
                       </td>
                     </>
                   ) : (
@@ -494,13 +494,13 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                         {item?.igst?.igstPercent || "0"}
                       </td>
                       <td className="border border-gray-400 px-2 py-1 text-right">
-                        {formatNumber(item?.igst?.igstAmount || 0)}
+                        {formatNumber(item?.igst?.igstAmount || 0, data.currency_type)}
                       </td>
                     </>
                   )}
 
                   <td className="border border-gray-400 px-2 py-1 text-right font-semibold">
-                    {formatNumber(item.itemTotal || 0)}
+                    {formatNumber(item.itemTotal || 0, data.currency_type)}
                   </td>
                 </tr>
               ))
@@ -550,8 +550,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
               <div className="flex justify-between">
                 <span>Sub Total</span>
                 <span className="font-semibold">
-                  {/* € {formatNumber(subTotal || 0)} */}
-                  ₹ {formatNumber(subTotal || 0)}
+                  {getCurrencySymbol(data.currency_type)} {formatNumber(subTotal || 0, data.currency_type)}
                 </span>
               </div>
 
@@ -630,7 +629,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
                             >
                               <span>{l.label}</span>
                               <span className="font-semibold">
-                                ₹ {formatNumber(l.value)}
+                                {getCurrencySymbol(data.currency_type)} {formatNumber(l.value, data.currency_type)}
                               </span>
                             </div>
                           ))}
@@ -645,8 +644,7 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
               <div className="flex justify-between border-t border-gray-400 pt-2 mt-2 text-sm">
                 <span className="font-bold">Grand Total/Balance Due</span>
                 <span className="font-extrabold text-indigo-700">
-                  {/* € {formatNumber(total || 0)} */}
-                  ₹ {formatNumber(total || 0)}
+                  {getCurrencySymbol(data.currency_type)} {formatNumber(total || 0, data.currency_type)}
                 </span>
               </div>
             </div>

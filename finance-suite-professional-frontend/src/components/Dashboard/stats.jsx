@@ -1,20 +1,59 @@
-import React from "react";
-import { FileText, Receipt, TrendingUp, IndianRupee } from "lucide-react";
+import React, { useEffect } from "react";
+import { FileText, Receipt, TrendingUp, IndianRupee, CheckCircle, Clock } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchInvoiceData, invoiceSelector } from "../../ReduxApi/invoice";
+import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
+import { formatCurrency } from "../../utils/formatNumber";
+import useExchangeRates from "../../utils/useExchangeRates";
+
 export default function Stats() {
+  const dispatch = useDispatch();
+  const { invoiceData } = useSelector(invoiceSelector);
+  const { currentOrganisation } = useSelector(orgamisationSelector);
+
+  const orgCurrency = currentOrganisation?.currency || "INR";
+  const { convert, loading: ratesLoading } = useExchangeRates(orgCurrency);
+
+  useEffect(() => {
+    dispatch(fetchInvoiceData());
+    const email = localStorage.getItem("email");
+    if (email) dispatch(fetchOrganisationByEmail(email));
+  }, [dispatch]);
+
+  const paid = invoiceData.filter(inv => inv.status === "Paid");
+  const pending = invoiceData.filter(inv => inv.status === "Created" || inv.status === "Raised" || !inv.status);
+
+  const toBase = (inv) => {
+    const currency = inv.currency_type?.trim() || "INR";
+    return convert(Number(inv.total) || 0, currency);
+  };
+
+  // Total revenue = ALL invoices converted to org currency
+  const totalRevenue = invoiceData.reduce((sum, inv) => sum + toBase(inv), 0);
+
+  const fmt = (n) => ratesLoading ? "..." : formatCurrency(n, orgCurrency);
+
   const stats = [
     {
       label: "Total Revenue",
-      value: "₹12,45,680",
-      change: "+12.5%",
+      value: fmt(totalRevenue),
+      change: `${invoiceData.length} total invoices`,
       trend: "up",
       icon: TrendingUp,
     },
     {
-      label: "Pending Invoices",
-      value: "23",
-      change: "₹4,23,450",
+      label: "Paid Invoices",
+      value: String(paid.length),
+      change: `of ${invoiceData.length} invoices`,
       trend: "neutral",
-      icon: FileText,
+      icon: CheckCircle,
+    },
+    {
+      label: "Pending",
+      value: String(pending.length),
+      change: `of ${invoiceData.length} invoices`,
+      trend: "neutral",
+      icon: Clock,
     },
     {
       label: "GST Payable",
@@ -31,11 +70,12 @@ export default function Stats() {
       icon: IndianRupee,
     },
   ];
+
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        {stats?.map((stat, idx) => {
-          const Icon = stat?.icon;
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
+        {stats.map((stat, idx) => {
+          const Icon = stat.icon;
           return (
             <div
               key={idx}
@@ -44,18 +84,18 @@ export default function Stats() {
               <div className="flex items-start justify-between mb-4">
                 <div
                   className={`p-3 rounded-lg ${
-                    stat?.trend === "up"
+                    stat.trend === "up"
                       ? "bg-green-50"
-                      : stat?.trend === "warning"
+                      : stat.trend === "warning"
                       ? "bg-orange-50"
                       : "bg-blue-50"
                   }`}
                 >
                   <Icon
                     className={`${
-                      stat?.trend === "up"
+                      stat.trend === "up"
                         ? "text-green-600"
-                        : stat?.trend === "warning"
+                        : stat.trend === "warning"
                         ? "text-orange-600"
                         : "text-blue-600"
                     }`}
@@ -64,20 +104,18 @@ export default function Stats() {
                 </div>
                 <span
                   className={`text-sm font-medium ${
-                    stat?.trend === "up"
+                    stat.trend === "up"
                       ? "text-green-600"
-                      : stat?.trend === "warning"
+                      : stat.trend === "warning"
                       ? "text-orange-600"
                       : "text-gray-600"
                   }`}
                 >
-                  {stat?.change}
+                  {stat.change}
                 </span>
               </div>
-              <h3 className="text-gray-500 text-sm font-medium mb-1">
-                {stat?.label}
-              </h3>
-              <p className="text-2xl font-bold text-gray-800">{stat?.value}</p>
+              <h3 className="text-gray-500 text-sm font-medium mb-1">{stat.label}</h3>
+              <p className="text-xl font-bold text-gray-800 break-all leading-tight">{stat.value}</p>
             </div>
           );
         })}
