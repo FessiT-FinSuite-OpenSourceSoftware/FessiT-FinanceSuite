@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { useSelector } from "react-redux";
-import { authSelector } from "../../ReduxApi/auth";
-import { canRead, Module } from "../../utils/permissions";
 import {
   FileText,
   ShoppingCart,
@@ -17,9 +14,6 @@ import {
   ChevronRight,
   ChevronLeft,
   ArrowUp,
-  UserLockIcon,
-  Layers,
-  FolderKanban,
 } from "lucide-react";
 
 export default function SideBar({ component }) {
@@ -35,45 +29,17 @@ export default function SideBar({ component }) {
   const modalRef = useRef(null);
   const bellRef = useRef(null);
   const mainRef = useRef(null);
-  
-  // Get user data from Redux
-  const { user } = useSelector(authSelector);
-  
-  // Helper function to get user initials
-  const getUserInitials = (name) => {
-    if (!name) return "U";
-    return name.split(" ").map(word => word[0]).join("").toUpperCase().slice(0, 2);
-  };
-  
-  // Helper function to get display name
-  const getDisplayName = () => {
-    if (user?.name) return user.name;
-    if (user?.firstName && user?.lastName) return `${user.firstName} ${user.lastName}`;
-    if (user?.firstName) return user.firstName;
-    if (user?.email) return user.email.split("@")[0];
-    return "User";
-  };
 
-  const allNavigation = [
-    { id: "dashboard", label: "Dashboard", icon: TrendingUp, module: null },
-    { id: "invoices", label: "Invoices", icon: FileText, module: Module.Invoice },
-    { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
-    { id: "expenses", label: "Expenses", icon: Receipt, module: Module.Expenses },
-    { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: null },
-    { id: "tdscompliance", label: "TDS Compliance", icon: Receipt, module: null },
-    { id: "customers", label: "Customers", icon: Users, module: Module.Customers },
-    { id: "projects", label: "Projects", icon: FolderKanban, module: Module.Customers },
-    { id: "cost-centers", label: "Cost Centers", icon: Layers, module: Module.Customers },
-    { id: "users", label: "User Management", icon: UserLockIcon, module: Module.Users },
-    { id: "settings", label: "Settings", icon: Settings, module: null, adminOnly: true },
+  const navigation = [
+    { id: "dashboard", label: "Dashboard", icon: TrendingUp },
+    { id: "invoices", label: "Invoices", icon: FileText },
+    { id: "purchases", label: "Purchase Orders", icon: ShoppingCart },
+    { id: "expenses", label: "Expenses", icon: Receipt },
+    { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee },
+    { id: "tdscompliance", label: "TDS Compliance", icon: Receipt },
+    { id: "customers", label: "Customers", icon: Users },
+    { id: "settings", label: "Settings", icon: Settings },
   ];
-
-  const navigation = allNavigation.filter(
-    (item) => {
-      if (item.adminOnly) return user?.is_admin;
-      return item.module === null || canRead(user, item.module);
-    }
-  );
 
   const handleNavigate = (id) => nav(`/${id}`);
 
@@ -146,32 +112,33 @@ export default function SideBar({ component }) {
     <div className="flex h-screen overflow-hidden w-screen bg-gray-50">
       {/* Sidebar */}
       <div
-        className={`${sidebarOpen ? "w-64" : "w-24"
-          } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden`}
+        className={`${
+          sidebarOpen ? "w-64" : "w-24"
+        } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden`}
       >
         <div className="p-4 border-b border-gray-200 h-22 flex justify-between items-center">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* Logo Icon - Always visible */}
-            <div className="relative shrink-0">
+            <div className="relative flex-shrink-0">
               <svg width="48" height="48" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 {/* Circular background */}
-                <circle cx="50" cy="50" r="48" fill="#1e40af" opacity="0.1" />
-
+                <circle cx="50" cy="50" r="48" fill="#1e40af" opacity="0.1"/>
+                
                 {/* Graph/Chart element */}
-                <path d="M 25 70 L 35 55 L 45 60 L 55 40 L 65 45 L 75 30"
-                  stroke="#1e40af" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-
+                <path d="M 25 70 L 35 55 L 45 60 L 55 40 L 65 45 L 75 30" 
+                      stroke="#1e40af" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                
                 {/* Letter F */}
-                <path d="M 30 35 L 30 75 M 30 35 L 50 35 M 30 53 L 45 53"
-                  stroke="#0ea5e9" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-
+                <path d="M 30 35 L 30 75 M 30 35 L 50 35 M 30 53 L 45 53" 
+                      stroke="#0ea5e9" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                
                 {/* Letter S integrated */}
-                <path d="M 55 38 Q 60 35 65 38 Q 70 41 68 47 Q 66 53 60 55 Q 66 57 68 63 Q 70 69 65 72 Q 60 75 55 72"
-                  stroke="#1e40af" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-
+                <path d="M 55 38 Q 60 35 65 38 Q 70 41 68 47 Q 66 53 60 55 Q 66 57 68 63 Q 70 69 65 72 Q 60 75 55 72" 
+                      stroke="#1e40af" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                
                 {/* Accent dots */}
-                <circle cx="75" cy="30" r="2.5" fill="#f59e0b" />
-                <circle cx="25" cy="70" r="2.5" fill="#f59e0b" />
+                <circle cx="75" cy="30" r="2.5" fill="#f59e0b"/>
+                <circle cx="25" cy="70" r="2.5" fill="#f59e0b"/>
               </svg>
             </div>
 
@@ -182,7 +149,7 @@ export default function SideBar({ component }) {
                   Financial Suite
                 </h1>
                 <p className="text-[11px] text-gray-500 mt-0.5">by FessiT Solutions</p>
-
+                
                 {/* Made in India indicator */}
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <div className="flex gap-0.5">
@@ -199,7 +166,7 @@ export default function SideBar({ component }) {
           </div>
 
           {/* Toggle button */}
-          <div className="shrink-0 ml-2">
+          <div className="flex-shrink-0 ml-2">
             {sidebarOpen ? (
               <ChevronLeft
                 className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
@@ -224,10 +191,11 @@ export default function SideBar({ component }) {
               <button
                 key={item.id}
                 onClick={() => handleNavigate(item?.id)}
-                className={`w-full flex items-center  rounded-lg transition-colors ${(item.id === "dashboard" && location.pathname === "/") || location.pathname.includes(`/${item.id}`)
+                className={`w-full flex items-center  rounded-lg transition-colors ${
+                  (item.id === "dashboard" && location.pathname === "/") || location.pathname.includes(`/${item.id}`)
                     ? "bg-indigo-50 text-indigo-600 font-medium"
                     : "text-gray-700 hover:bg-gray-50"
-                  } sider-button ${sidebarOpen ? "py-3 px-4 space-x-3" : ""}`}
+                } sider-button ${sidebarOpen ? "py-3 px-4 space-x-3" : ""}`}
                 title={item.label}
               >
                 <Icon size={20} />
@@ -274,15 +242,7 @@ export default function SideBar({ component }) {
                     {location.pathname.includes("/customers") && (
                       <p>Customers</p>
                     )}
-                    {location.pathname.includes("/projects") && (
-                      <p>Projects</p>
-                    )}
-                    {location.pathname.includes("/cost-centers") && (
-                      <p>Cost Centers</p>
-                    )}
                     {location.pathname.includes("/settings") && <p>Settings</p>}
-                    {location.pathname.includes("/users") && <p>User Management</p>}
-
                   </h2>
                   <p className="text-sm absolute text-gray-500">
                     Welcome back! Here's your business overview.
@@ -305,14 +265,14 @@ export default function SideBar({ component }) {
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className="text-sm font-medium text-gray-700 leading-tight">
-                      {getDisplayName()}
+                      Amit Bhatt
                     </p>
                     <p className="text-xs text-gray-500">
-                      {user?.role || "User"}
+                      Finance Manager
                     </p>
                   </div>
                   <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
-                    {getUserInitials(getDisplayName())}
+                    AB
                   </div>
                 </div>
               </div>
@@ -320,10 +280,11 @@ export default function SideBar({ component }) {
           </header>
           <div
             ref={modalRef}
-            className={`fixed z-125 right-6 top-16 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${showNotifications
+            className={`fixed z-125 right-6 top-16 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${
+              showNotifications
                 ? "opacity-100 scale-100 translate-y-2"
                 : "opacity-0 scale-90 -translate-y-3 pointer-events-none"
-              }`}
+            }`}
           >
             <div className="bg-white shadow-2xl rounded-2xl w-80 border border-gray-100 overflow-hidden backdrop-blur-sm">
               <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">

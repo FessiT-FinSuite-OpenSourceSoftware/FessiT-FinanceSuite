@@ -3,7 +3,7 @@ use actix_multipart::Multipart;
 use actix_web::{
     delete, get, post, put,
     web::{self, Data, Path, Query},
-    HttpResponse, Responder, HttpRequest, HttpMessage,
+    HttpResponse, Responder,
 };
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -16,8 +16,6 @@ use mongodb::bson::DateTime;
 use crate::{
     models::expense::{Expense, ExpenseItem, ExpenseStatus},
     services::expense_service::ExpenseService,
-    utils::auth::Claims,
-    utils::permissions::{check_permission, Module, PermissionAction, create_permission_error},
 };
 
 /// Directory to store uploaded receipts
@@ -58,31 +56,9 @@ pub struct ExpenseListResponse {
 pub async fn create_expense(
     service: Data<ExpenseService>,
     mut payload: Multipart,
-    http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     use std::fs;
     use std::path::Path;
-
-    let claims = http_req
-        .extensions()
-        .get::<Claims>()
-        .cloned()
-        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
-
-    // Get user permissions
-    let user = service
-        .get_user_permissions(&claims.sub)
-        .await
-        .map_err(actix_web::error::ErrorInternalServerError)?
-        .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-
-    // Check write permission for expenses
-    check_permission(&user.permissions, Module::Expenses, PermissionAction::Write, user.is_admin)
-        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
-
-    // Get user's organisation_id
-    let org_id = user.organisation_id
-        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
 
     let mut fields: HashMap<String, String> = HashMap::new();
     let mut receipt_files: HashMap<String, (String, String)> = HashMap::new(); // index -> (stored_name, original_name)
@@ -214,7 +190,6 @@ pub async fn create_expense(
         department: fields.get("department").cloned(),
         created_at: Some(now),
         updated_at: Some(now),
-        organisation_id: Some(org_id),
     };
 
     let saved = service
@@ -230,65 +205,17 @@ pub async fn create_expense(
 pub async fn list_expenses(
     service: Data<ExpenseService>,
     query: Query<ExpenseQuery>,
-    http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
-    log::info!("📥 Received request to list expenses");
-    
-    let claims = http_req
-        .extensions()
-        .get::<Claims>()
-        .cloned()
-        .ok_or_else(|| {
-            log::error!("❌ Missing JWT claims");
-            actix_web::error::ErrorUnauthorized("Missing claims")
-        })?;
-
-    log::info!("📋 Fetching expenses for user: {}", claims.email);
-
-    // Get user permissions
-    let user = service
-        .get_user_permissions(&claims.sub)
-        .await
-        .map_err(|e| {
-            log::error!("❌ Error fetching user: {}", e);
-            actix_web::error::ErrorInternalServerError(e)
-        })?
-        .ok_or_else(|| {
-            log::error!("❌ User not found for id: {}", claims.sub);
-            actix_web::error::ErrorUnauthorized("User not found")
-        })?;
-
-    log::info!("👤 User found: {}, Organisation ID: {:?}", user.email, user.organisation_id);
-    log::info!("🔐 User permissions: expenses.read={}, expenses.write={}, expenses.delete={}", 
-        user.permissions.expenses.read, 
-        user.permissions.expenses.write, 
-        user.permissions.expenses.delete
-    );
-
-    // Check read permission for expenses
-    if let Err(e) = check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin) {
-        log::error!("❌ Permission denied: {}", e);
-        return Err(actix_web::error::ErrorForbidden(create_permission_error(&e)));
-    }
-
-    log::info!("✅ Permission check passed");
-
-    // Get user's organisation_id
-    let org_id = user.organisation_id
-        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
-
-    log::info!("🔍 Fetching expenses for organisation ID: {}", org_id);
-
     // Handle search
     if let Some(search_term) = &query.search {
         let expenses = service
-            .search_expenses_by_organisation(&org_id, search_term)
+            .search_expenses(search_term)
             .await
             .map_err(actix_web::error::ErrorInternalServerError)?;
 
         return Ok(HttpResponse::Ok().json(ExpenseListResponse {
             expenses,
-            total: 0,
+            total: 0, // For search, we don't compute total
             page: query.page,
             limit: query.limit,
         }));
@@ -297,12 +224,12 @@ pub async fn list_expenses(
     // Handle filter by project
     let expenses = if let Some(project) = &query.project_cost_center {
         service
-            .get_expenses_by_project_and_organisation(&org_id, project, query.page, query.limit)
+            .get_expenses_by_project(project, query.page, query.limit)
             .await
             .map_err(actix_web::error::ErrorInternalServerError)?
     } else {
         service
-            .get_expenses_by_organisation(&org_id, query.page, query.limit)
+            .get_all_expenses(query.page, query.limit)
             .await
             .map_err(actix_web::error::ErrorInternalServerError)?
     };
@@ -310,17 +237,15 @@ pub async fn list_expenses(
     // Get total count for pagination
     let total = if query.project_cost_center.is_some() {
         service
-            .count_expenses_by_project_and_organisation(&org_id, query.project_cost_center.as_ref().unwrap())
+            .count_expenses_by_project(query.project_cost_center.as_ref().unwrap())
             .await
             .map_err(actix_web::error::ErrorInternalServerError)?
     } else {
         service
-            .count_expenses_by_organisation(&org_id)
+            .count_expenses()
             .await
             .map_err(actix_web::error::ErrorInternalServerError)?
     };
-
-    log::info!("✅ Returning {} expenses", expenses.len());
 
     Ok(HttpResponse::Ok().json(ExpenseListResponse {
         expenses,
@@ -510,7 +435,6 @@ pub async fn update_expense(
         department: fields.get("department").cloned().or(existing_expense.department),
         created_at: existing_expense.created_at,
         updated_at: Some(DateTime::now()),
-        organisation_id: existing_expense.organisation_id,
     };
 
     let updated = service
