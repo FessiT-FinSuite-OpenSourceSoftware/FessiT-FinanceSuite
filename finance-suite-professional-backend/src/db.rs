@@ -1,7 +1,10 @@
 use mongodb::{Client, Collection, Database};
 use std::env;
 
-use crate::models::{Customer, Expense, Invoice, IncomingInvoice, Organisation, User, PurchaseOrder, CostCenter};
+use crate::models::{
+    Category, Challan, CostCenter, Customer, Expense, GeneralExpense, IncomingInvoice, Invoice,
+    Organisation, Product, PurchaseOrder, Salary, User,
+};
 
 #[derive(Clone)]
 pub struct MongoDbClient {
@@ -20,7 +23,7 @@ impl MongoDbClient {
             .run_command(mongodb::bson::doc! {"ping": 1}, None)
             .await?;
 
-        log::info!("✅ Successfully connected to MongoDB");
+        log::info!("Successfully connected to MongoDB");
 
         let database = client.database(&database_name);
 
@@ -55,7 +58,27 @@ impl MongoDbClient {
         self.database.collection::<PurchaseOrder>("purchase_orders")
     }
 
+    pub fn get_product_collection(&self) -> Collection<Product> {
+        self.database.collection::<Product>("products")
+    }
+
     pub fn get_cost_center_collection(&self) -> Collection<CostCenter> {
         self.database.collection::<CostCenter>("cost_centers")
+    }
+
+    pub fn get_salary_collection(&self) -> Collection<Salary> {
+        self.database.collection::<Salary>("salaries")
+    }
+
+    pub fn get_general_expense_collection(&self) -> Collection<GeneralExpense> {
+        self.database.collection::<GeneralExpense>("general_expenses")
+    }
+
+    pub fn get_challan_collection(&self) -> Collection<Challan> {
+        self.database.collection::<Challan>("challans")
+    }
+
+    pub fn get_category_collection(&self) -> Collection<Category> {
+        self.database.collection::<Category>("categories")
     }
 }

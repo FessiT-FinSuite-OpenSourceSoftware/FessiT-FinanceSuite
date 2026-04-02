@@ -46,4 +46,18 @@ impl IncomingInvoiceService {
     pub async fn delete(&self, id: &str) -> anyhow::Result<bool> {
         Ok(self.repo.delete(id).await?)
     }
+
+    pub async fn get_monthly_summary(
+        &self,
+        org_id: &mongodb::bson::oid::ObjectId,
+    ) -> anyhow::Result<crate::repository::incoming_invoice_repository::IncomingInvoiceMonthlySummary> {
+        Ok(self.repo.get_monthly_summary(org_id).await?)
+    }
+
+    pub async fn get_monthly_tds_summary(
+        &self,
+        org_id: &mongodb::bson::oid::ObjectId,
+    ) -> anyhow::Result<crate::repository::incoming_invoice_repository::IncomingInvoiceTdsSummary> {
+        Ok(self.repo.get_monthly_tds_summary(org_id).await?)
+    }
 }

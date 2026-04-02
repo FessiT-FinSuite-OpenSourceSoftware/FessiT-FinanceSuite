@@ -1,48 +1,109 @@
 use mongodb::bson::{oid::ObjectId, DateTime};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+/// Deserialise a field that may be stored as either a number or a string (legacy docs).
+fn deserialize_f64_or_string<'de, D>(deserializer: D) -> Result<f64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::{self, Visitor};
+    use std::fmt;
+
+    struct F64OrString;
+
+    impl<'de> Visitor<'de> for F64OrString {
+        type Value = f64;
+        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("a number or a numeric string")
+        }
+        fn visit_f64<E: de::Error>(self, v: f64) -> Result<f64, E> { Ok(v) }
+        fn visit_i64<E: de::Error>(self, v: i64) -> Result<f64, E> { Ok(v as f64) }
+        fn visit_u64<E: de::Error>(self, v: u64) -> Result<f64, E> { Ok(v as f64) }
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<f64, E> {
+            if v.is_empty() { return Ok(0.0); }
+            v.parse::<f64>().map_err(de::Error::custom)
+        }
+        fn visit_unit<E: de::Error>(self) -> Result<f64, E> { Ok(0.0) }
+        fn visit_none<E: de::Error>(self) -> Result<f64, E> { Ok(0.0) }
+        fn visit_some<D2: Deserializer<'de>>(self, d: D2) -> Result<f64, D2::Error> {
+            Deserialize::deserialize(d)
+        }
+    }
+
+    deserializer.deserialize_any(F64OrString)
+}
+
+fn default_f64() -> f64 { 0.0 }
 
 /// A single expense sub-item
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExpenseItem {
+    // ── Identity / classification ────────────────────────────────────────────
+
     /// Category of expense (e.g., Travel, Food, Accommodation)
     pub expense_category: String,
-    
-    /// Currency code (e.g., INR, USD, EUR)
-    pub currency: String,
-    
-    /// Amount for this expense item
-    pub amount: f64,
-    
+
     /// Date when the expense occurred (ISO format or any string format)
     pub expense_date: String,
-    
-    /// Additional notes or comments about this expense
+
+    /// Vendor or merchant name
     #[serde(default)]
-    pub comment: String,
+    pub vendor: Option<String>,
+
+    /// Payment method (e.g., Cash, Credit Card, Bank Transfer)
+    #[serde(default)]
+    pub payment_method: Option<String>,
+
+    /// Whether this item is billable to client
+    #[serde(default)]
+    pub billable: bool,
+
+     #[serde(default)]
+    pub billed_to: Option<String>,
+
+    // ── Amounts & tax ────────────────────────────────────────────────────────
+
+    /// Currency code (e.g., INR, USD, EUR)
+    pub currency: String,
+
+    /// Base amount for this expense item (before tax)
+    pub amount: f64,
+
+    /// Sub-total (amount before GST, as received from frontend)
+    #[serde(rename = "subTotal", default = "default_f64", deserialize_with = "deserialize_f64_or_string")]
+    pub sub_total: f64,
+
+    /// CGST component
+    #[serde(default = "default_f64", deserialize_with = "deserialize_f64_or_string")]
+    pub total_cgst: f64,
+
+    /// SGST component
+    #[serde(default = "default_f64", deserialize_with = "deserialize_f64_or_string")]
+    pub total_sgst: f64,
+
+    /// IGST component
+    #[serde(default = "default_f64", deserialize_with = "deserialize_f64_or_string")]
+    pub total_igst: f64,
+
+    /// Total tax amount (CGST + SGST + IGST, or any other tax)
+    #[serde(default)]
+    pub tax_amount: Option<f64>,
+
+    // ── Receipt / attachments ────────────────────────────────────────────────
 
     /// Name of uploaded receipt file (stored on server)
     #[serde(default)]
     pub receipt_file: Option<String>,
-    
+
     /// Original filename of the uploaded receipt
     #[serde(default)]
     pub original_filename: Option<String>,
-    
-    /// Payment method (e.g., Cash, Credit Card, Bank Transfer)
+
+    // ── Misc ─────────────────────────────────────────────────────────────────
+
+    /// Additional notes or comments about this expense
     #[serde(default)]
-    pub payment_method: Option<String>,
-    
-    /// Vendor or merchant name
-    #[serde(default)]
-    pub vendor: Option<String>,
-    
-    /// Whether this item is billable to client
-    #[serde(default)]
-    pub billable: bool,
-    
-    /// Tax amount if applicable
-    #[serde(default)]
-    pub tax_amount: Option<f64>,
+    pub comment: String,
 }
 
 impl ExpenseItem {
@@ -73,9 +134,10 @@ impl ExpenseItem {
         Ok(())
     }
     
-    /// Get total amount including tax
+    /// Get total amount including all GST components
     pub fn total_with_tax(&self) -> f64 {
-        self.amount + self.tax_amount.unwrap_or(0.0)
+        self.amount + self.total_cgst + self.total_sgst + self.total_igst
+            + self.tax_amount.unwrap_or(0.0)
     }
 }
 
@@ -118,10 +180,14 @@ pub struct Expense {
     #[serde(default)]
     pub items: Vec<ExpenseItem>,
 
-    /// Total amount (calculated from items)
+    /// Sum of all item base amounts (before GST)
+    #[serde(default)]
+    pub base_amount: f64,
+
+    /// Grand total including GST (sum of all item sub_totals)
     #[serde(default)]
     pub total_amount: f64,
-    
+
     /// Total tax amount across all items
     #[serde(default)]
     pub total_tax: f64,
@@ -152,7 +218,7 @@ pub struct Expense {
     
     /// Date when reimbursement was processed
     #[serde(default)]
-    pub reimbursed_at: Option<DateTime>,
+    pub reimbursed_at: Option<String>,
     
     /// Additional notes at expense report level
     #[serde(default)]
@@ -161,6 +227,10 @@ pub struct Expense {
     /// Department name
     #[serde(default)]
     pub department: Option<String>,
+
+    /// User-entered submission date (e.g. "2026-03-30")
+    #[serde(default)]
+    pub submission_date: Option<String>,
 
     /// When the expense was created
     #[serde(default)]
@@ -184,6 +254,7 @@ impl Expense {
             expense_title: title,
             project_cost_center,
             items: Vec::new(),
+            base_amount: 0.0,
             total_amount: 0.0,
             total_tax: 0.0,
             status: ExpenseStatus::Draft,
@@ -195,16 +266,26 @@ impl Expense {
             reimbursed_at: None,
             notes: None,
             department: None,
+            submission_date: None,
             created_at: Some(now),
             updated_at: Some(now),
             organisation_id: None,
         }
     }
     
-    /// Calculate total amount from all items
+    /// Calculate all totals from items
     pub fn calculate_total(&mut self) {
-        self.total_amount = self.items.iter().map(|item| item.amount).sum();
-        self.total_tax = self.items.iter().filter_map(|item| item.tax_amount).sum();
+        // Recompute sub_total and tax_amount on each item from GST components
+        for item in self.items.iter_mut() {
+            let gst = item.total_cgst + item.total_sgst + item.total_igst;
+            item.tax_amount = Some(gst);
+            item.sub_total = item.amount + gst;
+        }
+        self.base_amount = self.items.iter().map(|item| item.amount).sum();
+        self.total_tax = self.items.iter().map(|item| {
+            item.total_cgst + item.total_sgst + item.total_igst
+        }).sum();
+        self.total_amount = self.items.iter().map(|item| item.sub_total).sum();
     }
     
     /// Get grand total including tax
@@ -310,7 +391,7 @@ impl Expense {
         }
         
         self.status = ExpenseStatus::Reimbursed;
-        self.reimbursed_at = Some(DateTime::now());
+        self.reimbursed_at = None;
         self.updated_at = Some(DateTime::now());
         
         Ok(())
@@ -364,6 +445,7 @@ impl From<CreateExpenseRequest> for Expense {
             expense_title: req.expense_title,
             project_cost_center: req.project_cost_center,
             items: req.items,
+            base_amount: 0.0,
             total_amount: 0.0,
             total_tax: 0.0,
             status: ExpenseStatus::Draft,
@@ -375,6 +457,7 @@ impl From<CreateExpenseRequest> for Expense {
             reimbursed_at: None,
             notes: req.notes,
             department: req.department,
+            submission_date: None,
             created_at: Some(now),
             updated_at: Some(now),
             organisation_id: None,

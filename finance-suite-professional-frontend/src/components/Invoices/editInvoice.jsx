@@ -47,11 +47,12 @@ const initialInvoiceData = {
   subTotal: "",
   conversionRate: "",
   approxconversionRate: "",
+  tempconversionRate: "",
   totalcgst: "",
   totalsgst: "",
   totaligst: "",
   total: "",
-  status: "Draft",
+  status: "New",
 };
 
 export default function EditInvoice() {
@@ -887,6 +888,24 @@ export default function EditInvoice() {
                     </p>
                   )}
                 </div>
+                {isInternational && (
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Temp Conversion Rate
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="Enter temp conversion rate"
+                      className="border border-gray-300 rounded px-3 
+                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                      value={invoiceData.tempconversionRate || ""}
+                      name="tempconversionRate"
+                      onChange={handleChange}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Customer Details */}

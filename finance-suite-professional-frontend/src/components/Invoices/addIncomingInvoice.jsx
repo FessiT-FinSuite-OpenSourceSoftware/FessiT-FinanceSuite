@@ -27,6 +27,8 @@ const initialForm = {
   place_of_supply: "",
   currency_type: "INR",
   purchase_order_id: "",
+  tds_available: "no",
+  tds_percent: "",
   notes: "",
   status: "Unpaid",
 };
@@ -54,7 +56,7 @@ export default function AddIncomingInvoice() {
   const [form, setForm] = useState({ ...initialForm, invoice_type: initialType });
   const isDomestic = form.invoice_type === "domestic";
   const [items, setItems] = useState([emptyItem()]);
-  const [totals, setTotals] = useState({ subTotal: "0.00", total_cgst: "0.00", total_sgst: "0.00", total_igst: "0.00", total: "0.00" });
+  const [totals, setTotals] = useState({ subTotal: "0.00", total_cgst: "0.00", total_sgst: "0.00", total_igst: "0.00", total_tds: "0.00", total: "0.00" });
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [invoiceFileName, setInvoiceFileName] = useState("");
   const [invoiceFilePreview, setInvoiceFilePreview] = useState("");
@@ -62,12 +64,19 @@ export default function AddIncomingInvoice() {
   const [errors, setErrors] = useState({});
 
   const setField = (field, value) => {
-    setForm((f) => ({ ...f, [field]: value }));
-    if (field === "invoice_type") recalc(items, value === "domestic");
+    setForm((f) => {
+      const next = { ...f, [field]: value };
+      if (field === "invoice_type" || field === "tds_available" || field === "tds_percent") {
+        recalc(items, next);
+      }
+      return next;
+    });
   };
 
-  const recalc = (updatedItems, domOverride) => {
-    const dom = domOverride !== undefined ? domOverride : isDomestic;
+  const recalc = (updatedItems, formOverride = form) => {
+    const dom = (formOverride.invoice_type || "domestic") === "domestic";
+    const tdsAvailable = (formOverride.tds_available || "no") === "yes";
+    const tdsPercent = parseFloat(formOverride.tds_percent) || 0;
     let subTotal = 0, total_cgst = 0, total_sgst = 0, total_igst = 0;
     updatedItems.forEach((it) => {
       const c = calcItem(it, dom);
@@ -76,13 +85,15 @@ export default function AddIncomingInvoice() {
       total_sgst += c.sgst;
       total_igst += c.igst;
     });
-    const total = subTotal + total_cgst + total_sgst + total_igst;
+    const total_tds = tdsAvailable ? (subTotal * tdsPercent) / 100 : 0;
+    const total = subTotal + total_cgst + total_sgst + total_igst - total_tds;
     setItems(updatedItems);
     setTotals({
       subTotal: subTotal.toFixed(2),
       total_cgst: total_cgst.toFixed(2),
       total_sgst: total_sgst.toFixed(2),
       total_igst: total_igst.toFixed(2),
+      total_tds: total_tds.toFixed(2),
       total: total.toFixed(2),
     });
   };
@@ -135,13 +146,16 @@ export default function AddIncomingInvoice() {
         total_cgst: totals.total_cgst,
         total_sgst: totals.total_sgst,
         total_igst: totals.total_igst,
+        tds_applicable: form.tds_available === "yes",
+        tds_total: totals.total_tds,
+        total_tds: totals.total_tds,
         total: totals.total,
         invoice_file: storedFilename,
       };
       await axiosInstance.post("/incoming-invoices", payload);
       toast.success("Incoming invoice created successfully");
       dispatch(fetchIncomingInvoices());
-      nav("/invoices");
+      nav("/expenses");
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to create incoming invoice");
     } finally {
@@ -243,6 +257,27 @@ export default function AddIncomingInvoice() {
               <label className={labelCls}>Purchase Order ID</label>
               <input className={inputCls} value={form.purchase_order_id} onChange={(e) => setField("purchase_order_id", e.target.value)} placeholder="Enter PO ID" />
             </div>
+            <div className="relative">
+              <label className={labelCls}>TDS Deduction</label>
+              <select className={inputCls} value={form.tds_available} onChange={(e) => setField("tds_available", e.target.value)}>
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </div>
+            {form.tds_available === "yes" && (
+              <div className="relative">
+                <label className={labelCls}>TDS Percentage</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  className={inputCls}
+                  value={form.tds_percent}
+                  onChange={(e) => setField("tds_percent", e.target.value)}
+                  placeholder="Enter TDS %"
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -364,6 +399,12 @@ export default function AddIncomingInvoice() {
                   <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={totals.total_igst} />
                 </div>
               )}
+              {form.tds_available === "yes" && (
+                <div className="flex justify-between">
+                  <span className="font-semibold text-gray-700">TDS Deduction</span>
+                  <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={totals.total_tds} />
+                </div>
+              )}
               <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">
                 <span>Total</span>
                 <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-bold text-indigo-700" value={totals.total} />
@@ -396,7 +437,7 @@ export default function AddIncomingInvoice() {
                 >
                   Choose File
                 </label>
-                <span className="text-sm text-gray-500 truncate max-w-[160px]">
+                <span className="text-sm text-gray-500 truncate max-w-40">
                   {invoiceFileName || "No file chosen"}
                 </span>
                 {invoiceFilePreview && (

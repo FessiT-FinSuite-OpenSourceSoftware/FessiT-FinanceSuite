@@ -1,37 +1,76 @@
 import React, { useEffect } from "react";
-import { FileText, Receipt, TrendingUp, IndianRupee, CheckCircle, Clock } from "lucide-react";
+import { Receipt, TrendingUp, IndianRupee, CheckCircle, Clock } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchInvoiceData, invoiceSelector } from "../../ReduxApi/invoice";
 import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
+import { fetchGstSummary, gstSummarySelector } from "../../ReduxApi/gstSummary";
 import { formatCurrency } from "../../utils/formatNumber";
-import useExchangeRates from "../../utils/useExchangeRates";
+
+// Convert a single invoice's total to INR using stored rates
+const toINR = (inv) => {
+  const total = Number(inv.total) || 0;
+  const isIntl = inv.invoice_type?.trim().toLowerCase() === "international";
+  if (!isIntl) return total; // domestic — already INR
+
+  // Use best available stored rate: conversion_rate (Paid) > approxconversionRate (Issued) > tempconversionRate
+  const cr  = Number(inv.conversionRate  || inv.conversion_rate)  || 0;
+  const acr = Number(inv.approxconversionRate) || 0;
+  const tcr = Number(inv.tempconversionRate)   || 0;
+  const rate = cr > 0 ? cr : acr > 0 ? acr : tcr > 0 ? tcr : 1;
+  return total * rate;
+};
 
 export default function Stats() {
   const dispatch = useDispatch();
   const { invoiceData } = useSelector(invoiceSelector);
   const { currentOrganisation } = useSelector(orgamisationSelector);
+  const { data: gstData, isLoading: gstLoading } = useSelector(gstSummarySelector);
 
   const orgCurrency = currentOrganisation?.currency || "INR";
-  const { convert, loading: ratesLoading } = useExchangeRates(orgCurrency);
 
   useEffect(() => {
     dispatch(fetchInvoiceData());
+    dispatch(fetchGstSummary());
     const email = localStorage.getItem("email");
     if (email) dispatch(fetchOrganisationByEmail(email));
   }, [dispatch]);
 
-  const paid = invoiceData.filter(inv => inv.status === "Paid");
-  const pending = invoiceData.filter(inv => inv.status === "Created" || inv.status === "Raised" || !inv.status);
+  const paid    = invoiceData.filter(inv => inv.status === "Paid");
+  const pending = invoiceData.filter(inv =>
+    inv.status === "New" || inv.status === "Issued" || inv.status === "On Hold" || !inv.status
+  );
 
-  const toBase = (inv) => {
-    const currency = inv.currency_type?.trim() || "INR";
-    return convert(Number(inv.total) || 0, currency);
-  };
+  // Total revenue using stored conversion rates — no live API needed
+  const totalRevenue = invoiceData.reduce((sum, inv) => sum + toINR(inv), 0);
 
-  // Total revenue = ALL invoices converted to org currency
-  const totalRevenue = invoiceData.reduce((sum, inv) => sum + toBase(inv), 0);
+  const fmt = (n) => formatCurrency(n, "INR");
 
-  const fmt = (n) => ratesLoading ? "..." : formatCurrency(n, orgCurrency);
+  const inv = gstData?.outgoing_invoices;
+  const inc = gstData?.incoming_invoices;
+  const exp = gstData?.expenses;
+  const gen = gstData?.general_expenses;
+  const combined = gstData?.combined_expense_gst;
+  const net = gstData?.net_gst_payable;
+
+  // Total GST collected from outgoing invoices + expenses + general expenses
+  const totalGstOut = (inv?.total_gst_collected || 0);
+  const totalExpenseGst = (combined?.total_gst_collected || 0);
+
+  const gstCollected = gstLoading
+    ? "..."
+    : gstData
+    ? `₹${totalGstOut.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : "₹0.00";
+
+  const paidAmount = gstLoading
+    ? "..."
+    : gstData
+    ? `₹${(inv?.paid_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : "₹0.00";
+
+  const gstMonth = gstData?.month
+    ? new Date(gstData.month + "-01").toLocaleString("en-IN", { month: "long", year: "numeric" })
+    : "This Month";
 
   const stats = [
     {
@@ -56,18 +95,24 @@ export default function Stats() {
       icon: Clock,
     },
     {
-      label: "GST Payable",
-      value: "₹89,234",
-      change: "Due: 20 Oct",
+      label: "Total GST Collected",
+      value: gstCollected,
+      change: `${(inv?.invoice_count ?? 0) + (exp?.expense_count ?? 0) + (gen?.expense_count ?? 0)} records · ${gstMonth}`,
       trend: "warning",
       icon: Receipt,
+      tooltip: gstData ? [
+        `Invoices — CGST: ₹${(inv?.total_cgst||0).toFixed(2)} | SGST: ₹${(inv?.total_sgst||0).toFixed(2)} | IGST: ₹${(inv?.total_igst||0).toFixed(2)}`,
+        `Expenses — CGST: ₹${(exp?.total_cgst||0).toFixed(2)} | SGST: ₹${(exp?.total_sgst||0).toFixed(2)}`,
+        `General — CGST: ₹${(gen?.total_cgst||0).toFixed(2)} | SGST: ₹${(gen?.total_sgst||0).toFixed(2)}`,
+      ].join('\n') : "",
     },
     {
-      label: "TDS Deducted",
-      value: "₹45,600",
-      change: "This Month",
-      trend: "neutral",
+      label: "Paid Amount",
+      value: paidAmount,
+      change: `${inv?.paid_invoice_count ?? 0} paid invoices · ${gstMonth}`,
+      trend: "up",
       icon: IndianRupee,
+      tooltip: gstData ? `Sum of all Paid invoices generated in ${gstMonth}` : "",
     },
   ];
 
@@ -79,6 +124,7 @@ export default function Stats() {
           return (
             <div
               key={idx}
+              title={stat.tooltip || ""}
               className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-4">

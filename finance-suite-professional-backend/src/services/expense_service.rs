@@ -80,8 +80,9 @@ impl ExpenseService {
             ));
         }
 
-        // Calculate total amount from items
-        let calculated_total: f64 = req.items.iter().map(|item| item.amount).sum();
+        // Calculate total amount from items (sum of sub_totals including GST)
+        let calculated_total: f64 = req.items.iter().map(|item| item.sub_total).sum();
+        req.base_amount = req.items.iter().map(|item| item.amount).sum();
         req.total_amount = calculated_total;
 
         // Ensure timestamps are set
@@ -178,8 +179,9 @@ impl ExpenseService {
             ));
         }
 
-        // Recalculate total amount from items
-        let calculated_total: f64 = req.items.iter().map(|item| item.amount).sum();
+        // Recalculate total amount from items (sum of sub_totals including GST)
+        let calculated_total: f64 = req.items.iter().map(|item| item.sub_total).sum();
+        req.base_amount = req.items.iter().map(|item| item.amount).sum();
         req.total_amount = calculated_total;
 
         // Update the updated_at timestamp
@@ -251,6 +253,14 @@ impl ExpenseService {
     /// Get expense statistics summary
     pub async fn get_expense_summary(&self) -> mongodb::error::Result<ExpenseSummary> {
         self.repo.get_expense_summary().await
+    }
+
+    /// Get monthly GST summary for expenses in an organisation
+    pub async fn get_monthly_gst_summary(
+        &self,
+        org_id: &ObjectId,
+    ) -> mongodb::error::Result<crate::repository::expense_repository::ExpenseMonthlyGstSummary> {
+        self.repo.get_monthly_gst_summary(org_id).await
     }
 
     /// Get expenses with filters

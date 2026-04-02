@@ -6,6 +6,7 @@ use mongodb::{
     Collection,
 };
 use futures::stream::TryStreamExt;
+use chrono::Utc;
 
 use crate::models::incoming_invoice::IncomingInvoice;
 
@@ -84,4 +85,114 @@ impl IncomingInvoiceRepository {
         let result = self.collection.delete_one(doc! { "_id": oid }, None).await?;
         Ok(result.deleted_count > 0)
     }
+
+    /// Get the current month's incoming invoice GST summary for an org.
+    pub async fn get_monthly_summary(&self, org_id: &ObjectId) -> Result<IncomingInvoiceMonthlySummary, MongoError> {
+        let invoices = self.get_by_org(org_id).await?;
+        let now = Utc::now();
+        let current_year  = now.format("%Y").to_string();
+        let current_month = now.format("%m").to_string();
+
+        let mut invoice_count      = 0u32;
+        let mut total_amount       = 0.0f64;
+        let mut total_cgst         = 0.0f64;
+        let mut total_sgst         = 0.0f64;
+        let mut total_igst         = 0.0f64;
+        let mut paid_amount        = 0.0f64;
+        let mut paid_invoice_count = 0u32;
+
+        for inv in &invoices {
+            let date = inv.invoice_date.trim();
+            if date.len() < 7 { continue; }
+            if &date[0..4] != current_year || &date[5..7] != current_month { continue; }
+
+            let is_international = inv.invoice_type.trim().to_lowercase() == "international";
+            let is_paid          = inv.status.trim().to_lowercase() == "paid";
+            let raw_total        = inv.total.parse::<f64>().unwrap_or(0.0);
+
+            invoice_count += 1;
+            total_amount  += raw_total;
+
+            if !is_international {
+                total_cgst += inv.total_cgst.parse::<f64>().unwrap_or(0.0);
+                total_sgst += inv.total_sgst.parse::<f64>().unwrap_or(0.0);
+            } else {
+                total_igst += inv.total_igst.parse::<f64>().unwrap_or(0.0);
+            }
+
+            if is_paid {
+                paid_amount        += raw_total;
+                paid_invoice_count += 1;
+            }
+        }
+
+        Ok(IncomingInvoiceMonthlySummary {
+            month: format!("{}-{}", current_year, current_month),
+            invoice_count,
+            total_amount,
+            total_cgst,
+            total_sgst,
+            total_igst,
+            total_gst_collected: total_cgst + total_sgst + total_igst,
+            paid_amount,
+            paid_invoice_count,
+        })
+    }
+
+    /// Get current month TDS summary — only Paid invoices with tds_applicable = true.
+    pub async fn get_monthly_tds_summary(&self, org_id: &ObjectId) -> Result<IncomingInvoiceTdsSummary, MongoError> {
+        let invoices = self.get_by_org(org_id).await?;
+        let now = Utc::now();
+        let current_year  = now.format("%Y").to_string();
+        let current_month = now.format("%m").to_string();
+
+        let mut invoice_count      = 0u32;
+        let mut total_tds_deducted = 0.0f64;
+
+        for inv in &invoices {
+            // Only Paid invoices with TDS applicable
+            if !inv.tds_applicable { continue; }
+            if inv.status.trim().to_lowercase() != "paid" { continue; }
+
+            let date = inv.invoice_date.trim();
+            if date.len() < 7 { continue; }
+            if &date[0..4] != current_year || &date[5..7] != current_month { continue; }
+
+            let tds = inv.tds_total.parse::<f64>().unwrap_or(0.0);
+            invoice_count      += 1;
+            total_tds_deducted += tds;
+        }
+
+        Ok(IncomingInvoiceTdsSummary {
+            month: format!("{}-{}", current_year, current_month),
+            invoice_count,
+            total_tds_deducted,
+            tds_on_paid: total_tds_deducted,
+            tds_pending: 0.0,
+        })
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct IncomingInvoiceMonthlySummary {
+    pub month: String,
+    pub invoice_count: u32,
+    pub total_amount: f64,
+    pub total_cgst: f64,
+    pub total_sgst: f64,
+    pub total_igst: f64,
+    pub total_gst_collected: f64,
+    pub paid_amount: f64,
+    pub paid_invoice_count: u32,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct IncomingInvoiceTdsSummary {
+    pub month: String,
+    /// Number of Paid invoices with tds_applicable = true in the current month
+    pub invoice_count: u32,
+    /// Sum of tds_total for Paid + tds_applicable invoices this month
+    pub total_tds_deducted: f64,
+    pub tds_on_paid: f64,
+    pub tds_pending: f64,
 }

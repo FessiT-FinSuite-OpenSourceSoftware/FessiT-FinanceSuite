@@ -110,6 +110,135 @@ impl InvoiceRepository {
         let result = self.collection.delete_one(doc! { "_id": oid }, None).await?;
         Ok(result.deleted_count > 0)
     }
+
+    /// Get GST summary for invoices generated in the current calendar month for an org
+    pub async fn get_monthly_gst_summary(&self, org_id: &ObjectId, company_email: &str) -> Result<MontlyGstSummary, MongoError> {
+        // Same fetch as list_invoices: match by organisationId OR company_email
+        let invoices = self.get_invoices_by_org_or_email(org_id, company_email).await?;
+
+        let now = chrono::Utc::now();
+        let current_year  = now.format("%Y").to_string();
+        let current_month = now.format("%m").to_string();
+
+        let mut total_cgst         = 0.0f64;
+        let mut total_sgst         = 0.0f64;
+        let mut total_igst_inr     = 0.0f64;
+        let mut invoice_count      = 0u32;
+        let mut paid_amount        = 0.0f64;
+        let mut paid_invoice_count = 0u32;
+        let mut breakdown          = Vec::new();
+
+        for inv in &invoices {
+            let date = inv.invoice_date.trim();
+            if date.len() < 7 { continue; }
+            if &date[0..4] != current_year || &date[5..7] != current_month { continue; }
+
+            let is_international = inv.invoice_type.trim().to_lowercase() == "international";
+
+            let fx_rate: f64 = if is_international {
+                let cr  = inv.conversion_rate.parse::<f64>().unwrap_or(0.0);
+                let acr = inv.approx_conversion_rate.parse::<f64>().unwrap_or(0.0);
+                let tcr = inv.temp_conversion_rate.parse::<f64>().unwrap_or(0.0);
+                if cr  > 0.0 { cr }
+                else if acr > 0.0 { acr }
+                else if tcr > 0.0 { tcr }
+                else { 1.0 }
+            } else {
+                1.0
+            };
+
+            let raw_total = inv.total.parse::<f64>().unwrap_or(0.0);
+            let inr_total = raw_total * fx_rate;
+            let is_paid   = inv.status == crate::models::invoice::InvoiceStatus::Paid;
+
+            let (cgst_line, sgst_line, igst_inr_line) = if !is_international {
+                let c = inv.totalcgst.parse::<f64>().unwrap_or(0.0);
+                let s = inv.totalsgst.parse::<f64>().unwrap_or(0.0);
+                total_cgst += c;
+                total_sgst += s;
+                (c, s, 0.0)
+            } else {
+                let igst_f = inv.totaligst.parse::<f64>().unwrap_or(0.0);
+                let igst_i = igst_f * fx_rate;
+                total_igst_inr += igst_i;
+                (0.0, 0.0, igst_i)
+            };
+
+            invoice_count += 1;
+
+            if is_paid {
+                paid_amount        += inr_total;
+                paid_invoice_count += 1;
+            }
+
+            log::info!(
+                "[GST] {} | {} | {} | {:?} | raw={} fx={} inr={} cgst={} sgst={} igst_inr={} paid={}",
+                inv.invoice_number, inv.invoice_type, inv.currency_type, inv.status,
+                raw_total, fx_rate, inr_total, cgst_line, sgst_line, igst_inr_line, is_paid
+            );
+
+            breakdown.push(InvoiceGstLine {
+                invoice_number: inv.invoice_number.clone(),
+                invoice_type:   inv.invoice_type.clone(),
+                currency:       inv.currency_type.clone(),
+                status:         format!("{:?}", inv.status),
+                raw_total,
+                fx_rate,
+                inr_total,
+                cgst: cgst_line,
+                sgst: sgst_line,
+                igst_inr: igst_inr_line,
+                is_paid,
+            });
+        }
+
+        let total_gst_collected = total_cgst + total_sgst + total_igst_inr;
+        log::info!("[GST] TOTAL: count={} cgst={} sgst={} igst_inr={} gst_total={} paid_amount={} paid_count={}",
+            invoice_count, total_cgst, total_sgst, total_igst_inr, total_gst_collected, paid_amount, paid_invoice_count);
+
+        Ok(MontlyGstSummary {
+            month: format!("{}-{}", current_year, current_month),
+            invoice_count,
+            total_cgst,
+            total_sgst,
+            total_igst: total_igst_inr,
+            total_gst_collected,
+            paid_amount,
+            paid_invoice_count,
+            breakdown,
+        })
+    }
 }
 
 use futures::stream::TryStreamExt;
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct InvoiceGstLine {
+    pub invoice_number: String,
+    pub invoice_type: String,
+    pub currency: String,
+    pub status: String,
+    pub raw_total: f64,
+    pub fx_rate: f64,
+    pub inr_total: f64,
+    pub cgst: f64,
+    pub sgst: f64,
+    pub igst_inr: f64,
+    pub is_paid: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct MontlyGstSummary {
+    pub month: String,
+    pub invoice_count: u32,
+    pub total_cgst: f64,
+    pub total_sgst: f64,
+    pub total_igst: f64,
+    pub total_gst_collected: f64,
+    /// Sum of `total` (in INR) for Paid invoices in the current month
+    pub paid_amount: f64,
+    /// Count of Paid invoices in the current month
+    pub paid_invoice_count: u32,
+    /// Per-invoice breakdown for debugging
+    pub breakdown: Vec<InvoiceGstLine>,
+}

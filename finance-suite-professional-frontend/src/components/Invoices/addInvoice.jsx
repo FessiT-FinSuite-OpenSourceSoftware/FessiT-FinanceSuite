@@ -9,8 +9,18 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector } from "../../ReduxApi/organisation";
 import { createInvoice, fetchNextInvoiceNumber, invoiceSelector } from "../../ReduxApi/invoice";
 
-const initialInvoiceData = {
-  invoice_type: "domestic", // "domestic" or "international"
+const createEmptyInvoiceItem = () => ({
+  description: "",
+  hours: "",
+  rate: "",
+  cgst: { cgstPercent: "", cgstAmount: "" },
+  sgst: { sgstPercent: "", sgstAmount: "" },
+  igst: { igstPercent: "", igstAmount: "" },
+  itemTotal: "",
+});
+
+const getInitialInvoiceData = (invoiceType = "domestic") => ({
+  invoice_type: invoiceType, // "domestic" or "international"
   company_name: "",
   gstIN: "",
   company_address: "",
@@ -25,7 +35,7 @@ const initialInvoiceData = {
   po_number: "",
   po_date: "",
   place_of_supply: "",
-  currency_type: "",
+  currency_type: invoiceType === "international" ? "EUR" : "INR",
   billcustomer_name: "",
   billcustomer_address: "",
   billcustomer_gstin: "",
@@ -33,25 +43,16 @@ const initialInvoiceData = {
   shipcustomer_address: "",
   shipcustomer_gstin: "",
   subject: "",
-  items: [
-    {
-      description: "",
-      hours: "",
-      rate: "",
-      cgst: { cgstPercent: "", cgstAmount: "" },
-      sgst: { sgstPercent: "", sgstAmount: "" },
-      igst: { igstPercent: "", igstAmount: "" },
-      itemTotal: "",
-    },
-  ],
+  items: [createEmptyInvoiceItem()],
   notes: "",
   subTotal: "",
   totalcgst: "",
   totalsgst: "",
   totaligst: "",
+  tempconversionRate: "",
   total: "",
-  status: "Created",
-};
+  status: "New",
+});
 
 export default function AddInvoice() {
   const location = useLocation();
@@ -68,11 +69,7 @@ export default function AddInvoice() {
       typeFromQuery === "international" || typeFromQuery === "domestic"
         ? typeFromQuery
         : location.state?.invoiceType || "domestic";
-    setInvoiceData({
-      ...initialInvoiceData,
-      invoice_type: invoiceType,
-      currency_type: invoiceType === "international" ? "EUR" : "INR",
-    });
+    setInvoiceData(getInitialInvoiceData(invoiceType));
     setInputErrors({});
     setErrors({});
     setShowCustomCurrency(false);
@@ -105,11 +102,7 @@ export default function AddInvoice() {
     const invoiceType =
       normalizedType || location.state?.invoiceType || "domestic";
 
-    return { 
-      ...initialInvoiceData, 
-      invoice_type: invoiceType,
-      currency_type: invoiceType === "international" ? "EUR" : "INR"
-    };
+    return getInitialInvoiceData(invoiceType);
   });
 
   const [inputErrors, setInputErrors] = useState({});
@@ -521,15 +514,7 @@ export default function AddInvoice() {
       ...prev,
       items: [
         ...prev.items,
-        {
-          description: "",
-          hours: "",
-          rate: "",
-          cgst: { cgstPercent: "", cgstAmount: "" },
-          sgst: { sgstPercent: "", sgstAmount: "" },
-          igst: { igstPercent: "", igstAmount: "" },
-          itemTotal: "",
-        },
+        createEmptyInvoiceItem(),
       ],
     }));
   };
@@ -603,7 +588,7 @@ export default function AddInvoice() {
 
     try {
       await dispatch(createInvoice(invoiceData));
-      setInvoiceData(initialInvoiceData);
+      setInvoiceData(getInitialInvoiceData(invoiceData.invoice_type));
       nav("/invoices");
     } catch (err) {
       console.error(err);
@@ -1014,6 +999,23 @@ export default function AddInvoice() {
                 </div>
               )}
             </div>
+            {isInternational && (
+              <div className="relative">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Temp Conversion Rate
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="Enter temp conversion rate"
+                  className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                  value={invoiceData.tempconversionRate}
+                  name="tempconversionRate"
+                  onChange={handleChange}
+                />
+              </div>
+            )}
           </div>
 
           {/* Customer Details */}

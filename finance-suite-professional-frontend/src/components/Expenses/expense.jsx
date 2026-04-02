@@ -8,13 +8,30 @@ import { fetchCostCenters, costCenterSelector } from "../../ReduxApi/costCenter"
 import { fetchCustomerData } from "../../ReduxApi/customer";
 import axiosInstance from "../../utils/axiosInstance";
 
+const calcTax = (amount, pct) => (parseFloat(amount) || 0) * (parseFloat(pct) || 0) / 100;
+
+const formatDateForApi = (dateStr) => {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-");
+  if (!year || !month || !day) return dateStr;
+  return `${day}-${month}-${year}`;
+};
+
 const emptyExpenseItem = () => ({
   expenseCategory: "",
+  expenseDate: "",
+  vendor: "",
+  paymentMethod: "",
+  billable: false,
   amount: "",
+  cgstPct: "",
+  sgstPct: "",
+  igstPct: "",
   comment: "",
   receiptFile: null,
   receiptName: "",
   receiptPreviewUrl: "",
+  billed_to: ""
 });
 
 export default function Expense() {
@@ -44,9 +61,9 @@ export default function Expense() {
   // cost centers filtered to the selected customer
   const customerCostCenters = header.customerId
     ? allCostCenters.filter((cc) => {
-        const ccCustId = cc.customerId?.$oid || cc.customerId || ''
-        return ccCustId === header.customerId
-      })
+      const ccCustId = cc.customerId?.$oid || cc.customerId || ''
+      return ccCustId === header.customerId
+    })
     : []
 
   const [ccSearch, setCcSearch] = useState("")
@@ -58,7 +75,7 @@ export default function Expense() {
       (cc.costCenterNumber || "").toLowerCase().includes(ccSearch.toLowerCase()) ||
       (cc.projectName || "").toLowerCase().includes(ccSearch.toLowerCase())
   )
-  
+
   const goBackToExpenses = () => {
     nav("/expenses");
   };
@@ -83,7 +100,7 @@ export default function Expense() {
     return () => document.removeEventListener("mousedown", handler)
   }, [])
 
-  
+
   const handleCustomerChange = (e) => {
     const customerId = e.target.value
     setHeader((prev) => ({ ...prev, customerId, projectCostCenter: '' }))
@@ -157,89 +174,101 @@ export default function Expense() {
   };
 
   const onExpenseDataSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const errors = validate();
-  if (Object.keys(errors).length > 0) {
-    setInputErrors(errors);
+    const errors = validate();
+    if (Object.keys(errors).length > 0) {
+      setInputErrors(errors);
 
-    // Scroll to first error
-    const firstKey = Object.keys(errors)[0];
+      // Scroll to first error
+      const firstKey = Object.keys(errors)[0];
 
-    if (firstKey.startsWith("header_")) {
-      const fieldName = firstKey.replace("header_", "");
-      const el = document.querySelector(`[data-header="true"][name="${fieldName}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.focus();
+      if (firstKey.startsWith("header_")) {
+        const fieldName = firstKey.replace("header_", "");
+        const el = document.querySelector(`[data-header="true"][name="${fieldName}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus();
+        }
+      } else if (firstKey.startsWith("row_")) {
+        const [_, rowIdxStr, fieldName] = firstKey.split("_");
+        const rowIdx = parseInt(rowIdxStr, 10) || 0;
+        const el = document.querySelector(
+          `[data-row="${rowIdx}"][name="${fieldName}"]`
+        );
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus();
+        }
       }
-    } else if (firstKey.startsWith("row_")) {
-      const [_, rowIdxStr, fieldName] = firstKey.split("_");
-      const rowIdx = parseInt(rowIdxStr, 10) || 0;
-      const el = document.querySelector(
-        `[data-row="${rowIdx}"][name="${fieldName}"]`
-      );
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.focus();
-      }
+      return;
     }
-    return;
-  }
 
-  setInputErrors({});
-  setSaving(true);
+    setInputErrors({});
+    setSaving(true);
 
-  try {
-    const formData = new FormData();
-    
-    // Header fields - try to match original working format exactly
-    formData.append("expenseTitle", header.expenseTitle);
-    formData.append("projectCostCenter", header.projectCostCenter);
-    formData.append("customerId", header.customerId);
-    formData.append("expenseDate", header.expenseDate);
-    formData.append("currency", header.currency);
-    formData.append("notes", header.comment || "");
+    try {
+      const formData = new FormData();
 
-    // Prepare items array as JSON (without files)
-    const itemsData = items.map((item) => ({
-      expenseCategory: item.expenseCategory,
-      amount: parseFloat(item.amount) || 0,
-      comment: item.comment || "",
-      paymentMethod: "",
-      vendor: "",
-      billable: false,
-      taxAmount: null,
-    }));
+      // Header fields - try to match original working format exactly
+      formData.append("expenseTitle", header.expenseTitle);
+      formData.append("projectCostCenter", header.projectCostCenter);
+      formData.append("customerId", header.customerId);
+      formData.append("submissionDate", formatDateForApi(header.expenseDate));
+      formData.append("currency", header.currency);
+      formData.append("notes", header.comment || "");
 
-    formData.append("items", JSON.stringify(itemsData));
+      // Prepare items array as JSON (without files)
+      const itemsData = items.map((item) => {
+        const amount = parseFloat(item.amount) || 0;
+        const totalCgst = calcTax(amount, item.cgstPct);
+        const totalSgst = calcTax(amount, item.sgstPct);
+        const totalIgst = calcTax(amount, item.igstPct);
+        return {
+          expenseCategory: item.expenseCategory,
+          expenseDate: formatDateForApi(item.expenseDate || header.expenseDate),
+          vendor: item.vendor || "",
+          paymentMethod: item.paymentMethod || "",
+          billedTo: item.billed_to || "",
+          billable: item.billable || false,
+          currency: header.currency,
+          amount,
+          totalCgst,
+          totalSgst,
+          totalIgst,
+          taxAmount: totalCgst + totalSgst + totalIgst || null,
+          comment: item.comment || "",
+        };
+      });
 
-    // Append receipt files with indexed names
-    items.forEach((item, index) => {
-      if (item.receiptFile) {
-        formData.append(`receipt_${index}`, item.receiptFile);
-      }
-    });
+      formData.append("items", JSON.stringify(itemsData));
 
-    // Add org_email
-    const orgEmail = localStorage.getItem('email');
-    formData.append('org_email', orgEmail);
+      // Append receipt files with indexed names
+      items.forEach((item, index) => {
+        if (item.receiptFile) {
+          formData.append(`receipt_${index}`, item.receiptFile);
+        }
+      });
 
-    const response = await axiosInstance.post('/expenses', formData);
-    toast.success(response.data.message || 'Expense created successfully!');
-    dispatch(fetchExpenseData());
+      // Add org_email
+      const orgEmail = localStorage.getItem('email');
+      formData.append('org_email', orgEmail);
 
-    setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "" });
-    setItems([emptyExpenseItem()]);
-    nav("/expenses");
-  } catch (err) {
-    console.error('Full error object:', err);
-    console.error('Error response:', err.response?.data);
-    toast.error(err.response?.data?.message || err.message || "Something went wrong while saving expense");
-  } finally {
-    setSaving(false);
-  }
-};
+      const response = await axiosInstance.post('/expenses', formData);
+      toast.success(response.data.message || 'Expense created successfully!');
+      dispatch(fetchExpenseData());
+
+      setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "" });
+      setItems([emptyExpenseItem()]);
+      nav("/expenses");
+    } catch (err) {
+      console.error('Full error object:', err);
+      console.error('Error response:', err.response?.data);
+      toast.error(err.response?.data?.message || err.message || "Something went wrong while saving expense");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -263,7 +292,7 @@ export default function Expense() {
             </div>
             <div className="flex flex-wrap justify-end mr-5 gap-2 ">
               <button
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={onExpenseDataSubmit}
                 disabled={saving}
               >
@@ -333,17 +362,16 @@ export default function Expense() {
               Project / Cost Center *
             </label>
             <div
-              className={`border border-gray-300 rounded px-3 py-2 w-full text-sm flex justify-between items-center ${
-                header.customerId ? 'cursor-pointer' : 'cursor-not-allowed bg-gray-100'
-              }`}
+              className={`border border-gray-300 rounded px-3 py-2 w-full text-sm flex justify-between items-center ${header.customerId ? 'cursor-pointer' : 'cursor-not-allowed bg-gray-100'
+                }`}
               onClick={() => header.customerId && setCcOpen((p) => !p)}
             >
               <span className={header.projectCostCenter ? "text-gray-800" : "text-gray-400"}>
                 {header.projectCostCenter
                   ? (() => {
-                      const cc = customerCostCenters.find((c) => c.costCenterNumber === header.projectCostCenter)
-                      return cc ? `${cc.costCenterNumber} — ${cc.projectName}` : header.projectCostCenter
-                    })()
+                    const cc = customerCostCenters.find((c) => c.costCenterNumber === header.projectCostCenter)
+                    return cc ? `${cc.costCenterNumber} — ${cc.projectName}` : header.projectCostCenter
+                  })()
                   : header.customerId ? "Select a cost center" : "Select a customer first"}
               </span>
               <Search className="w-4 h-4 text-gray-400" />
@@ -373,9 +401,8 @@ export default function Expense() {
                           setCcOpen(false)
                           setCcSearch("")
                         }}
-                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 flex justify-between items-center ${
-                          header.projectCostCenter === cc.costCenterNumber ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700"
-                        }`}
+                        className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 flex justify-between items-center ${header.projectCostCenter === cc.costCenterNumber ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700"
+                          }`}
                       >
                         <span>{cc.projectName}</span>
                         <span className="text-xs text-gray-400">{cc.costCenterNumber}</span>
@@ -392,10 +419,10 @@ export default function Expense() {
             )}
           </div>
 
-          {/* Expense Date (common for all items) */}
+          {/* Submission Date (header level) */}
           <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Expense Date *
+              Submission Date *
             </label>
             <input
               type="date"
@@ -474,7 +501,7 @@ export default function Expense() {
                   </button>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-3 gap-4 mb-4">
                   {/* Expense Category */}
                   <div className="relative">
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -501,6 +528,80 @@ export default function Expense() {
                     )}
                   </div>
 
+                  {/* Expense Date (per item) */}
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Expense Date
+                    </label>
+                    <input
+                      type="date"
+                      name="expenseDate"
+                      data-row={idx}
+                      value={it.expenseDate}
+                      onChange={(e) => handleItemChange(idx, e)}
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+                    />
+                  </div>
+
+                  {/* Vendor */}
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Vendor
+                    </label>
+                    <input
+                      type="text"
+                      name="vendor"
+                      data-row={idx}
+                      value={it.vendor}
+                      onChange={(e) => handleItemChange(idx, e)}
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-sm placeholder:text-gray-400"
+                      placeholder="Vendor / Merchant name"
+                    />
+                  </div>
+
+
+                  {/* Payment Method */}
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Payment Method
+                    </label>
+                    <select
+                      name="paymentMethod"
+                      data-row={idx}
+                      value={it.paymentMethod}
+                      onChange={(e) => handleItemChange(idx, e)}
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+                    >
+                      <option value="">Select method</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Credit Card">Credit Card</option>
+                      <option value="Debit Card">Debit Card</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                      <option value="UPI">UPI</option>
+                    </select>
+                  </div>
+
+
+                  {/* Billing To  */}
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Billing to
+                    </label>
+                    <select
+                      name="billed_to"
+                      data-row={idx}
+                      value={it.billed_to}
+                      onChange={(e) => handleItemChange(idx, e)}
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+                    >
+                      <option value="">Select method</option>
+                      <option value="Self">Self</option>
+                      <option value="Company">Company</option>
+
+
+                    </select>
+                  </div>
+
                   {/* Amount */}
                   <div className="relative">
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -515,14 +616,135 @@ export default function Expense() {
                       className="border border-gray-300 rounded px-3 py-2 w-full text-sm placeholder:text-gray-400"
                       placeholder="Enter amount"
                     />
-                    <p className="text-xs text-gray-600 mt-1">
+                    {/* <p className="text-xs text-gray-600 mt-1">
                       Payable Amount in {header.currency || "INR"}
                     </p>
                     {inputErrors[`${prefix}amount`] && (
                       <p className="absolute text-[13px] top-16 ml-32 text-[#f10404]">
                         {inputErrors[`${prefix}amount`]}
                       </p>
-                    )}
+                    )} */}
+                  </div>
+
+                  {/* CGST % */}
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      CGST %
+                    </label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="number"
+                        name="cgstPct"
+                        data-row={idx}
+                        value={it.cgstPct}
+                        onChange={(e) => handleItemChange(idx, e)}
+                        className="border border-gray-300 rounded px-3 py-2 w-45 text-sm placeholder:text-gray-400"
+                        placeholder="e.g. 9"
+                        min="0" max="100"
+                      />
+                      {/* <span className="text-sm text-gray-500 whitespace-nowrap">
+                        = {calcTax(it.amount, it.cgstPct).toFixed(2)}
+                      </span> */}
+                    </div>
+                  </div>
+
+                  {/* SGST % */}
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      SGST %
+                    </label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="number"
+                        name="sgstPct"
+                        data-row={idx}
+                        value={it.sgstPct}
+                        onChange={(e) => handleItemChange(idx, e)}
+                        className="border border-gray-300 rounded px-3 py-2 w-45 text-sm placeholder:text-gray-400"
+                        placeholder="e.g. 9"
+                        min="0" max="100"
+                      />
+                      {/* <span className="text-sm text-gray-500 whitespace-nowrap">
+                        = {calcTax(it.amount, it.sgstPct).toFixed(2)}
+                      </span> */}
+                    </div>
+                  </div>
+
+                  {/* IGST % */}
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      IGST %
+                    </label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="number"
+                        name="igstPct"
+                        data-row={idx}
+                        value={it.igstPct}
+                        onChange={(e) => handleItemChange(idx, e)}
+                        className="border border-gray-300 rounded px-3 py-2 w-45 text-sm placeholder:text-gray-400"
+                        placeholder="e.g. 18"
+                        min="0" max="100"
+                      />
+                      {/* <span className="text-sm text-gray-500 whitespace-nowrap">
+                        = {calcTax(it.amount, it.igstPct).toFixed(2)}
+                      </span> */}
+                    </div>
+                  </div>
+
+                  {/* Tax Amount (auto) */}
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Total Tax
+                    </label>
+                    <input
+                      readOnly
+                      value={(
+                        calcTax(it.amount, it.cgstPct) +
+                        calcTax(it.amount, it.sgstPct) +
+                        calcTax(it.amount, it.igstPct)
+                      ).toFixed(2)}
+                      className="border border-gray-200 rounded px-3 py-2 w-full text-sm bg-gray-50 text-gray-600"
+                    />
+                  </div>
+
+                  {/* Sub Total (auto) */}
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Sub Total (incl. GST)
+                    </label>
+                    <input
+                      readOnly
+                      value={(
+                        (parseFloat(it.amount) || 0) +
+                        calcTax(it.amount, it.cgstPct) +
+                        calcTax(it.amount, it.sgstPct) +
+                        calcTax(it.amount, it.igstPct)
+                      ).toFixed(2)}
+                      className="border border-gray-200 rounded px-3 py-2 w-full text-sm bg-gray-50 text-blue-700 font-semibold"
+                    />
+                  </div>
+
+                  {/* Billable */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="checkbox"
+                      id={`billable_${idx}`}
+                      name="billable"
+                      data-row={idx}
+                      checked={it.billable}
+                      onChange={(e) =>
+                        setItems((prev) => {
+                          const copy = [...prev];
+                          copy[idx] = { ...copy[idx], billable: e.target.checked };
+                          return copy;
+                        })
+                      }
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                    <label htmlFor={`billable_${idx}`} className="text-sm font-semibold text-gray-700 cursor-pointer">
+                      Billable to Client
+                    </label>
                   </div>
                 </div>
 

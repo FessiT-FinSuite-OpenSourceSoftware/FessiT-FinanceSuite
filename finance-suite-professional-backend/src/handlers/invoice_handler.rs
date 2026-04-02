@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::{
     models::invoice::{CreateInvoiceRequest, UpdateInvoiceRequest},
-    services::InvoiceService,
+    services::{ExpenseService, GeneralExpenseService, IncomingInvoiceService, InvoiceService},
     utils::auth::Claims,
     utils::permissions::{check_permission, Module, PermissionAction, create_permission_error},
 };
@@ -242,7 +242,7 @@ pub async fn update_invoice(
         .ok_or_else(|| actix_web::error::ErrorNotFound(json!({ "message": "Invoice not found" })))?;
 
     // Only admins can modify a Paid invoice
-    if existing.status == "Paid" && !user.is_admin {
+    if existing.status == crate::models::invoice::InvoiceStatus::Paid && !user.is_admin {
         return Ok(HttpResponse::Forbidden().json(json!({
             "message": "Only admins can modify a Paid invoice"
         })));
@@ -302,9 +302,102 @@ pub async fn delete_invoice(
     }
 }
 
+/// GET /api/v1/invoices/gst-summary
+/// Returns total GST collected from invoices generated in the current month for the user's org
+#[get("/invoices/gst-summary")]
+pub async fn get_gst_summary(
+    service: web::Data<InvoiceService>,
+    incoming_service: web::Data<IncomingInvoiceService>,
+    expense_service: web::Data<ExpenseService>,
+    general_expense_service: web::Data<GeneralExpenseService>,
+    http_req: HttpRequest,
+) -> actix_web::Result<impl Responder> {
+    let claims = http_req.extensions().get::<Claims>().cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
+    let user = service.get_user_permissions(&claims.sub).await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+    let org_id = user.organisation_id
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
+    let summary = service.get_monthly_gst_summary(&org_id).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+    let incoming_summary = incoming_service.get_monthly_summary(&org_id).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+    let expense_summary = expense_service.get_monthly_gst_summary(&org_id).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+    let general_expense_summary = general_expense_service.get_monthly_gst_summary(&org_id).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    let expense_count = expense_summary.expense_count + general_expense_summary.expense_count + incoming_summary.invoice_count;
+    let total_amount = expense_summary.total_amount + general_expense_summary.total_amount + incoming_summary.total_amount;
+    let total_tax = expense_summary.total_tax + general_expense_summary.total_tax + incoming_summary.total_gst_collected;
+    let total_cgst = expense_summary.total_cgst + general_expense_summary.total_cgst + incoming_summary.total_cgst;
+    let total_sgst = expense_summary.total_sgst + general_expense_summary.total_sgst + incoming_summary.total_sgst;
+    let total_igst = expense_summary.total_igst + general_expense_summary.total_igst + incoming_summary.total_igst;
+    let total_gst_collected = expense_summary.total_gst_collected + general_expense_summary.total_gst_collected + incoming_summary.total_gst_collected;
+
+    let net_gst_payable = summary.total_gst_collected - total_gst_collected;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "month": summary.month,
+        "outgoing_invoices": {
+            "invoice_count": summary.invoice_count,
+            "total_cgst": summary.total_cgst,
+            "total_sgst": summary.total_sgst,
+            "total_igst": summary.total_igst,
+            "total_gst_collected": summary.total_gst_collected,
+            "paid_amount": summary.paid_amount,
+            "paid_invoice_count": summary.paid_invoice_count
+        },
+        "incoming_invoices": {
+            "invoice_count": incoming_summary.invoice_count,
+            "total_amount": incoming_summary.total_amount,
+            "total_cgst": incoming_summary.total_cgst,
+            "total_sgst": incoming_summary.total_sgst,
+            "total_igst": incoming_summary.total_igst,
+            "total_gst_collected": incoming_summary.total_gst_collected,
+            "paid_amount": incoming_summary.paid_amount,
+            "paid_invoice_count": incoming_summary.paid_invoice_count
+        },
+        "expenses": {
+            "expense_count": expense_summary.expense_count,
+            "total_amount": expense_summary.total_amount,
+            "total_cgst": expense_summary.total_cgst,
+            "total_sgst": expense_summary.total_sgst,
+            "total_igst": expense_summary.total_igst,
+            "total_gst_collected": expense_summary.total_gst_collected
+        },
+        "general_expenses": {
+            "expense_count": general_expense_summary.expense_count,
+            "total_amount": general_expense_summary.total_amount,
+            "total_cgst": general_expense_summary.total_cgst,
+            "total_sgst": general_expense_summary.total_sgst,
+            "total_igst": general_expense_summary.total_igst,
+            "total_gst_collected": general_expense_summary.total_gst_collected
+        },
+        "combined_expense_gst": {
+            "expense_count": expense_count,
+            "total_amount": total_amount,
+            "total_tax": total_tax,
+            "total_cgst": total_cgst,
+            "total_sgst": total_sgst,
+            "total_igst": total_igst,
+            "total_gst_collected": total_gst_collected
+        },
+        "net_gst_payable": {
+            "outgoing_gst_collected": summary.total_gst_collected,
+            "incoming_gst_collected": incoming_summary.total_gst_collected,
+            "expense_gst_collected": total_gst_collected,
+            "net_payable": net_gst_payable
+        }
+    })))
+}
 /// Register invoice routes under /api/v1
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_next_invoice_number)
+        .service(get_gst_summary)
         .service(create_invoice)
         .service(list_invoices)
         .service(get_invoice)

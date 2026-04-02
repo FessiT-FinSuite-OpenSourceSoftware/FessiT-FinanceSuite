@@ -5,8 +5,6 @@ import { CirclePlus, CircleMinus, ArrowLeft, Eye, Download } from "lucide-react"
 import { updateIncomingInvoice } from "../../ReduxApi/incomingInvoice";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas-pro";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -103,7 +101,20 @@ export default function EditIncomingInvoice() {
 
   useEffect(() => {
     axiosInstance.get(`/incoming-invoices/${id}`).then(({ data }) => {
-      setForm({ ...data, items: data.items?.length ? data.items : [emptyItem()] });
+      // Map backend tds_applicable (bool) + tds_total (string) back to frontend tds_available/tds_percent
+      const tdsApplicable = data.tds_applicable === true;
+      const tdsTotal = parseFloat(data.tds_total || data.total_tds || 0);
+      const subTotalVal = parseFloat(data.subTotal || 0);
+      const tdsPercent = tdsApplicable && subTotalVal > 0
+        ? ((tdsTotal / subTotalVal) * 100).toFixed(2)
+        : "";
+      setForm({
+        ...data,
+        items: data.items?.length ? data.items : [emptyItem()],
+        tds_available: tdsApplicable ? "yes" : "no",
+        tds_percent: tdsPercent,
+        total_tds: data.tds_total || data.total_tds || "0.00",
+      });
     });
   }, [id]);
 
@@ -111,10 +122,18 @@ export default function EditIncomingInvoice() {
 
   const isDomestic = (form.invoice_type || "domestic") === "domestic";
 
-  const setField = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+  const setField = (field, value) => {
+    const next = { ...form, [field]: value };
+    setForm(next);
+    if (field === "invoice_type" || field === "tds_available" || field === "tds_percent") {
+      recalc(next.items || form.items, next);
+    }
+  };
 
-  const recalc = (updatedItems, domOverride) => {
-    const dom = domOverride !== undefined ? domOverride : isDomestic;
+  const recalc = (updatedItems, formOverride = form) => {
+    const dom = (formOverride.invoice_type || "domestic") === "domestic";
+    const tdsAvailable = (formOverride.tds_available || "no") === "yes";
+    const tdsPercent = parseFloat(formOverride.tds_percent) || 0;
     let subTotal = 0, total_cgst = 0, total_sgst = 0, total_igst = 0;
     updatedItems.forEach((it) => {
       const c = calcItem(it, dom);
@@ -123,7 +142,8 @@ export default function EditIncomingInvoice() {
       total_sgst += c.sgst;
       total_igst += c.igst;
     });
-    const total = subTotal + total_cgst + total_sgst + total_igst;
+    const total_tds = tdsAvailable ? (subTotal * tdsPercent) / 100 : 0;
+    const total = subTotal + total_cgst + total_sgst + total_igst - total_tds;
     setForm((f) => ({
       ...f,
       items: updatedItems,
@@ -131,6 +151,7 @@ export default function EditIncomingInvoice() {
       total_cgst: total_cgst.toFixed(2),
       total_sgst: total_sgst.toFixed(2),
       total_igst: total_igst.toFixed(2),
+      total_tds: total_tds.toFixed(2),
       total: total.toFixed(2),
     }));
   };
@@ -147,19 +168,24 @@ export default function EditIncomingInvoice() {
     e?.preventDefault();
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        tds_applicable: form.tds_available === "yes",
+        tds_total: form.total_tds || "0.00",
+      };
       if (newFile) {
         const fd = new FormData();
-        Object.entries(form).forEach(([k, v]) => {
+        Object.entries(payload).forEach(([k, v]) => {
           if (k === "items") fd.append(k, JSON.stringify(v));
-          else if (v !== null && v !== undefined) fd.append(k, v);
+          else if (v !== null && v !== undefined) fd.append(k, String(v));
         });
         fd.append("invoice_file", newFile);
         await axiosInstance.put(`/incoming-invoice-files/${id}`, fd);
         toast.success("Invoice updated successfully");
       } else {
-        await dispatch(updateIncomingInvoice(id, form));
+        await dispatch(updateIncomingInvoice(id, payload));
       }
-      nav("/invoices");
+      nav("/expenses");
     } catch {
       toast.error("Failed to update invoice");
     } finally {
@@ -167,15 +193,8 @@ export default function EditIncomingInvoice() {
     }
   };
 
-  const handleView = () => nav(`/invoices/viewIncomingInvoice/${id}`);
-
-  const handleDownload = async () => {
-    nav(`/invoices/viewIncomingInvoice/${id}`);
-  };
-
   const inputCls = "border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400";
   const labelCls = "block text-sm font-semibold text-gray-700 mb-1";
-  const errCls = "absolute text-[13px] text-[#f10404]";
 
   return (
     <div className="relative">
@@ -183,7 +202,7 @@ export default function EditIncomingInvoice() {
       <div className="sticky top-[88px] w-full z-100 rounded-lg bg-white border border-gray-300 py-4 shadow-sm">
         <div className="flex justify-between items-center">
           <div className="px-4 py-2 flex items-center gap-3">
-            <ArrowLeft strokeWidth={1} onClick={() => nav("/invoices")} className="cursor-pointer" />
+            <ArrowLeft strokeWidth={1} onClick={() => nav(-1)} className="cursor-pointer" />
             <span className="text-sm font-semibold text-gray-700">Incoming Invoice</span>
             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isDomestic ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
               {isDomestic ? "₹ Domestic" : "$ International"}
@@ -247,7 +266,7 @@ export default function EditIncomingInvoice() {
             </div>
             <div className="relative">
               <label className={labelCls}>Invoice Type</label>
-              <select className={inputCls} value={form.invoice_type || "domestic"} onChange={(e) => { setField("invoice_type", e.target.value); recalc(form.items, e.target.value === "domestic"); }}>
+              <select className={inputCls} value={form.invoice_type || "domestic"} onChange={(e) => setField("invoice_type", e.target.value)}>
                 <option value="domestic">Domestic</option>
                 <option value="international">International</option>
               </select>
@@ -266,6 +285,27 @@ export default function EditIncomingInvoice() {
               <label className={labelCls}>Purchase Order ID</label>
               <input className={inputCls} value={form.purchase_order_id || ""} onChange={(e) => setField("purchase_order_id", e.target.value)} placeholder="Enter PO ID" />
             </div>
+            <div className="relative">
+              <label className={labelCls}>TDS Deduction</label>
+              <select className={inputCls} value={form.tds_available || "no"} onChange={(e) => setField("tds_available", e.target.value)}>
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </div>
+            {form.tds_available === "yes" && (
+              <div className="relative">
+                <label className={labelCls}>TDS Percentage</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  className={inputCls}
+                  value={form.tds_percent || ""}
+                  onChange={(e) => setField("tds_percent", e.target.value)}
+                  placeholder="Enter TDS %"
+                />
+              </div>
+            )}
             <div className="relative">
               <label className={labelCls}>Status</label>
               <select className={inputCls} value={form.status || "Unpaid"} onChange={(e) => setField("status", e.target.value)}>
@@ -393,6 +433,12 @@ export default function EditIncomingInvoice() {
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-700">Total IGST</span>
                   <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={form.total_igst || "0.00"} />
+                </div>
+              )}
+              {form.tds_available === "yes" && (
+                <div className="flex justify-between">
+                  <span className="font-semibold text-gray-700">TDS Deduction</span>
+                  <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={form.total_tds || "0.00"} />
                 </div>
               )}
               <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">

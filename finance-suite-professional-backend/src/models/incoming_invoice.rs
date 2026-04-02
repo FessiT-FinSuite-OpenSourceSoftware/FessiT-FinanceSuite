@@ -55,6 +55,12 @@ pub struct IncomingInvoice {
     pub place_of_supply: String,
 
     #[serde(default)]
+    pub approved_date: Option<String>,
+
+    #[serde(default)]
+    pub paid_date: Option<String>,
+    
+    #[serde(default)]
     pub currency_type: String,
 
     #[serde(default)]
@@ -86,6 +92,12 @@ pub struct IncomingInvoice {
 
     #[serde(default)]
     pub status: String,
+
+    #[serde(default)]
+    pub tds_applicable: bool,
+
+     #[serde(default)]
+    pub tds_total: String,
 
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,

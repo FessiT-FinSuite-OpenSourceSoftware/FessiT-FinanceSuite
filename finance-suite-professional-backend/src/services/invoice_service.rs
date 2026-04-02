@@ -2,7 +2,11 @@ use std::sync::Arc;
 
 use crate::{
     models::invoice::Invoice,
-    repository::{invoice_repository::InvoiceRepository, organisation_repository::OrganisationRepository, user_repository::UserRepository},
+    repository::{
+        invoice_repository::InvoiceRepository,
+        organisation_repository::OrganisationRepository,
+        user_repository::UserRepository,
+    },
 };
 
 #[derive(Clone)]
@@ -13,7 +17,13 @@ pub struct InvoiceService {
 }
 
 impl InvoiceService {
-    pub fn new(repo: InvoiceRepository, org_repo: OrganisationRepository, user_repo: UserRepository) -> Self {
+    pub fn new(
+        repo: InvoiceRepository,
+        org_repo: OrganisationRepository,
+        user_repo: UserRepository,
+        _expense_repo: crate::repository::expense_repository::ExpenseRepository,
+        _general_expense_repo: crate::repository::general_expense_repository::GeneralExpenseRepository,
+    ) -> Self {
         Self {
             repo: Arc::new(repo),
             org_repo: Arc::new(org_repo),
@@ -124,4 +134,21 @@ impl InvoiceService {
             .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))?;
         Ok(org)
     }
+
+    pub async fn get_monthly_gst_summary(
+        &self,
+        org_id: &mongodb::bson::oid::ObjectId,
+    ) -> anyhow::Result<crate::repository::invoice_repository::MontlyGstSummary> {
+        let org = self.org_repo.get_organisation_by_id(&org_id.to_string()).await
+            .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))?;
+        Ok(self.repo.get_monthly_gst_summary(org_id, &org.email).await?)
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CombinedGstSummary {
+    pub month: String,
+    pub invoices: crate::repository::invoice_repository::MontlyGstSummary,
+    pub expenses: crate::repository::expense_repository::ExpenseMonthlyGstSummary,
+    pub general_expenses: crate::repository::general_expense_repository::GeneralExpenseMonthlyGstSummary,
 }

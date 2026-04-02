@@ -116,9 +116,9 @@ export default function App() {
               {/* Invoice Routes */}
               <Route path="/invoices" element={<ProtectedRoute user={user} module={Module.Invoice}><Invoices /></ProtectedRoute>} />
               <Route path="/invoices/addInvoice" element={<ProtectedRoute user={user} module={Module.Invoice}><AddInvoices /></ProtectedRoute>} />
-              <Route path="/invoices/addIncomingInvoice" element={<ProtectedRoute user={user} module={Module.Invoice}><AddIncomingInvoice /></ProtectedRoute>} />
-              <Route path="/invoices/editIncomingInvoice/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditIncomingInvoice /></ProtectedRoute>} />
-              <Route path="/invoices/viewIncomingInvoice/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><IncomingInvoiceView /></ProtectedRoute>} />
+              <Route path="/expenses/addIncomingInvoice" element={<ProtectedRoute user={user} module={Module.Invoice}><AddIncomingInvoice /></ProtectedRoute>} />
+              <Route path="/expenses/editIncomingInvoice/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditIncomingInvoice /></ProtectedRoute>} />
+              <Route path="/expenses/viewIncomingInvoice/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><IncomingInvoiceView /></ProtectedRoute>} />
               <Route path="/invoices/editInvoice/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditInvoices /></ProtectedRoute>} />
 
               {/* Purchase Orders */}

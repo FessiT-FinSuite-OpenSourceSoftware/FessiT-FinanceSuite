@@ -93,18 +93,21 @@ pub async fn create_expense(
 
     while let Some(field) = payload.next().await {
         let mut field = field.map_err(actix_web::error::ErrorInternalServerError)?;
-        let content_disposition = field.content_disposition();
-        let name = content_disposition.get_name().unwrap_or("").to_string();
+        let (name, file_name) = {
+            let cd = field.content_disposition();
+            (cd.get_name().unwrap_or("").to_string(), cd.get_filename().map(|s| s.to_string()))
+        };
 
         // Handle receipt files (receipt_0, receipt_1, etc.)
         if name.starts_with("receipt_") {
-            if let Some(filename) = content_disposition.get_filename() {
-                let original_filename = filename.to_string();
+            if let Some(filename) = file_name {
+                let original_filename = filename.clone();
 
-                let ext = Path::new(filename)
+                let ext = Path::new(&filename)
                     .extension()
                     .and_then(|e| e.to_str())
-                    .unwrap_or("");
+                    .unwrap_or("")
+                    .to_string();
 
                 let unique_name = if ext.is_empty() {
                     format!("{}.bin", Uuid::new_v4())
@@ -147,6 +150,8 @@ pub async fn create_expense(
         actix_web::error::ErrorBadRequest("Missing 'items' field")
     })?;
 
+    print!("the things we received from the frontend {items_json}");
+
     let items_array: Vec<serde_json::Value> = serde_json::from_str(items_json)
         .map_err(|e| actix_web::error::ErrorBadRequest(format!("Invalid items JSON: {}", e)))?;
 
@@ -157,39 +162,48 @@ pub async fn create_expense(
         .map(|(idx, item)| {
             let receipt_info = receipt_files.get(&idx.to_string());
 
+            let amount = item["amount"].as_f64()
+                .or_else(|| item["amount"].as_str().and_then(|s| s.parse().ok()))
+                .unwrap_or(0.0);
+            let total_cgst = item.get("totalCgst").and_then(|v| v.as_f64())
+                .or_else(|| item.get("totalCgst").and_then(|v| v.as_str()).and_then(|s| s.parse().ok()))
+                .unwrap_or(0.0);
+            let total_sgst = item.get("totalSgst").and_then(|v| v.as_f64())
+                .or_else(|| item.get("totalSgst").and_then(|v| v.as_str()).and_then(|s| s.parse().ok()))
+                .unwrap_or(0.0);
+            let total_igst = item.get("totalIgst").and_then(|v| v.as_f64())
+                .or_else(|| item.get("totalIgst").and_then(|v| v.as_str()).and_then(|s| s.parse().ok()))
+                .unwrap_or(0.0);
+            let tax_amount = total_cgst + total_sgst + total_igst;
+            let sub_total = amount + tax_amount;
+
             ExpenseItem {
-                expense_category: item["expenseCategory"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string(),
-                currency: fields
-                    .get("currency")
-                    .cloned()
-                    .unwrap_or_else(|| "INR".to_string()),
-                amount: item["amount"]
-                    .as_f64()
-                    .or_else(|| item["amount"].as_str().and_then(|s| s.parse::<f64>().ok()))
-                    .unwrap_or(0.0),
-                expense_date: fields.get("expenseDate").cloned().unwrap_or_default(),
+                expense_category: item["expenseCategory"].as_str().unwrap_or("").to_string(),
+                currency: fields.get("currency").cloned().unwrap_or_else(|| "INR".to_string()),
+                amount,
+                expense_date: item.get("expenseDate").and_then(|v| v.as_str()).unwrap_or("").to_string(),
                 comment: item["comment"].as_str().unwrap_or("").to_string(),
                 receipt_file: receipt_info.as_ref().map(|(stored, _)| stored.clone()),
                 original_filename: receipt_info.as_ref().map(|(_, orig)| orig.clone()),
                 payment_method: item.get("paymentMethod").and_then(|v| v.as_str()).map(|s| s.to_string()),
                 vendor: item.get("vendor").and_then(|v| v.as_str()).map(|s| s.to_string()),
                 billable: item.get("billable").and_then(|v| v.as_bool()).unwrap_or(false),
-                tax_amount: item.get("taxAmount")
-                    .and_then(|v| v.as_f64())
-                    .or_else(|| item.get("taxAmount").and_then(|v| v.as_str()).and_then(|s| s.parse::<f64>().ok())),
+                tax_amount: Some(tax_amount),
+                sub_total,
+                total_cgst,
+                total_sgst,
+                total_igst,
+                billed_to: item.get("billedTo").and_then(|v| v.as_str()).map(|s| s.to_string()),
             }
         })
         .collect();
 
-    // Calculate totals
-    let total_amount: f64 = expense_items.iter().map(|item| item.amount).sum();
-    let total_tax: f64 = expense_items
-        .iter()
-        .filter_map(|item| item.tax_amount)
-        .sum();
+    // Calculate report-level totals
+    let base_amount: f64 = expense_items.iter().map(|item| item.amount).sum();
+    let total_tax: f64 = expense_items.iter().map(|item| {
+        item.total_cgst + item.total_sgst + item.total_igst
+    }).sum();
+    let total_amount: f64 = expense_items.iter().map(|item| item.sub_total).sum();
 
     // Build top-level Expense
     let now = DateTime::now();
@@ -201,9 +215,10 @@ pub async fn create_expense(
             .cloned()
             .unwrap_or_default(),
         items: expense_items,
+        base_amount,
         total_amount,
         total_tax,
-        status: ExpenseStatus::Draft,
+        status: ExpenseStatus::Submitted,
         submitted_by: fields.get("submittedBy").cloned(),
         approved_by: None,
         submitted_at: None,
@@ -212,6 +227,7 @@ pub async fn create_expense(
         reimbursed_at: None,
         notes: fields.get("notes").cloned(),
         department: fields.get("department").cloned(),
+        submission_date: fields.get("submissionDate").cloned(),
         created_at: Some(now),
         updated_at: Some(now),
         organisation_id: Some(org_id),
@@ -358,9 +374,18 @@ pub async fn update_expense(
     service: Data<ExpenseService>,
     id: Path<String>,
     mut payload: Multipart,
+    http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     use std::fs;
     use std::path::Path;
+
+    let claims = http_req.extensions().get::<Claims>().cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
+    let user = service.get_user_permissions(&claims.sub).await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Write, user.is_admin)
+        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
     let id = id.into_inner();
 
@@ -376,6 +401,14 @@ pub async fn update_expense(
         })));
     }
 
+    // Only admins can modify a Reimbursed expense
+    let existing_expense = existing.unwrap();
+    if existing_expense.status == ExpenseStatus::Reimbursed && !user.is_admin {
+        return Ok(HttpResponse::Forbidden().json(json!({
+            "message": "Only admins can modify a Reimbursed expense"
+        })));
+    }
+
     let mut fields: HashMap<String, String> = HashMap::new();
     let mut receipt_files: HashMap<String, (String, String)> = HashMap::new();
 
@@ -385,17 +418,20 @@ pub async fn update_expense(
 
     while let Some(field) = payload.next().await {
         let mut field = field.map_err(actix_web::error::ErrorInternalServerError)?;
-        let content_disposition = field.content_disposition();
-        let name = content_disposition.get_name().unwrap_or("").to_string();
+        let (name, file_name) = {
+            let cd = field.content_disposition();
+            (cd.get_name().unwrap_or("").to_string(), cd.get_filename().map(|s| s.to_string()))
+        };
 
         if name.starts_with("receipt_") {
-            if let Some(filename) = content_disposition.get_filename() {
-                let original_filename = filename.to_string();
+            if let Some(filename) = file_name {
+                let original_filename = filename.clone();
 
-                let ext = Path::new(filename)
+                let ext = Path::new(&filename)
                     .extension()
                     .and_then(|e| e.to_str())
-                    .unwrap_or("");
+                    .unwrap_or("")
+                    .to_string();
 
                 let unique_name = if ext.is_empty() {
                     format!("{}.bin", Uuid::new_v4())
@@ -431,8 +467,6 @@ pub async fn update_expense(
         }
     }
 
-    let existing_expense = existing.unwrap();
-
     // Parse items from JSON if provided, otherwise keep existing items
     let expense_items = if let Some(items_json) = fields.get("items") {
         let items_array: Vec<serde_json::Value> = serde_json::from_str(items_json)
@@ -453,27 +487,38 @@ pub async fn update_expense(
                     (None, None)
                 };
 
+                let amount = item["amount"].as_f64()
+                    .or_else(|| item["amount"].as_str().and_then(|s| s.parse().ok()))
+                    .unwrap_or(0.0);
+                let total_cgst = item.get("totalCgst").and_then(|v| v.as_f64())
+                    .or_else(|| item.get("totalCgst").and_then(|v| v.as_str()).and_then(|s| s.parse().ok()))
+                    .unwrap_or(0.0);
+                let total_sgst = item.get("totalSgst").and_then(|v| v.as_f64())
+                    .or_else(|| item.get("totalSgst").and_then(|v| v.as_str()).and_then(|s| s.parse().ok()))
+                    .unwrap_or(0.0);
+                let total_igst = item.get("totalIgst").and_then(|v| v.as_f64())
+                    .or_else(|| item.get("totalIgst").and_then(|v| v.as_str()).and_then(|s| s.parse().ok()))
+                    .unwrap_or(0.0);
+                let tax_amount = total_cgst + total_sgst + total_igst;
+                let sub_total = amount + tax_amount;
+
                 ExpenseItem {
-                    expense_category: item["expenseCategory"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_string(),
-                    currency: fields
-                        .get("currency")
-                        .cloned()
-                        .unwrap_or_else(|| "INR".to_string()),
-                    amount: item["amount"]
-                        .as_f64()
-                        .or_else(|| item["amount"].as_str().and_then(|s| s.parse::<f64>().ok()))
-                        .unwrap_or(0.0),
-                    expense_date: fields.get("expenseDate").cloned().unwrap_or_default(),
+                    expense_category: item["expenseCategory"].as_str().unwrap_or("").to_string(),
+                    currency: fields.get("currency").cloned().unwrap_or_else(|| "INR".to_string()),
+                    amount,
+                    expense_date: item.get("expenseDate").and_then(|v| v.as_str()).unwrap_or("").to_string(),
                     comment: item["comment"].as_str().unwrap_or("").to_string(),
                     receipt_file,
                     original_filename,
                     payment_method: item.get("paymentMethod").and_then(|v| v.as_str()).map(|s| s.to_string()),
                     vendor: item.get("vendor").and_then(|v| v.as_str()).map(|s| s.to_string()),
                     billable: item.get("billable").and_then(|v| v.as_bool()).unwrap_or(false),
-                    tax_amount: item.get("taxAmount").and_then(|v| v.as_f64()),
+                    tax_amount: Some(tax_amount),
+                    sub_total,
+                    total_cgst,
+                    total_sgst,
+                    total_igst,
+                    billed_to: item.get("billedTo").and_then(|v| v.as_str()).map(|s| s.to_string()),
                 }
             })
             .collect()
@@ -481,33 +526,44 @@ pub async fn update_expense(
         existing_expense.items.clone()
     };
 
-    // Calculate totals
-    let total_amount: f64 = expense_items.iter().map(|item| item.amount).sum();
-    let total_tax: f64 = expense_items
-        .iter()
-        .filter_map(|item| item.tax_amount)
-        .sum();
+    // Calculate report-level totals
+    let base_amount: f64 = expense_items.iter().map(|item| item.amount).sum();
+    let total_tax: f64 = expense_items.iter().map(|item| {
+        item.total_cgst + item.total_sgst + item.total_igst
+    }).sum();
+    let total_amount: f64 = expense_items.iter().map(|item| item.sub_total).sum();
+
+    // Build updated Expense — use incoming status if provided, else keep existing
+    let new_status = if let Some(s) = fields.get("status") {
+        serde_json::from_value::<ExpenseStatus>(serde_json::Value::String(s.clone()))
+            .unwrap_or(existing_expense.status.clone())
+    } else {
+        existing_expense.status.clone()
+    };
 
     // Build updated Expense
     let expense = Expense {
         id: None,
         expense_title: fields.get("expenseTitle").cloned().unwrap_or(existing_expense.expense_title),
-        project_cost_center: fields
-            .get("projectCostCenter")
-            .cloned()
-            .unwrap_or(existing_expense.project_cost_center),
+        project_cost_center: fields.get("projectCostCenter").cloned().unwrap_or(existing_expense.project_cost_center),
         items: expense_items,
+        base_amount,
         total_amount,
         total_tax,
-        status: existing_expense.status,
+        status: new_status.clone(),
         submitted_by: existing_expense.submitted_by,
         approved_by: existing_expense.approved_by,
         submitted_at: existing_expense.submitted_at,
         reviewed_at: existing_expense.reviewed_at,
         rejection_reason: existing_expense.rejection_reason,
-        reimbursed_at: existing_expense.reimbursed_at,
+        reimbursed_at: if new_status == ExpenseStatus::Reimbursed {
+            fields.get("reimbursedAt").cloned().or(existing_expense.reimbursed_at)
+        } else {
+            existing_expense.reimbursed_at
+        },
         notes: fields.get("notes").cloned().or(existing_expense.notes),
         department: fields.get("department").cloned().or(existing_expense.department),
+        submission_date: fields.get("submissionDate").cloned().or(existing_expense.submission_date),
         created_at: existing_expense.created_at,
         updated_at: Some(DateTime::now()),
         organisation_id: existing_expense.organisation_id,

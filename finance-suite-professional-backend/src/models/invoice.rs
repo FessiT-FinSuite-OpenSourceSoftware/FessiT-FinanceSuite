@@ -1,6 +1,39 @@
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum InvoiceStatus {
+    #[serde(rename = "New")]
+    New,
+    #[serde(rename = "Issued")]
+    Issued,
+    #[serde(rename = "Paid")]
+    Paid,
+    #[serde(rename = "On Hold")]
+    OnHold,
+    /// Catches legacy values like "Created", "Raised", "Draft"
+    #[serde(other)]
+    Legacy,
+}
+
+impl Default for InvoiceStatus {
+    fn default() -> Self {
+        InvoiceStatus::New
+    }
+}
+
+impl std::fmt::Display for InvoiceStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InvoiceStatus::New     => write!(f, "New"),
+            InvoiceStatus::Issued  => write!(f, "Issued"),
+            InvoiceStatus::Paid    => write!(f, "Paid"),
+            InvoiceStatus::OnHold  => write!(f, "On Hold"),
+            InvoiceStatus::Legacy  => write!(f, "New"),
+        }
+    }
+}
+
 /// CGST Tax block for a line item
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CGST {
@@ -153,6 +186,9 @@ pub struct Invoice {
     #[serde(rename = "approxconversionRate", default)]
     pub approx_conversion_rate: String,
 
+    #[serde(rename = "tempconversionRate", default)]
+    pub temp_conversion_rate: String,
+
     #[serde(default)]
     pub totalcgst: String,
 
@@ -170,7 +206,7 @@ pub struct Invoice {
     pub notes: String,
 
     #[serde(default)]
-    pub status: String,
+    pub status: InvoiceStatus,
 
     // Organisation reference
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]

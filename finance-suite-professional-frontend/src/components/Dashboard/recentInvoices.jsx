@@ -57,17 +57,26 @@ export default function RecentInvoices() {
     }, 600);
   };
 
+  /* Convert invoice total to INR using stored rates */
+  const toINR = (inv) => {
+    const total = Number(inv?.total) || 0;
+    const isIntl = inv?.invoice_type?.trim().toLowerCase() === "international";
+    if (!isIntl) return total;
+    const cr  = Number(inv.conversionRate  || inv.conversion_rate)  || 0;
+    const acr = Number(inv.approxconversionRate) || 0;
+    const tcr = Number(inv.tempconversionRate)   || 0;
+    const rate = cr > 0 ? cr : acr > 0 ? acr : tcr > 0 ? tcr : 1;
+    return total * rate;
+  };
+
   /* Status Colors */
   const getStatusColor = (status) => {
     switch (status) {
-      case "Paid":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Overdue":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+      case "Paid":    return "bg-green-100 text-green-800 border-green-200";
+      case "Issued":  return "bg-blue-100 text-blue-800 border-blue-200";
+      case "On Hold": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "New":     return "bg-gray-100 text-gray-800 border-gray-200";
+      default:        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
@@ -183,7 +192,7 @@ export default function RecentInvoices() {
                     </td>
 
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      ₹ {Number(invoice?.total || 0).toFixed(2)}
+                      ₹ {toINR(invoice).toFixed(2)}
                     </td>
 
                     <td className="px-6 py-4 text-sm text-gray-600">

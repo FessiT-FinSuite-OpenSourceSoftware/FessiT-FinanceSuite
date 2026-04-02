@@ -1,4 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchTdsSummary, tdsSummarySelector } from "../../ReduxApi/tdsSummary";
+import { fetchSalaries, salarySelector } from "../../ReduxApi/salary";
+import { fetchIncomingInvoices, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
+import TDSDeductions from "./TDSDeductions";
+import ChallansTab from "./challans";
 
 const initialTDSData = {
   totalTDSDeducted: 325000,
@@ -111,49 +117,19 @@ const tdsDeductions = [
   }
 ];
 
-const challans = [
-  {
-    id: 1,
-    challanNo: "CH-2025-004",
-    date: "2025-10-31",
-    amount: 25000,
-    bsr: "0123456",
-    month: "October 2025",
-    status: "paid"
-  },
-  {
-    id: 2,
-    challanNo: "CH-2025-003",
-    date: "2025-10-20",
-    amount: 18000,
-    bsr: "0123457",
-    month: "October 2025",
-    status: "paid"
-  },
-  {
-    id: 3,
-    challanNo: "CH-2025-002",
-    date: "2025-09-30",
-    amount: 22000,
-    bsr: "0123458",
-    month: "September 2025",
-    status: "paid"
-  },
-  {
-    id: 4,
-    challanNo: "CH-2025-001",
-    date: "2025-09-15",
-    amount: 15000,
-    bsr: "0123459",
-    month: "September 2025",
-    status: "paid"
-  }
-];
-
 export default function TDSCompliance() {
   const [activeTab, setActiveTab] = useState("returns");
   const [filterStatus, setFilterStatus] = useState("all");
+  const dispatch = useDispatch()
+  const { data } = useSelector(tdsSummarySelector)
+  const { salaryData } = useSelector(salarySelector)
+  const { data: incomingInvoices } = useSelector(incomingInvoiceSelector)
 
+  useEffect(() => {
+    dispatch(fetchTdsSummary())
+    dispatch(fetchSalaries())
+    dispatch(fetchIncomingInvoices())
+  }, [dispatch])
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -169,6 +145,54 @@ export default function TDSCompliance() {
       year: 'numeric'
     });
   };
+
+  const dynamicDeductions = useMemo(() => {
+    const salaryRows = (Array.isArray(salaryData) ? salaryData : []).map((s) => {
+      const gross = parseFloat(s.gross_salary || 0);
+      const tds = parseFloat(s.tds || 0);
+      const rate = gross > 0 ? parseFloat(((tds / gross) * 100).toFixed(2)) : 0;
+      return {
+        id: `sal-${s._id?.$oid || s.emp_id}`,
+        date: s.paid_on || (s.period ? `${s.period}-01` : null),
+        deductee: s.emp_name || "-",
+        pan: s.pan || "-",
+        section: "192",
+        amount: gross,
+        tdsRate: rate,
+        tdsAmount: tds,
+        challan: "-",
+        status: s.status === "Paid" ? "deposited" : "pending",
+        source: "Salary",
+      };
+    });
+
+    const invoiceRows = (Array.isArray(incomingInvoices) ? incomingInvoices : [])
+      .filter((inv) => inv.tds_applicable === true)
+      .map((inv) => {
+        const gross = parseFloat(inv.subTotal || inv.sub_total || 0);
+        const tds = parseFloat(inv.tds_total || inv.total_tds || 0);
+        const rate = gross > 0 ? parseFloat(((tds / gross) * 100).toFixed(2)) : 0;
+        return {
+          id: `inv-${inv._id?.$oid || inv.invoice_number}`,
+          date: inv.invoice_date || inv.paid_on,
+          deductee: inv.vendor_name || inv.company_name || "-",
+          pan: inv.pan || "-",
+          section: "194C",
+          amount: gross,
+          tdsRate: rate,
+          tdsAmount: tds,
+          challan: "-",
+          status: (inv.status || "").toLowerCase() === "paid" ? "deposited" : "pending",
+          source: "Invoice",
+        };
+      });
+
+    return [...salaryRows, ...invoiceRows].sort((a, b) => {
+      const ta = a.date ? new Date(a.date).getTime() : 0;
+      const tb = b.date ? new Date(b.date).getTime() : 0;
+      return tb - ta;
+    });
+  }, [salaryData, incomingInvoices]);
 
   const filteredReturns = filterStatus === "all"
     ? tdsReturns
@@ -189,86 +213,50 @@ export default function TDSCompliance() {
   const handlePayChallan = () => {
     alert("Redirecting to TIN-NSDL portal for challan payment...");
   };
-
+  console.log("This is what we have received from the backend", data)
   return (
     <>
-      {/* Fixed Buttons at Top */}
-      <div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
-        <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[98%] xl:max-w-8xl mx-auto">
-          {/* Tabs and Buttons Row */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pb-0">
-            {/* TDS Tabs - Left Aligned */}
-            <div className="flex flex-wrap gap-2 flex-none border-b border-gray-200 pb-0">
+      {/* Main Content */}
+      <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6">
+        {/* Tabs + Action Buttons */}
+        <div className="flex items-center justify-between border-b border-gray-200 mb-6">
+          <div className="flex">
+            {[
+              { key: "returns",      label: "Returns" },
+              { key: "deductions",   label: "Deductions" },
+              { key: "challans",     label: "Challans" },
+              { key: "certificates", label: "Certificates" },
+            ].map((t) => (
               <button
-                onClick={() => setActiveTab("returns")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === "returns"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`px-5 py-2 text-sm font-medium transition-colors ${
+                  activeTab === t.key
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
-                Returns
+                {t.label}
               </button>
-              <button
-                onClick={() => setActiveTab("deductions")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === "deductions"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-              >
-                Deductions
-              </button>
-              <button
-                onClick={() => setActiveTab("challans")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === "challans"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-              >
-                Challans
-              </button>
-              <button
-                onClick={() => setActiveTab("certificates")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === "certificates"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-              >
-                Certificates
-              </button>
-            </div>
-
-            {/* Action Buttons - Right Aligned */}
-            <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 pb-3">
-              <button
-                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
-                onClick={handleGenerateReport}
-              >
-                Export Report
-              </button>
-              <button
-                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
-                onClick={handlePayChallan}
-              >
-                Pay Challan
-              </button>
-              <button
-                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
-                onClick={() => alert("Opening TRACES portal...")}
-              >
-                File Return
-              </button>
-            </div>
+            ))}
+          </div>
+          <div className="flex gap-2 pb-1">
+            <button onClick={handleGenerateReport} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
+              Export Report
+            </button>
+            <button onClick={handlePayChallan} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
+              Pay Challan
+            </button>
+            <button onClick={() => alert("Opening TRACES portal...")} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
+              File Return
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
         {/* Dashboard Stats - Always Visible */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
             <h3 className="text-sm font-medium text-blue-700 mb-2">Total TDS Deducted</h3>
-            <p className="text-3xl font-bold text-blue-900">{formatCurrency(initialTDSData.totalTDSDeducted)}</p>
+            <p className="text-3xl font-bold text-blue-900">{formatCurrency(data?.combined?.total_tds_deducted)}</p>
             <p className="text-xs text-blue-600 mt-1">This financial year</p>
           </div>
 
@@ -304,8 +292,8 @@ export default function TDSCompliance() {
                 <button
                   onClick={() => setFilterStatus("all")}
                   className={`px-3 py-1 rounded-md text-sm font-medium ${filterStatus === "all"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                 >
                   All
@@ -313,8 +301,8 @@ export default function TDSCompliance() {
                 <button
                   onClick={() => setFilterStatus("pending")}
                   className={`px-3 py-1 rounded-md text-sm font-medium ${filterStatus === "pending"
-                      ? "bg-orange-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-orange-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                 >
                   Pending
@@ -322,8 +310,8 @@ export default function TDSCompliance() {
                 <button
                   onClick={() => setFilterStatus("filed")}
                   className={`px-3 py-1 rounded-md text-sm font-medium ${filterStatus === "filed"
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                 >
                   Filed
@@ -362,10 +350,10 @@ export default function TDSCompliance() {
                         </h4>
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${ret.status === "filed"
-                              ? "bg-green-100 text-green-800"
-                              : ret.status === "pending"
-                                ? "bg-orange-100 text-orange-800"
-                                : "bg-red-100 text-red-800"
+                            ? "bg-green-100 text-green-800"
+                            : ret.status === "pending"
+                              ? "bg-orange-100 text-orange-800"
+                              : "bg-red-100 text-red-800"
                             }`}
                         >
                           {ret.status}
@@ -407,108 +395,18 @@ export default function TDSCompliance() {
           </>
         )}
 
-        {/* Deductions Tab */}
         {activeTab === "deductions" && (
-          <>
-            <h2 className="text-lg font-semibold text-gray-800 mb-6 border-b border-gray-300 pb-2">
-              TDS Deductions
-            </h2>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-100 border-b border-gray-300">
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Date</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Deductee</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">PAN</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Section</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">Amount</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">TDS Rate</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">TDS Amount</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Challan No.</th>
-                    <th className="text-center px-4 py-3 text-sm font-semibold text-gray-700">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tdsDeductions.map((ded) => (
-                    <tr key={ded.id} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-700">{formatDate(ded.date)}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-800">{ded.deductee}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700 font-mono">{ded.pan}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{ded.section}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700">{formatCurrency(ded.amount)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700">{ded.tdsRate}%</td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold text-gray-800">
-                        {formatCurrency(ded.tdsAmount)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{ded.challan}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span
-                          className={`px-2 py-1 rounded-md text-xs font-semibold ${ded.status === "deposited"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-orange-100 text-orange-800"
-                            }`}
-                        >
-                          {ded.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+          <TDSDeductions deductions={dynamicDeductions} />
         )}
 
         {/* Challans Tab */}
         {activeTab === "challans" && (
           <>
-            <h2 className="text-lg font-semibold text-gray-800 mb-6 border-b border-gray-300 pb-2">
-              TDS Challans
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {challans.map((challan) => (
-                <div
-                  key={challan.id}
-                  className="border border-gray-200 rounded-lg p-5 bg-gray-50 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h4 className="text-base font-semibold text-gray-800">{challan.challanNo}</h4>
-                      <p className="text-sm text-gray-600">BSR Code: {challan.bsr}</p>
-                    </div>
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold uppercase">
-                      {challan.status}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Payment Date:</span>
-                      <span className="font-medium text-gray-800">{formatDate(challan.date)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Month:</span>
-                      <span className="font-medium text-gray-800">{challan.month}</span>
-                    </div>
-                    <div className="flex justify-between text-sm border-t pt-2">
-                      <span className="text-gray-600 font-semibold">Amount:</span>
-                      <span className="font-bold text-gray-900">{formatCurrency(challan.amount)}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => alert(`Downloading challan ${challan.challanNo}`)}
-                    className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-                  >
-                    Download Receipt
-                  </button>
-                </div>
-              ))}
-            </div>
+          <ChallansTab />
           </>
+          
         )}
+
 
         {/* Certificates Tab */}
         {activeTab === "certificates" && (

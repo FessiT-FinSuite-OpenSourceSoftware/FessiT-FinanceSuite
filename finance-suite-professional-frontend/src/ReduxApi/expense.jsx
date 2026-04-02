@@ -92,9 +92,11 @@ export const fetchOneExpense = (expenseID) => async (dispatch) => {
   try {
     const { data } = await axiosInstance.get(`/expenses/${expenseID}`)
     dispatch(getOneExpense(data))
+    return data
   } catch (error) {
     console.error('Error fetching expense:', error)
     dispatch(getExpenseFailure())
+    return null
   }
 }
 
@@ -107,6 +109,7 @@ export const updateExpense =
       const { data } = await axiosInstance.put(`/expenses/${expenseID}`, expenseData)
       toast.success("Expense Updated Successfully")
       dispatch(fetchExpenseData())
+      return data
     } catch (error) {
       console.error('Error updating expense:', error)
       toast.error(
@@ -114,6 +117,7 @@ export const updateExpense =
           `Failed: ${error?.response?.statusText || 'Unknown error'}`
       )
       dispatch(getExpenseFailure())
+      return null
     }
   }
 

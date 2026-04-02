@@ -15,8 +15,8 @@ export default defineConfig({
         enabled: true
       },
       manifest: {
-        name: "My Vite App",
-        short_name: "ViteApp",
+        name: "Finance Suite by Fessit",
+        short_name: "Finsuite",
         start_url: "/",
         display: "standalone",
         background_color: "#ffffff",

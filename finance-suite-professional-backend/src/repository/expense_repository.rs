@@ -1,5 +1,6 @@
 use crate::models::expense::Expense;
 use futures::TryStreamExt;
+use chrono::Utc;
 use mongodb::{
     bson::{doc, oid::ObjectId, DateTime},
     options::FindOptions,
@@ -147,12 +148,29 @@ impl ExpenseRepository {
         let items_bson =
             mongodb::bson::to_bson(&expense.items).map_err(|e| mongodb::error::Error::custom(e))?;
 
+        let status_bson =
+            mongodb::bson::to_bson(&expense.status).map_err(|e| mongodb::error::Error::custom(e))?;
+
+        let reviewed_at_bson = mongodb::bson::to_bson(&expense.reviewed_at).map_err(|e| mongodb::error::Error::custom(e))?;
+        let approved_by_bson = mongodb::bson::to_bson(&expense.approved_by).map_err(|e| mongodb::error::Error::custom(e))?;
+        let rejection_reason_bson = mongodb::bson::to_bson(&expense.rejection_reason).map_err(|e| mongodb::error::Error::custom(e))?;
+
         let update = doc! {
             "$set": {
                 "expense_title": &expense.expense_title,
                 "project_cost_center": &expense.project_cost_center,
                 "items": items_bson,
+                "base_amount": expense.base_amount,
                 "total_amount": expense.total_amount,
+                "total_tax": expense.total_tax,
+                "status": status_bson,
+                "approved_by": approved_by_bson,
+                "reviewed_at": reviewed_at_bson,
+                "rejection_reason": rejection_reason_bson,
+                "reimbursed_at": &expense.reimbursed_at,
+                "notes": &expense.notes,
+                "department": &expense.department,
+                "submission_date": &expense.submission_date,
                 "updated_at": DateTime::now(),
             }
         };
@@ -409,6 +427,69 @@ impl ExpenseRepository {
         };
         self.collection.count_documents(filter, None).await
     }
+
+    /// Get current month's GST summary for expenses in an organisation
+    pub async fn get_monthly_gst_summary(&self, org_id: &ObjectId) -> mongodb::error::Result<ExpenseMonthlyGstSummary> {
+        let expenses = self.get_expenses_by_organisation(org_id, None, None).await?;
+        let now = Utc::now();
+        let current_year = now.format("%Y").to_string();
+        let current_month = now.format("%m").to_string();
+
+        let mut expense_count = 0u32;
+        let mut total_amount = 0.0f64;
+        let mut total_tax = 0.0f64;
+        let mut total_cgst = 0.0f64;
+        let mut total_sgst = 0.0f64;
+        let mut total_igst = 0.0f64;
+
+        for expense in &expenses {
+            let created_at = match expense.created_at {
+                Some(dt) => dt,
+                None => continue,
+            };
+
+            let created_at = chrono::DateTime::<Utc>::from(created_at.to_system_time());
+            if created_at.format("%Y").to_string() != current_year
+                || created_at.format("%m").to_string() != current_month
+            {
+                continue;
+            }
+
+            if expense.status != crate::models::expense::ExpenseStatus::Reimbursed {
+                continue;
+            }
+
+            for item in &expense.items {
+                let billed_to_company = item
+                    .billed_to
+                    .as_deref()
+                    .map(|value| value.trim().eq_ignore_ascii_case("company"))
+                    .unwrap_or(false);
+
+                if !billed_to_company {
+                    continue;
+                }
+
+                expense_count += 1;
+                total_amount += item.sub_total;
+                total_tax += item.total_cgst + item.total_sgst + item.total_igst;
+                total_cgst += item.total_cgst;
+                total_sgst += item.total_sgst;
+                total_igst += item.total_igst;
+            }
+        }
+
+        Ok(ExpenseMonthlyGstSummary {
+            month: format!("{}-{}", current_year, current_month),
+            expense_count,
+            total_amount,
+            total_tax,
+            total_cgst,
+            total_sgst,
+            total_igst,
+            total_gst_collected: total_cgst + total_sgst + total_igst,
+        })
+    }
 }
 
 /// Summary statistics for expenses
@@ -419,4 +500,17 @@ pub struct ExpenseSummary {
     pub avg_amount: f64,
     pub min_amount: f64,
     pub max_amount: f64,
+}
+
+/// Monthly GST summary for expenses
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ExpenseMonthlyGstSummary {
+    pub month: String,
+    pub expense_count: u32,
+    pub total_amount: f64,
+    pub total_tax: f64,
+    pub total_cgst: f64,
+    pub total_sgst: f64,
+    pub total_igst: f64,
+    pub total_gst_collected: f64,
 }

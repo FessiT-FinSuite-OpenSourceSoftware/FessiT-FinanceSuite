@@ -13,6 +13,7 @@ use uuid::Uuid;
 use crate::{
     models::incoming_invoice::{CreateIncomingInvoiceRequest, UpdateIncomingInvoiceRequest},
     services::IncomingInvoiceService,
+    services::salary_service::SalaryService,
     utils::auth::Claims,
     utils::permissions::{check_permission, Module, PermissionAction, create_permission_error},
 };
@@ -108,7 +109,11 @@ pub async fn update_incoming_invoice(
             "message": "Only admins can modify a Paid invoice"
         })));
     }
-    match service.update(&id, req.into_inner()).await
+    let mut updated_req = req.into_inner();
+    if updated_req.status != "Paid" {
+        updated_req.paid_date = existing.paid_date;
+    }
+    match service.update(&id, updated_req).await
         .map_err(actix_web::error::ErrorInternalServerError)?
     {
         Some(inv) => Ok(HttpResponse::Ok().json(inv)),
@@ -222,6 +227,14 @@ pub async fn update_incoming_invoice_with_file(
         invoice_file: fields.remove("invoice_file").unwrap_or_else(|| existing.invoice_file.clone()),
         notes: fields.remove("notes").unwrap_or_default(),
         status: fields.remove("status").unwrap_or_default(),
+        approved_date: fields.remove("approved_date"),
+        paid_date: if fields.get("status").map(|s| s.as_str()) == Some("Paid") {
+            fields.remove("paid_date").or(existing.paid_date)
+        } else {
+            existing.paid_date
+        },
+        tds_applicable: fields.remove("tds_applicable").map(|v| v == "true" || v == "1").unwrap_or(existing.tds_applicable),
+        tds_total: fields.remove("tds_total").unwrap_or(existing.tds_total),
         organisation_id: existing.organisation_id,
     };
 
@@ -324,10 +337,62 @@ pub async fn get_incoming_invoice_file(
     Ok(NamedFile::open(filepath).map_err(actix_web::error::ErrorInternalServerError)?)
 }
 
+/// GET /api/v1/incoming-invoices/tds-summary
+/// Returns combined TDS summary: incoming invoices (tds_applicable) + salaries for current month
+#[get("/incoming-invoices/tds-summary")]
+pub async fn get_tds_summary(
+    service: web::Data<IncomingInvoiceService>,
+    salary_service: web::Data<SalaryService>,
+    http_req: HttpRequest,
+) -> actix_web::Result<impl Responder> {
+    let claims = http_req.extensions().get::<Claims>().cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
+    let user = service.get_user_permissions(&claims.sub).await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+    let org_id = user.organisation_id
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
+
+    let (invoice_tds, salary_tds) = tokio::try_join!(
+        async { service.get_monthly_tds_summary(&org_id).await
+            .map_err(actix_web::error::ErrorInternalServerError) },
+        async { salary_service.get_monthly_tds_summary(&org_id).await
+            .map_err(actix_web::error::ErrorInternalServerError) },
+    )?;
+
+    let total_tds_deducted = invoice_tds.total_tds_deducted + salary_tds.total_tds_deducted;
+    let tds_on_paid        = invoice_tds.tds_on_paid        + salary_tds.tds_on_paid;
+    let tds_pending        = invoice_tds.tds_pending        + salary_tds.tds_pending;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "month": invoice_tds.month,
+        "incoming_invoices": {
+            "invoice_count":       invoice_tds.invoice_count,
+            "total_tds_deducted":  invoice_tds.total_tds_deducted,
+            "tds_on_paid":         invoice_tds.tds_on_paid,
+            "tds_pending":         invoice_tds.tds_pending
+        },
+        "salaries": {
+            "salary_count":        salary_tds.salary_count,
+            "total_tds_deducted":  salary_tds.total_tds_deducted,
+            "tds_on_paid":         salary_tds.tds_on_paid,
+            "tds_pending":         salary_tds.tds_pending
+        },
+        "combined": {
+            "total_tds_deducted":  total_tds_deducted,
+            "tds_on_paid":         tds_on_paid,
+            "tds_pending":         tds_pending
+        }
+    })))
+}
+
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(upload_incoming_invoice_file)
         .service(get_incoming_invoice_file)
         .service(update_incoming_invoice_with_file)
+        .service(get_tds_summary)
         .service(create_incoming_invoice)
         .service(list_incoming_invoices)
         .service(get_incoming_invoice)

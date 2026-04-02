@@ -116,9 +116,11 @@ export const fetchOneInvoice = (invoiceID) => async (dispatch) => {
   try {
     const { data } = await axiosInstance.get(`/invoices/${invoiceID}?t=${Date.now()}`)
     dispatch(getOneInvoice(data))
+    return data
   } catch (error) {
     console.error('Error fetching invoice:', error)
     dispatch(getInvoiceFailure())
+    return null
   }
 }
 
@@ -135,6 +137,7 @@ export const updateInvoice =
       )
       toast.success('Invoice updated successfully')
       dispatch(fetchInvoiceData())
+      return data
     } catch (error) {
       console.error('Error updating invoice:', error)
       toast.error(
@@ -142,6 +145,7 @@ export const updateInvoice =
           `Failed: ${error?.response?.statusText || 'Unknown error'}`
       )
       dispatch(getInvoiceFailure())
+      return null
     }
   }
 

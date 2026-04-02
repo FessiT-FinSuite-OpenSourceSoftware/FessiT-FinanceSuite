@@ -56,7 +56,7 @@ export default function SideBar({ component }) {
 
   const allNavigation = [
     { id: "dashboard", label: "Dashboard", icon: TrendingUp, module: null },
-    { id: "invoices", label: "Invoices", icon: FileText, module: Module.Invoice },
+    { id: "invoices", label: "Sales", icon: FileText, module: Module.Invoice },
     { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
     { id: "expenses", label: "Expenses", icon: Receipt, module: Module.Expenses },
     { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: null },

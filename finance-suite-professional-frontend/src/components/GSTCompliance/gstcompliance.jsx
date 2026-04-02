@@ -1,12 +1,9 @@
-import React, { useState } from "react";
-
-
-const initialGSTData = {
-  totalCollected: 486750,
-  inputTaxCredit: 234500,
-  netPayable: 252250,
-  pendingReturns: 2
-};
+import React, { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchGstSummary, gstSummarySelector } from "../../ReduxApi/gstSummary";
+import { fetchInvoiceData, invoiceSelector } from "../../ReduxApi/invoice";
+import { fetchIncomingInvoices, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
+import RecentGSTTransactions from "./RecentGSTTransactions";
 
 const gstReturns = [
   {
@@ -15,7 +12,7 @@ const gstReturns = [
     period: "October 2025",
     dueDate: "2025-11-20",
     status: "pending",
-    amount: 252250
+    amount: 252250,
   },
   {
     id: 2,
@@ -23,7 +20,7 @@ const gstReturns = [
     period: "October 2025",
     dueDate: "2025-11-11",
     status: "pending",
-    amount: 486750
+    amount: 486750,
   },
   {
     id: 3,
@@ -32,7 +29,7 @@ const gstReturns = [
     dueDate: "2025-10-18",
     filedDate: "2025-10-18",
     status: "filed",
-    amount: 245000
+    amount: 245000,
   },
   {
     id: 4,
@@ -41,7 +38,7 @@ const gstReturns = [
     dueDate: "2025-10-10",
     filedDate: "2025-10-10",
     status: "filed",
-    amount: 470000
+    amount: 470000,
   },
   {
     id: 5,
@@ -50,234 +47,228 @@ const gstReturns = [
     dueDate: "2025-09-19",
     filedDate: "2025-09-19",
     status: "filed",
-    amount: 238000
-  }
+    amount: 238000,
+  },
 ];
 
-const transactions = [
-  {
-    id: 1,
-    date: "2025-11-01",
-    invoiceNo: "INV-2025-0234",
-    party: "ABC Technologies",
-    type: "Output",
-    taxable: 50000,
-    cgst: 4500,
-    sgst: 4500,
-    igst: 0,
-    total: 9000
-  },
-  {
-    id: 2,
-    date: "2025-10-28",
-    invoiceNo: "BILL-789",
-    party: "XYZ Suppliers",
-    type: "Input",
-    taxable: 30000,
-    cgst: 0,
-    sgst: 0,
-    igst: 5400,
-    total: 5400
-  },
-  {
-    id: 3,
-    date: "2025-10-25",
-    invoiceNo: "INV-2025-0233",
-    party: "Global Solutions",
-    type: "Output",
-    taxable: 75000,
-    cgst: 6750,
-    sgst: 6750,
-    igst: 0,
-    total: 13500
-  },
-  {
-    id: 4,
-    date: "2025-10-22",
-    invoiceNo: "BILL-788",
-    party: "Office Mart",
-    type: "Input",
-    taxable: 15000,
-    cgst: 1350,
-    sgst: 1350,
-    igst: 0,
-    total: 2700
-  },
-  {
-    id: 5,
-    date: "2025-10-20",
-    invoiceNo: "INV-2025-0232",
-    party: "Tech Innovations",
-    type: "Output",
-    taxable: 100000,
-    cgst: 0,
-    sgst: 0,
-    igst: 18000,
-    total: 18000
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(amount || 0));
+
+const formatDate = (value) => {
+  if (!value) return "-";
+  if (typeof value === "object" && value.$date) return formatDate(value.$date);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const parseDateForSort = (value) => {
+  if (!value) return new Date(0).getTime();
+  if (typeof value === "object" && value.$date) return new Date(value.$date).getTime();
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return new Date(`${raw}T00:00:00`).getTime();
+  if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) {
+    const [day, month, year] = raw.split("-");
+    return new Date(`${year}-${month}-${day}T00:00:00`).getTime();
   }
-];
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+};
+
+const getInvoiceId = (invoice) => {
+  if (!invoice) return "";
+  if (typeof invoice.id === "string") return invoice.id;
+  if (typeof invoice._id === "string") return invoice._id;
+  if (invoice._id && typeof invoice._id === "object" && typeof invoice._id.$oid === "string") return invoice._id.$oid;
+  return "";
+};
+
+const toNumber = (value) => Number(value || 0);
+
+const sumInvoiceTaxes = (items = []) => {
+  return items.reduce(
+    (acc, item) => {
+      // outgoing invoice items store tax as item.cgst.cgstAmount / item.sgst.sgstAmount / item.igst.igstAmount
+      acc.cgst += toNumber(item?.cgst?.cgstAmount);
+      acc.sgst += toNumber(item?.sgst?.sgstAmount);
+      acc.igst += toNumber(item?.igst?.igstAmount);
+      return acc;
+    },
+    { cgst: 0, sgst: 0, igst: 0 }
+  );
+};
 
 export default function GSTCompliance() {
+  const dispatch = useDispatch();
+  const { data, isLoading } = useSelector(gstSummarySelector);
+  const { invoiceData } = useSelector(invoiceSelector);
+  const { data: incomingInvoices } = useSelector(incomingInvoiceSelector);
   const [activeTab, setActiveTab] = useState("returns");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  useEffect(() => {
+    dispatch(fetchGstSummary());
+    dispatch(fetchInvoiceData());
+    dispatch(fetchIncomingInvoices());
+  }, [dispatch]);
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
+  const outgoing = data?.outgoing_invoice_details || data?.outgoing_invoices || {};
+  const incoming = data?.combined_expense_gst || data?.incoming_invoices || {};
+  const net = data?.net_gst_payable || {};
+  const netPayable = toNumber(net.net_payable);
+  const pendingReturnCount = typeof data?.pending_returns === "number" ? data.pending_returns : gstReturns.filter((r) => r.status === "pending").length;
 
-  const filteredReturns = filterStatus === "all" 
-    ? gstReturns 
-    : gstReturns.filter(r => r.status === filterStatus);
+  const recentTransactions = useMemo(() => {
+    const outgoingTxns = (Array.isArray(invoiceData) ? invoiceData : [])
+      .filter((invoice) => (invoice.status || "").toLowerCase() === "paid")
+      .map((invoice) => {
+        const itemTaxes = sumInvoiceTaxes(Array.isArray(invoice.items) ? invoice.items : []);
+        // outgoing invoice stores totals as totalcgst/totalsgst/totaligst (no underscore)
+        const cgst = itemTaxes.cgst || toNumber(invoice.totalcgst);
+        const sgst = itemTaxes.sgst || toNumber(invoice.totalsgst);
+        const igst = itemTaxes.igst || toNumber(invoice.totaligst);
+        const totalGst = cgst + sgst + igst;
+        // subTotal = sum of itemTotal = hours*rate (taxable base, no GST)
+        const taxable = toNumber(invoice.subTotal || invoice.sub_total);
+        const date = invoice.invoice_date || invoice.date || invoice.paid_at || invoice.updated_at || invoice.created_at;
 
-  const handleFileReturn = (returnId) => {
-    alert(`Opening filing interface for return ${returnId}`);
-  };
+        return {
+          id: `out-${getInvoiceId(invoice) || invoice.invoice_number || date}`,
+          date,
+          invoiceNo: invoice.invoice_number || "-",
+          party: invoice.billcustomer_name || invoice.customer_name || invoice.company_name || "-",
+          type: "Outwards",
+          taxable,
+          cgst,
+          sgst,
+          igst,
+          total: totalGst,
+        };
+      });
 
-  const handleViewDetails = (returnId) => {
-    alert(`Viewing details for return ${returnId}`);
-  };
+    const incomingTxns = (Array.isArray(incomingInvoices) ? incomingInvoices : [])
+      .filter((invoice) => (invoice.status || "").toLowerCase() === "paid")
+      .map((invoice) => {
+        const cgst = toNumber(invoice.total_cgst);
+        const sgst = toNumber(invoice.total_sgst);
+        const igst = toNumber(invoice.total_igst);
+        const totalGst = cgst + sgst + igst;
+        const taxableBase = toNumber(invoice.subTotal || invoice.sub_total);
+        const totalAmount = toNumber(invoice.total);
+        const taxable = taxableBase > 0 ? taxableBase : Math.max(totalAmount - totalGst, 0);
+        const date = invoice.invoice_date || invoice.date || invoice.paid_at || invoice.updated_at || invoice.created_at;
 
-  const handleGenerateReport = () => {
-    alert("GST Report generated successfully!");
-  };
+        return {
+          id: `in-${getInvoiceId(invoice) || invoice.invoice_number || date}`,
+          date,
+          invoiceNo: invoice.invoice_number || "-",
+          party: invoice.vendor_name || invoice.vendor || invoice.company_name || "-",
+          type: "Inwards",
+          taxable,
+          cgst,
+          sgst,
+          igst,
+          total: totalGst,
+        };
+      });
 
-  const handleReconcile = () => {
-    alert("Starting GST reconciliation...");
-  };
+    return [...outgoingTxns, ...incomingTxns]
+      .filter((txn) => txn.date)
+      .sort((a, b) => parseDateForSort(b.date) - parseDateForSort(a.date));
+  }, [invoiceData, incomingInvoices]);
+
+  const filteredReturns = filterStatus === "all" ? gstReturns : gstReturns.filter((r) => r.status === filterStatus);
+
+  const handleFileReturn = (returnId) => { alert(`Opening filing interface for return ${returnId}`); };
+  const handleViewDetails = (returnId) => { alert(`Viewing details for return ${returnId}`); };
+  const handleGenerateReport = () => { alert("GST Report generated successfully!"); };
+  const handleReconcile = () => { alert("Starting GST reconciliation..."); };
 
   return (
     <>
-      {/* Fixed Buttons at Top */}
-      <div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm">
-        <div className="w-[100%] sm:w-[90%] md:w-[85%] lg:w-[98%] xl:max-w-8xl mx-auto">
-          {/* Tabs and Buttons Row */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pb-0">
-            {/* GST Tabs - Left Aligned */}
-            <div className="flex flex-wrap gap-2 flex-none border-b border-gray-200 pb-0">
+      <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6">
+        {/* Tabs + Action Buttons */}
+        <div className="flex items-center justify-between border-b border-gray-200 mb-6">
+          <div className="flex">
+            {[
+              { key: "returns",      label: "Returns" },
+              { key: "transactions", label: "Transactions" },
+              { key: "compliance",   label: "Compliance" },
+              { key: "reports",      label: "Reports" },
+            ].map((t) => (
               <button
-                onClick={() => setActiveTab("returns")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                  activeTab === "returns"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`px-5 py-2 text-sm font-medium transition-colors ${
+                  activeTab === t.key
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Returns
+                {t.label}
               </button>
-              <button
-                onClick={() => setActiveTab("transactions")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                  activeTab === "transactions"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Transactions
-              </button>
-              <button
-                onClick={() => setActiveTab("compliance")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                  activeTab === "compliance"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Compliance
-              </button>
-              <button
-                onClick={() => setActiveTab("reports")}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
-                  activeTab === "reports"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Reports
-              </button>
-            </div>
-
-            {/* Action Buttons - Right Aligned */}
-            <div className="flex flex-wrap gap-2 justify-end flex-shrink-0 pb-3">
-              <button
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
-                onClick={handleGenerateReport}
-              >
-                Export Report
-              </button>
-              <button 
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
-                onClick={handleReconcile}
-              >
-                Reconcile
-              </button>
-              <button
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
-                onClick={() => alert("Opening filing portal...")}
-              >
-                File Return
-              </button>
-            </div>
+            ))}
+          </div>
+          <div className="flex gap-2 pb-1">
+            <button onClick={handleGenerateReport} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
+              Export Report
+            </button>
+            <button onClick={handleReconcile} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
+              Reconcile
+            </button>
+            <button onClick={() => alert("Opening filing portal...")} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
+              File Return
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
-        {/* Dashboard Stats - Always Visible */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
             <h3 className="text-sm font-medium text-blue-700 mb-2">Total GST Collected</h3>
-            <p className="text-3xl font-bold text-blue-900">{formatCurrency(initialGSTData.totalCollected)}</p>
-            <p className="text-xs text-blue-600 mt-1">+12.5% from last month</p>
+            <p className="text-3xl font-bold text-blue-900">{formatCurrency(outgoing.total_gst_collected || 0)}</p>
+            {/* <p className="text-xs text-blue-600 mt-1">{`${Number(outgoing.invoice_count || 0)} invoices`}</p> */}
           </div>
-          
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
+
+          <div className="bg-linear-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
             <h3 className="text-sm font-medium text-green-700 mb-2">Input Tax Credit</h3>
-            <p className="text-3xl font-bold text-green-900">{formatCurrency(initialGSTData.inputTaxCredit)}</p>
-            <p className="text-xs text-green-600 mt-1">+8.3% from last month</p>
+            <p className="text-3xl font-bold text-green-900">{formatCurrency(incoming.total_gst_collected || 0)}</p>
+            {/* <p className="text-xs text-green-600 mt-1">{`${Number(incoming.invoice_count || 0)} invoices`}</p> */}
           </div>
-          
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200">
-            <h3 className="text-sm font-medium text-purple-700 mb-2">Net GST Payable</h3>
-            <p className="text-3xl font-bold text-purple-900">{formatCurrency(initialGSTData.netPayable)}</p>
-            <p className="text-xs text-red-600 mt-1">-3.2% from last month</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+
+            <div className="bg-linear-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200">
+              <h3 className="text-sm font-medium text-purple-700 mb-2">Net GST Payable</h3>
+              <p className="text-3xl font-bold text-purple-900">{formatCurrency(netPayable)}</p>
+              {/* <p className="text-xs text-red-600 mt-1">
+              Outgoing: {formatCurrency(net.outgoing_gst_collected || 0)} | Incoming: {formatCurrency(net.incoming_gst_collected || 0)}
+              {net.expense_gst_collected != null ? ` | Expenses: ${formatCurrency(net.expense_gst_collected || 0)}` : ""}
+              </p> */}
+            </div>
+
+          <div className="bg-linear-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
             <h3 className="text-sm font-medium text-orange-700 mb-2">Returns Pending</h3>
-            <p className="text-3xl font-bold text-orange-900">{initialGSTData.pendingReturns}</p>
+            <p className="text-3xl font-bold text-orange-900">{pendingReturnCount}</p>
             <p className="text-xs text-orange-600 mt-1">Due this month</p>
           </div>
         </div>
 
-        {/* Returns Tab */}
         {activeTab === "returns" && (
           <>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-2">
-                GST Returns
-              </h2>
-              
-              {/* Filter Buttons */}
+              <h2 className="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-2">GST Returns</h2>
+
               <div className="flex gap-2">
                 <button
                   onClick={() => setFilterStatus("all")}
                   className={`px-3 py-1 rounded-md text-sm font-medium ${
-                    filterStatus === "all"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    filterStatus === "all" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   All
@@ -285,9 +276,7 @@ export default function GSTCompliance() {
                 <button
                   onClick={() => setFilterStatus("pending")}
                   className={`px-3 py-1 rounded-md text-sm font-medium ${
-                    filterStatus === "pending"
-                      ? "bg-orange-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    filterStatus === "pending" ? "bg-orange-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   Pending
@@ -295,9 +284,7 @@ export default function GSTCompliance() {
                 <button
                   onClick={() => setFilterStatus("filed")}
                   className={`px-3 py-1 rounded-md text-sm font-medium ${
-                    filterStatus === "filed"
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    filterStatus === "filed" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   Filed
@@ -305,8 +292,7 @@ export default function GSTCompliance() {
               </div>
             </div>
 
-            {/* Alert for pending returns */}
-            {gstReturns.some(r => r.status === "pending") && (
+            {gstReturns.some((r) => r.status === "pending") && (
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -321,13 +307,9 @@ export default function GSTCompliance() {
               </div>
             )}
 
-            {/* Returns List */}
             <div className="space-y-4">
               {filteredReturns.map((ret) => (
-                <div
-                  key={ret.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50"
-                >
+                <div key={ret.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
@@ -353,11 +335,9 @@ export default function GSTCompliance() {
                           <span>Due Date: {formatDate(ret.dueDate)} • Period: {ret.period}</span>
                         )}
                       </div>
-                      <div className="text-sm font-medium text-gray-800 mt-1">
-                        Amount: {formatCurrency(ret.amount)}
-                      </div>
+                      <div className="text-sm font-medium text-gray-800 mt-1">Amount: {formatCurrency(ret.amount)}</div>
                     </div>
-                    
+
                     <div className="flex gap-2">
                       {ret.status === "pending" ? (
                         <button
@@ -382,88 +362,18 @@ export default function GSTCompliance() {
           </>
         )}
 
-        {/* Transactions Tab */}
         {activeTab === "transactions" && (
-          <>
-            <h2 className="text-lg font-semibold text-gray-800 mb-6 border-b border-gray-300 pb-2">
-              Recent GST Transactions
-            </h2>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-100 border-b border-gray-300">
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Date</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Invoice No.</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Party</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Type</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">Taxable Amount</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">CGST</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">SGST</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">IGST</th>
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">Total GST</th>
-                    <th className="text-center px-4 py-3 text-sm font-semibold text-gray-700">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((txn) => (
-                    <tr key={txn.id} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-700">{formatDate(txn.date)}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-800">{txn.invoiceNo}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{txn.party}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2 py-1 rounded-md text-xs font-semibold ${
-                            txn.type === "Output"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {txn.type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700">{formatCurrency(txn.taxable)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700">
-                        {txn.cgst > 0 ? formatCurrency(txn.cgst) : "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700">
-                        {txn.sgst > 0 ? formatCurrency(txn.sgst) : "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-700">
-                        {txn.igst > 0 ? formatCurrency(txn.igst) : "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold text-gray-800">
-                        {formatCurrency(txn.total)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => alert(`Viewing transaction ${txn.invoiceNo}`)}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-xs font-medium"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+          <RecentGSTTransactions transactions={recentTransactions} isLoading={isLoading} />
         )}
 
-        {/* Compliance Tab */}
         {activeTab === "compliance" && (
           <>
-            <h2 className="text-lg font-semibold text-gray-800 mb-6 border-b border-gray-300 pb-2">
-              Compliance Status
-            </h2>
-            
+            <h2 className="text-lg font-semibold text-gray-800 mb-6 border-b border-gray-300 pb-2">Compliance Status</h2>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white text-2xl">
-                    📋
-                  </div>
+                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white text-2xl">📋</div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-800">Monthly Returns</h4>
                     <p className="text-sm text-gray-600">8 of 10 filed this year</p>
@@ -477,9 +387,7 @@ export default function GSTCompliance() {
 
               <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center text-white text-2xl">
-                    💰
-                  </div>
+                  <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center text-white text-2xl">💰</div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-800">GST Payments</h4>
                     <p className="text-sm text-gray-600">All payments up to date</p>
@@ -493,9 +401,7 @@ export default function GSTCompliance() {
 
               <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center text-white text-2xl">
-                    📊
-                  </div>
+                  <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center text-white text-2xl">📊</div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-800">Annual Return</h4>
                     <p className="text-sm text-gray-600">Due: 31 Dec 2025</p>
@@ -509,9 +415,7 @@ export default function GSTCompliance() {
 
               <div className="border border-gray-200 rounded-lg p-5 bg-gray-50">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center text-white text-2xl">
-                    ✅
-                  </div>
+                  <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center text-white text-2xl">✅</div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-800">Reconciliation</h4>
                     <p className="text-sm text-gray-600">Last done: 25 Oct 2025</p>
@@ -526,13 +430,12 @@ export default function GSTCompliance() {
           </>
         )}
 
-        {/* Reports Tab */}
         {activeTab === "reports" && (
           <>
             <h2 className="text-lg font-semibold text-gray-800 mb-6 border-b border-gray-300 pb-2">
               GST Reports & Analytics
             </h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <button
                 onClick={() => alert("Generating GSTR-1 Report...")}
