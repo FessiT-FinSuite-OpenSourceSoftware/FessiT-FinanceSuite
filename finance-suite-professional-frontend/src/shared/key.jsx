@@ -9,7 +9,9 @@ const getConfig = () => ({
 });
 
 const KeyUri = {
-  BACKENDURI: "http://127.0.0.1:8082/api/v1"
+  // BACKENDURI: "http://127.0.0.1:8082/api/v1",
+    BACKENDURI: "https://fessit-financesuite.onrender.com/api/v1"
+
 };
 
 // Configure axios defaults for CORS

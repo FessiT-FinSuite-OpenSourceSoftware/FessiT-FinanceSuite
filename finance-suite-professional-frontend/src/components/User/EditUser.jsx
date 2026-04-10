@@ -20,6 +20,8 @@ export default function EditUser() {
       expenses: { read: false, write: false, delete: false },
       users: { read: false, write: false, delete: false },
       purchaseOrders: { read: false, write: false, delete: false },
+      customers: { read: false, write: false, delete: false },
+      products: { read: false, write: false, delete: false },
     },
   });
   const [inputErrors, setInputErrors] = useState({});
@@ -46,6 +48,8 @@ export default function EditUser() {
           expenses: { read: false, write: false, delete: false },
           users: { read: false, write: false, delete: false },
           purchaseOrders: { read: false, write: false, delete: false },
+          customers: { read: false, write: false, delete: false },
+          products: { read: false, write: false, delete: false },
         },
       });
     }
@@ -113,6 +117,8 @@ export default function EditUser() {
             expenses: { read: true, write: true, delete: true },
             users: { read: true, write: true, delete: true },
             purchaseOrders: { read: true, write: true, delete: true },
+            customers: { read: true, write: true, delete: true },
+            products: { read: true, write: true, delete: true },
           }
         : user.permissions,
     });

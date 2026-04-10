@@ -342,6 +342,16 @@ pub async fn get_gst_summary(
 
     Ok(HttpResponse::Ok().json(json!({
         "month": summary.month,
+        "outgoing_invoice_details": {
+            "invoice_count": summary.invoice_count,
+            "total_cgst": summary.total_cgst,
+            "total_sgst": summary.total_sgst,
+            "total_igst": summary.total_igst,
+            "total_gst_collected": summary.total_gst_collected,
+            "paid_amount": summary.paid_amount,
+            "paid_invoice_count": summary.paid_invoice_count,
+            "breakdown": summary.breakdown
+        },
         "outgoing_invoices": {
             "invoice_count": summary.invoice_count,
             "total_cgst": summary.total_cgst,

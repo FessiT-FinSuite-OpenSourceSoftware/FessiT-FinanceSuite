@@ -201,3 +201,22 @@ export const deleteProduct = (id) => async (dispatch) => {
     dispatch(getProductFailure())
   }
 }
+
+// Add Stock
+export const addStock = (productId, quantity) => async (dispatch) => {
+  dispatch(getProduct())
+  try {
+    const { data } = await axiosInstance.post(`/products/${productId}/add-stock`, { quantity })
+    toast.success('Stock updated successfully')
+    dispatch(fetchProductData())
+    return data
+  } catch (error) {
+    console.error('Error adding stock:', error)
+    toast.error(
+      error?.response?.data?.message ||
+        `Failed: ${error?.response?.statusText || 'Unknown error'}`
+    )
+    dispatch(getProductFailure())
+    return null
+  }
+}

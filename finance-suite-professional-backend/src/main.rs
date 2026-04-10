@@ -109,6 +109,7 @@ async fn main() -> std::io::Result<()> {
     let product_collection = db_client.get_product_collection();
     let product_repository = ProductRepository::new(product_collection);
     let product_service = ProductService::new(product_repository, user_repository.clone());
+    product_service.ensure_indexes().await.expect("❌ Failed to create product indexes");
 
     HttpServer::new(move || {
         let cors = Cors::permissive();

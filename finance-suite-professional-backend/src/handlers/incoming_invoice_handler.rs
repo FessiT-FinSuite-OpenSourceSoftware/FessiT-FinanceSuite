@@ -32,7 +32,7 @@ pub async fn create_incoming_invoice(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Write, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Write, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
@@ -52,7 +52,7 @@ pub async fn list_incoming_invoices(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
@@ -73,7 +73,7 @@ pub async fn get_incoming_invoice(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
@@ -98,7 +98,7 @@ pub async fn update_incoming_invoice(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Write, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Write, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let id = id.into_inner();
     let existing = service.get_by_id(&id).await
@@ -136,7 +136,7 @@ pub async fn update_incoming_invoice_with_file(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Write, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Write, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let id = id.into_inner();
     let existing = service.get_by_id(&id).await
@@ -258,7 +258,7 @@ pub async fn delete_incoming_invoice(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Delete, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Delete, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let deleted = service.delete(&id.into_inner()).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
@@ -316,8 +316,8 @@ pub async fn get_incoming_invoice_file(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    // 3. Must have read permission on Invoice module
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+    // 3. Must have read permission on Expenses module
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
@@ -350,7 +350,7 @@ pub async fn get_tds_summary(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;

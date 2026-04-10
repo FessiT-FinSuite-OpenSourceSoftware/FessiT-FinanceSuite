@@ -39,6 +39,9 @@ pub struct Product {
     #[serde(default)]
     pub stocks: f64,
 
+    #[serde(default)]
+    pub sold_stocks: f64,
+
     /// Sale price
     #[serde(default)]
     pub sale_price: f64,

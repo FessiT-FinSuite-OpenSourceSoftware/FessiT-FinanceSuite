@@ -636,7 +636,7 @@ export default function SettingsCreation() {
               { key: "payment", label: "Payment Methods" },
 
               { key: "users", label: "Users & Roles" },
-              { key: "Items", label: "Items & Categories" },
+              // { key: "Items", label: "Items & Categories" },
 
             ].map((t) => (
               <button

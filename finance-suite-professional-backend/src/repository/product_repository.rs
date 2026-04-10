@@ -3,7 +3,8 @@ use std::sync::Arc;
 use mongodb::{
     bson::{doc, from_document, oid::ObjectId, Document},
     error::Error as MongoError,
-    Collection,
+    options::IndexOptions,
+    Collection, IndexModel,
 };
 use futures::stream::TryStreamExt;
 
@@ -29,6 +30,40 @@ impl ProductRepository {
             collection: Arc::new(collection),
             raw_collection: Arc::new(raw_collection),
         }
+    }
+
+    /// Creates a compound unique index on (name, organisationId) scoped per org.
+    /// Called once at startup.
+    pub async fn ensure_indexes(&self) -> Result<(), MongoError> {
+        let index = IndexModel::builder()
+            .keys(doc! { "name": 1, "organisationId": 1 })
+            .options(
+                IndexOptions::builder()
+                    .unique(true)
+                    .name("unique_name_per_org".to_string())
+                    .build(),
+            )
+            .build();
+        self.collection.create_index(index, None).await?;
+        Ok(())
+    }
+
+    /// Returns true if a product with the same name already exists in the org,
+    /// optionally excluding a specific product id (for update checks).
+    pub async fn name_exists_in_org(
+        &self,
+        name: &str,
+        org_id: &ObjectId,
+        exclude_id: Option<&ObjectId>,
+    ) -> Result<bool, MongoError> {
+        let mut filter = doc! {
+            "name": { "$regex": format!("^{}$", regex::escape(name)), "$options": "i" },
+            "organisationId": org_id,
+        };
+        if let Some(eid) = exclude_id {
+            filter.insert("_id", doc! { "$ne": eid });
+        }
+        Ok(self.raw_collection.count_documents(filter, None).await? > 0)
     }
 
     async fn fetch_many(&self, filter: impl Into<Option<Document>>) -> Result<Vec<Product>, MongoError> {
@@ -83,5 +118,19 @@ impl ProductRepository {
         };
         let result = self.collection.delete_one(doc! { "_id": oid }, None).await?;
         Ok(result.deleted_count > 0)
+    }
+
+    pub async fn add_stock(&self, id: &str, quantity: f64) -> Result<Option<Product>, MongoError> {
+        let oid = match ObjectId::parse_str(id) {
+            Ok(o) => o,
+            Err(_) => return Ok(None),
+        };
+        let result = self.raw_collection
+            .update_one(doc! { "_id": oid }, doc! { "$inc": { "stocks": quantity } }, None)
+            .await?;
+        if result.matched_count == 0 {
+            return Ok(None);
+        }
+        self.get_by_id(id).await
     }
 }

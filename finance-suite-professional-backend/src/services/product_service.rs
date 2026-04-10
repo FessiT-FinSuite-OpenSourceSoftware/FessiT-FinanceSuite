@@ -26,6 +26,24 @@ impl ProductService {
         Ok(self.user_repo.get_user_by_id(user_id).await?)
     }
 
+    pub async fn get_user_by_id(&self, user_id: &str) -> anyhow::Result<crate::models::users::User> {
+        self.user_repo.get_user_by_id(user_id).await?
+            .ok_or_else(|| anyhow::anyhow!("User not found"))
+    }
+
+    pub async fn ensure_indexes(&self) -> anyhow::Result<()> {
+        Ok(self.repo.ensure_indexes().await?)
+    }
+
+    pub async fn name_exists_in_org(
+        &self,
+        name: &str,
+        org_id: &mongodb::bson::oid::ObjectId,
+        exclude_id: Option<&mongodb::bson::oid::ObjectId>,
+    ) -> anyhow::Result<bool> {
+        Ok(self.repo.name_exists_in_org(name, org_id, exclude_id).await?)
+    }
+
     pub async fn create(&self, mut product: Product, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Product> {
         product.organisation_id = Some(*org_id);
         Ok(self.repo.create(product).await?)
@@ -45,5 +63,9 @@ impl ProductService {
 
     pub async fn delete(&self, id: &str) -> anyhow::Result<bool> {
         Ok(self.repo.delete(id).await?)
+    }
+
+    pub async fn add_stock(&self, id: &str, quantity: f64) -> anyhow::Result<Option<Product>> {
+        Ok(self.repo.add_stock(id, quantity).await?)
     }
 }

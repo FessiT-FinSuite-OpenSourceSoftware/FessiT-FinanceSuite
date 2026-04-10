@@ -118,7 +118,8 @@ const tdsDeductions = [
 ];
 
 export default function TDSCompliance() {
-  const [activeTab, setActiveTab] = useState("returns");
+  const [activeTab, setActiveTab] = useState("deductions");
+  //previously we have Returns by default 
   const [filterStatus, setFilterStatus] = useState("all");
   const dispatch = useDispatch()
   const { data } = useSelector(tdsSummarySelector)
@@ -222,10 +223,10 @@ export default function TDSCompliance() {
         <div className="flex items-center justify-between border-b border-gray-200 mb-6">
           <div className="flex">
             {[
-              { key: "returns",      label: "Returns" },
+              // { key: "returns",      label: "Returns" },
               { key: "deductions",   label: "Deductions" },
-              { key: "challans",     label: "Challans" },
-              { key: "certificates", label: "Certificates" },
+              // { key: "challans",     label: "Challans" },
+              // { key: "certificates", label: "Certificates" },
             ].map((t) => (
               <button
                 key={t.key}
@@ -240,7 +241,7 @@ export default function TDSCompliance() {
               </button>
             ))}
           </div>
-          <div className="flex gap-2 pb-1">
+          {/* <div className="flex gap-2 pb-1">
             <button onClick={handleGenerateReport} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
               Export Report
             </button>
@@ -250,29 +251,29 @@ export default function TDSCompliance() {
             <button onClick={() => alert("Opening TRACES portal...")} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
               File Return
             </button>
-          </div>
+          </div> */}
         </div>
         {/* Dashboard Stats - Always Visible */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
+          <div className="bg-linear-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
             <h3 className="text-sm font-medium text-blue-700 mb-2">Total TDS Deducted</h3>
             <p className="text-3xl font-bold text-blue-900">{formatCurrency(data?.combined?.total_tds_deducted)}</p>
             <p className="text-xs text-blue-600 mt-1">This financial year</p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
+          <div className="bg-linear-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
             <h3 className="text-sm font-medium text-green-700 mb-2">Total TDS Deposited</h3>
             <p className="text-3xl font-bold text-green-900">{formatCurrency(initialTDSData.totalTDSDeposited)}</p>
             <p className="text-xs text-green-600 mt-1">Deposited to government</p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+          <div className="bg-linear-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
             <h3 className="text-sm font-medium text-orange-700 mb-2">Pending Deposit</h3>
             <p className="text-3xl font-bold text-orange-900">{formatCurrency(initialTDSData.pendingDeposit)}</p>
             <p className="text-xs text-orange-600 mt-1">Due for deposit</p>
           </div>
 
-          <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-lg border border-red-200">
+          <div className="bg-linear-to-br from-red-50 to-red-100 p-6 rounded-lg border border-red-200">
             <h3 className="text-sm font-medium text-red-700 mb-2">Returns Pending</h3>
             <p className="text-3xl font-bold text-red-900">{initialTDSData.pendingReturns}</p>
             <p className="text-xs text-red-600 mt-1">Due this quarter</p>
@@ -323,7 +324,7 @@ export default function TDSCompliance() {
             {tdsReturns.some(r => r.status === "pending") && (
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
                 <div className="flex">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <span className="text-2xl">⚠️</span>
                   </div>
                   <div className="ml-3">

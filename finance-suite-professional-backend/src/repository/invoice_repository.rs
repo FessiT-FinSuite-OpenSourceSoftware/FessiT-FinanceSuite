@@ -133,23 +133,40 @@ impl InvoiceRepository {
             if date.len() < 7 { continue; }
             if &date[0..4] != current_year || &date[5..7] != current_month { continue; }
 
+            let is_paid = inv.status == crate::models::invoice::InvoiceStatus::Paid;
+            if !is_paid {
+                continue;
+            }
+
             let is_international = inv.invoice_type.trim().to_lowercase() == "international";
 
             let fx_rate: f64 = if is_international {
-                let cr  = inv.conversion_rate.parse::<f64>().unwrap_or(0.0);
-                let acr = inv.approx_conversion_rate.parse::<f64>().unwrap_or(0.0);
-                let tcr = inv.temp_conversion_rate.parse::<f64>().unwrap_or(0.0);
-                if cr  > 0.0 { cr }
-                else if acr > 0.0 { acr }
-                else if tcr > 0.0 { tcr }
-                else { 1.0 }
+                let cr = inv.conversion_rate.parse::<f64>().unwrap_or(0.0);
+                if cr > 0.0 {
+                    cr
+                } else {
+                    log::warn!(
+                        "[GST] Skipping paid international invoice {} because conversionRate is missing",
+                        inv.invoice_number
+                    );
+                    continue;
+                }
             } else {
                 1.0
             };
 
+            if is_international && fx_rate <= 0.0 {
+                log::warn!(
+                    "[GST] Skipping paid international invoice {} because conversionRate is invalid",
+                    inv.invoice_number
+                );
+                continue;
+            }
+
             let raw_total = inv.total.parse::<f64>().unwrap_or(0.0);
+            let sub_total = inv.sub_total.parse::<f64>().unwrap_or(0.0);
+            let taxable_inr = sub_total * fx_rate;
             let inr_total = raw_total * fx_rate;
-            let is_paid   = inv.status == crate::models::invoice::InvoiceStatus::Paid;
 
             let (cgst_line, sgst_line, igst_inr_line) = if !is_international {
                 let c = inv.totalcgst.parse::<f64>().unwrap_or(0.0);
@@ -178,12 +195,16 @@ impl InvoiceRepository {
             );
 
             breakdown.push(InvoiceGstLine {
+                invoice_date:   inv.invoice_date.clone(),
                 invoice_number: inv.invoice_number.clone(),
                 invoice_type:   inv.invoice_type.clone(),
+                party_name:     inv.billcustomer_name.clone(),
                 currency:       inv.currency_type.clone(),
                 status:         format!("{:?}", inv.status),
                 raw_total,
+                sub_total,
                 fx_rate,
+                taxable_inr,
                 inr_total,
                 cgst: cgst_line,
                 sgst: sgst_line,
@@ -214,12 +235,16 @@ use futures::stream::TryStreamExt;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct InvoiceGstLine {
+    pub invoice_date: String,
     pub invoice_number: String,
     pub invoice_type: String,
+    pub party_name: String,
     pub currency: String,
     pub status: String,
     pub raw_total: f64,
+    pub sub_total: f64,
     pub fx_rate: f64,
+    pub taxable_inr: f64,
     pub inr_total: f64,
     pub cgst: f64,
     pub sgst: f64,

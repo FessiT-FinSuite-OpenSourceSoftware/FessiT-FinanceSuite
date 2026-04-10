@@ -4,6 +4,8 @@ export const Module = {
   Expenses: "expenses",
   PurchaseOrders: "purchaseOrders",
   Customers: "customers",
+  Items: "items",
+  Products: "products",
   Users: "users",
   Organisation: "organisation",
 };

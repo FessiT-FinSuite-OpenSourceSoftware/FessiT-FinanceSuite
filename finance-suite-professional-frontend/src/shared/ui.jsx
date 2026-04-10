@@ -137,7 +137,7 @@ export function RowActions({ onEdit, onDelete, canEdit = true, canDelete = true 
 // ── Modal Wrapper ─────────────────────────────────────────────────────────────
 export function Modal({ title, onClose, onSave, saveLabel = "Save", children }) {
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-[2px] overflow-y-auto p-4">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 backdrop-blur-[2px] overflow-y-auto p-4">
       <div className="bg-white rounded-xl shadow-2xl ring-1 ring-black/10 p-6 w-full max-w-lg relative max-h-[calc(100vh-2rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold text-gray-800">{title}</h3>

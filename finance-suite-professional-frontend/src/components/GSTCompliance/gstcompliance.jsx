@@ -112,7 +112,7 @@ export default function GSTCompliance() {
   const { data, isLoading } = useSelector(gstSummarySelector);
   const { invoiceData } = useSelector(invoiceSelector);
   const { data: incomingInvoices } = useSelector(incomingInvoiceSelector);
-  const [activeTab, setActiveTab] = useState("returns");
+  const [activeTab, setActiveTab] = useState("transactions");
   const [filterStatus, setFilterStatus] = useState("all");
 
   useEffect(() => {
@@ -200,10 +200,10 @@ export default function GSTCompliance() {
         <div className="flex items-center justify-between border-b border-gray-200 mb-6">
           <div className="flex">
             {[
-              { key: "returns",      label: "Returns" },
+              // { key: "returns",      label: "Returns" },
               { key: "transactions", label: "Transactions" },
-              { key: "compliance",   label: "Compliance" },
-              { key: "reports",      label: "Reports" },
+              // { key: "compliance",   label: "Compliance" },
+              // { key: "reports",      label: "Reports" },
             ].map((t) => (
               <button
                 key={t.key}
@@ -218,7 +218,7 @@ export default function GSTCompliance() {
               </button>
             ))}
           </div>
-          <div className="flex gap-2 pb-1">
+          {/* <div className="flex gap-2 pb-1">
             <button onClick={handleGenerateReport} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
               Export Report
             </button>
@@ -228,10 +228,10 @@ export default function GSTCompliance() {
             <button onClick={() => alert("Opening filing portal...")} className="px-4 py-1.5 text-sm cursor-pointer text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
               File Return
             </button>
-          </div>
+          </div> */}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
+          <div className="bg-linear-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
             <h3 className="text-sm font-medium text-blue-700 mb-2">Total GST Collected</h3>
             <p className="text-3xl font-bold text-blue-900">{formatCurrency(outgoing.total_gst_collected || 0)}</p>
             {/* <p className="text-xs text-blue-600 mt-1">{`${Number(outgoing.invoice_count || 0)} invoices`}</p> */}
@@ -295,7 +295,7 @@ export default function GSTCompliance() {
             {gstReturns.some((r) => r.status === "pending") && (
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg">
                 <div className="flex">
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <span className="text-2xl">⚠️</span>
                   </div>
                   <div className="ml-3">

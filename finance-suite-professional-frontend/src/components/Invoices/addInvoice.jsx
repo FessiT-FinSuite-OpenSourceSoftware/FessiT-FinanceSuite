@@ -8,9 +8,11 @@ import { KeyUri } from "../../shared/key";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector } from "../../ReduxApi/organisation";
 import { createInvoice, fetchNextInvoiceNumber, invoiceSelector } from "../../ReduxApi/invoice";
+import { fetchProductData, productSelector } from "../../ReduxApi/product";
 
 const createEmptyInvoiceItem = () => ({
   description: "",
+  isManual: false,
   hours: "",
   rate: "",
   cgst: { cgstPercent: "", cgstAmount: "" },
@@ -59,6 +61,8 @@ export default function AddInvoice() {
   const nav = useNavigate();
   const { currentOrganisation } = useSelector(orgamisationSelector);
   const { nextInvoiceNumber } = useSelector(invoiceSelector);
+  const { productData } = useSelector(productSelector);
+
   const dispatch = useDispatch();
 
   // Reset form on mount so stale data from previous session is cleared
@@ -75,6 +79,10 @@ export default function AddInvoice() {
     setShowCustomCurrency(false);
     setCustomCurrency("");
   }, []);
+
+  useEffect(() => {
+    dispatch(fetchProductData());
+  }, [dispatch]);
 
   useEffect(() => {
     const fetchOrgData = async () => {
@@ -110,6 +118,7 @@ export default function AddInvoice() {
   const [selectedCountry, setSelectedCountry] = useState(countries[0]);
   const [showCustomCurrency, setShowCustomCurrency] = useState(false);
   const [customCurrency, setCustomCurrency] = useState("");
+  const [itemSearchQueries, setItemSearchQueries] = useState([""]);
 
   const isDomestic = invoiceData.invoice_type === "domestic";
   const isInternational = invoiceData.invoice_type === "international";
@@ -509,19 +518,31 @@ export default function AddInvoice() {
     setInvoiceData({ ...invoiceData, items: updatedItems });
   };
 
+  const handleItemProductSelect = (index, selectedName) => {
+    const updatedItems = [...invoiceData.items];
+    const item = { ...updatedItems[index] };
+
+    if (selectedName === "__manual__") {
+      item.description = "";
+      item.isManual = true;
+    } else {
+      item.description = selectedName;
+      item.isManual = false;
+    }
+
+    updatedItems[index] = item;
+    setInvoiceData({ ...invoiceData, items: updatedItems });
+    setItemSearchQueries((prev) => { const q = [...prev]; q[index] = ""; return q; });
+  };
+
   const addItem = () => {
-    setInvoiceData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        createEmptyInvoiceItem(),
-      ],
-    }));
+    setInvoiceData((prev) => ({ ...prev, items: [...prev.items, createEmptyInvoiceItem()] }));
+    setItemSearchQueries((prev) => [...prev, ""]);
   };
 
   const removeItem = (index) => {
-    const updatedItems = invoiceData.items.filter((_, i) => i !== index);
-    setInvoiceData({ ...invoiceData, items: updatedItems });
+    setInvoiceData({ ...invoiceData, items: invoiceData.items.filter((_, i) => i !== index) });
+    setItemSearchQueries((prev) => prev.filter((_, i) => i !== index));
   };
 
   const invoiceDataSubmit = async (e) => {
@@ -598,7 +619,7 @@ export default function AddInvoice() {
   const goBackToInvoices = () => {
     nav("/invoices");
   };
-
+  console.log("the product data we have here in the invoice creation component", productData)
   return (
     <div className="relative">
       {/* Top bar */}
@@ -1252,15 +1273,94 @@ export default function AddInvoice() {
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       {index + 1}
                     </td>
-                    <td className="border border-gray-300 px-3 py-2">
-                      <input
-                        type="text"
-                        name="description"
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, e)}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700 placeholder:text-gray-400"
-                        placeholder="Enter description"
-                      />
+                    <td className="border border-gray-300 px-3 py-2 min-w-[220px]">
+                      {!item.isManual ? (
+                        <div className="relative">
+                          <input
+                            type="text"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 placeholder:text-gray-400"
+                            placeholder="Search or type item name..."
+                            value={item.description && !itemSearchQueries[index] ? item.description : (itemSearchQueries[index] ?? "")}
+                            onChange={(e) => {
+                              const q = [...itemSearchQueries];
+                              q[index] = e.target.value;
+                              setItemSearchQueries(q);
+                              if (!e.target.value) handleItemProductSelect(index, "");
+                            }}
+                            onFocus={() => {
+                              const q = [...itemSearchQueries];
+                              q[index] = item.description || "";
+                              setItemSearchQueries(q);
+                            }}
+                            onBlur={() => {
+                              const typed = itemSearchQueries[index];
+                              if (typed && typed.trim()) {
+                                const updatedItems = [...invoiceData.items];
+                                updatedItems[index] = { ...updatedItems[index], description: typed.trim(), isManual: false };
+                                setInvoiceData({ ...invoiceData, items: updatedItems });
+                              }
+                              const q = [...itemSearchQueries];
+                              q[index] = "";
+                              setItemSearchQueries(q);
+                            }}
+                          />
+                          {itemSearchQueries[index] !== undefined && itemSearchQueries[index] !== "" && (() => {
+                            const q = itemSearchQueries[index].toLowerCase();
+                            const filtered = Array.isArray(productData)
+                              ? productData.filter((p) =>
+                                  (p.name || "").toLowerCase().includes(q) ||
+                                  (p.hsn || "").toLowerCase().includes(q) ||
+                                  (p.item_code || p.itemCode || "").toLowerCase().includes(q)
+                                )
+                              : [];
+                            return (
+                              <div className="absolute z-50 top-full left-0 w-full bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                                {filtered.length > 0 ? filtered.map((p) => (
+                                  <div
+                                    key={p._id || p.id || p.name}
+                                    className="px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
+                                    onMouseDown={() => handleItemProductSelect(index, p.name)}
+                                  >
+                                    <span className="font-medium">{p.name}</span>
+                                    {(p.hsn || p.item_code || p.itemCode) && (
+                                      <span className="text-xs text-gray-400 ml-2">
+                                        {[p.hsn, p.item_code || p.itemCode].filter(Boolean).join(" · ")}
+                                      </span>
+                                    )}
+                                  </div>
+                                )) : (
+                                  <div className="px-3 py-2 text-sm text-gray-400">No products found</div>
+                                )}
+                                <div
+                                  className="px-3 py-2 text-sm text-blue-600 font-medium hover:bg-blue-50 cursor-pointer border-t border-gray-200"
+                                  onMouseDown={() => handleItemProductSelect(index, "__manual__")}
+                                >
+                                  Other
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <input
+                            type="text"
+                            name="description"
+                            value={item.description}
+                            onChange={(e) => handleItemChange(index, e)}
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 placeholder:text-gray-400"
+                            placeholder="Enter item name"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleItemProductSelect(index, "")}
+                            className="text-xs text-blue-500 hover:underline text-left"
+                          >
+                            select from product list
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       <input

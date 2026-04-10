@@ -17,6 +17,13 @@ import { RowActions } from "../../shared/ui";
 const fmt = (value) => Number(value || 0).toLocaleString("en-IN");
 const textValue = (value, fallback = "") =>
   typeof value === "string" ? value : value == null ? fallback : String(value);
+const DESCRIPTION_WORD_LIMIT = 25;
+
+const limitWords = (value, maxWords) => {
+  const words = String(value || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return String(value || "");
+  return words.slice(0, maxWords).join(" ");
+};
 
 const stockStatus = (stocks) => {
   const value = Number(stocks || 0);
@@ -117,6 +124,7 @@ export default function Products() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [form, setForm] = useState(emptyForm());
   const [previewModal, setPreviewModal] = useState({ open: false, src: "", title: "" });
+  const [descriptionPreview, setDescriptionPreview] = useState(null);
 
   useEffect(() => {
     dispatch(fetchProductData());
@@ -294,6 +302,34 @@ export default function Products() {
     setPreviewModal({ open: false, src: "", title: "" });
   };
 
+  const openDescriptionPreview = (event, product) => {
+    if (!product?.description) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const popupWidth = Math.min(360, window.innerWidth - 32);
+    const popupHeight = 180;
+    const spaceRight = window.innerWidth - rect.right;
+    const spaceBelow = window.innerHeight - rect.top;
+    const left =
+      spaceRight >= popupWidth + 16
+        ? rect.right + 12
+        : Math.max(12, rect.left - popupWidth - 12);
+    const top =
+      spaceBelow >= popupHeight + 16
+        ? rect.top
+        : Math.max(12, window.innerHeight - popupHeight - 16);
+
+    setDescriptionPreview({
+      title: product.name || "Description",
+      description: product.description,
+      left,
+      top,
+    });
+  };
+
+  const closeDescriptionPreview = () => {
+    setDescriptionPreview(null);
+  };
+
   useEffect(() => {
     const urls = createdImageUrls.current;
     return () => {
@@ -304,7 +340,10 @@ export default function Products() {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [name]: name === "description" ? limitWords(value, DESCRIPTION_WORD_LIMIT) : value,
+    }));
   };
 
   const handleImageChange = (e) => {
@@ -433,16 +472,29 @@ export default function Products() {
         </div>
       )}
 
+      {descriptionPreview && (
+        <div
+          className="pointer-events-none fixed w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl"
+          style={{ zIndex: 250, left: descriptionPreview.left, top: descriptionPreview.top }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Description Preview</p>
+          <h4 className="mt-1 text-base font-semibold text-slate-900">{descriptionPreview.title}</h4>
+          <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+            {descriptionPreview.description}
+          </p>
+        </div>
+      )}
+
       {showModal && (
         <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">
-                  {editingProductId ? "Edit Product" : "Create New Product"}
+                  {editingProductId ? "Edit Item" : "Create New Item"}
                 </h3>
                 <p className="text-sm text-slate-500">
-                  {editingProductId ? "Update the product and save the changes." : "Fill in the product details to create a new item."}
+                  {editingProductId ? "Update the Item and save the changes." : "Fill in the Item details to create a new item."}
                 </p>
               </div>
               <button
@@ -456,7 +508,7 @@ export default function Products() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">Product Image</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Item Image</label>
                 <input
                   type="file"
                   accept="image/*"
@@ -466,7 +518,7 @@ export default function Products() {
                 <div className="mt-3 flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => activeModalImageSrc && openPreviewModal(activeModalImageSrc, form.name || "Product Image")}
+                    onClick={() => activeModalImageSrc && openPreviewModal(activeModalImageSrc, form.name || "Item Image")}
                     disabled={!activeModalImageSrc}
                     className="h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center disabled:cursor-not-allowed"
                   >
@@ -478,7 +530,7 @@ export default function Products() {
                   </button>
                   <div className="min-w-0 flex-1 text-sm text-slate-500">
                     <p className="truncate">
-                      {productImageFile ? productImageFile.name : "Choose a product image to preview it here."}
+                      {productImageFile ? productImageFile.name : "Choose a Item image to preview it here."}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button
@@ -494,8 +546,14 @@ export default function Products() {
                 </div>
               </div>
 
-              <Field label="Product Name" name="name" value={form.name} onChange={handleFormChange} placeholder="Enter product name" />
-              <Field label="Description" name="description" value={form.description} onChange={handleFormChange} placeholder="Enter description" />
+              <Field label="Item Name" name="name" value={form.name} onChange={handleFormChange} placeholder="Enter item name" />
+              <Field
+                label={`Description (${form.description.trim().split(/\s+/).filter(Boolean).length}/${DESCRIPTION_WORD_LIMIT} words)`}
+                name="description"
+                value={form.description}
+                onChange={handleFormChange}
+                placeholder={`Enter description, up to ${DESCRIPTION_WORD_LIMIT} words`}
+              />
               <Field label="HSN" name="hsn" value={form.hsn} onChange={handleFormChange} placeholder="Enter HSN" />
               <Field label="Item Code" name="itemCode" value={form.itemCode} onChange={handleFormChange} placeholder="Enter item code" />
 
@@ -579,7 +637,7 @@ export default function Products() {
                 disabled={isLoading}
                 className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {editingProductId ? "Update Product" : "Save Product"}
+                {editingProductId ? "Update Item" : "Save Item"}
               </button>
             </div>
           </div>
@@ -691,8 +749,17 @@ export default function Products() {
                         <div className="text-xs text-slate-500 mt-1">{product.manufacturer}</div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="max-w-xs text-sm text-slate-600 line-clamp-2">
-                          {product.description || "-"}
+                        <div
+                          className="max-w-xs cursor-help"
+                          onMouseEnter={(e) => openDescriptionPreview(e, product)}
+                          onMouseLeave={closeDescriptionPreview}
+                          onFocus={(e) => openDescriptionPreview(e, product)}
+                          onBlur={closeDescriptionPreview}
+                          tabIndex={0}
+                        >
+                          <div className="text-sm text-slate-600 line-clamp-2 break-words">
+                            {product.description || "-"}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-4 text-sm font-medium text-slate-900">{product.hsn}</td>

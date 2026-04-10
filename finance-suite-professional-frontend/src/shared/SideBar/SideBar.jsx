@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { useSelector } from "react-redux";
-import { authSelector } from "../../ReduxApi/auth";
+import { useSelector, useDispatch } from "react-redux";
+import { authSelector, logoutUser } from "../../ReduxApi/auth";
 import { canRead, Module } from "../../utils/permissions";
 import {
   FileText,
@@ -20,15 +20,17 @@ import {
   UserLockIcon,
   Layers,
   FolderKanban,
+  Boxes,
+  LogOut,
 } from "lucide-react";
 
 export default function SideBar({ component }) {
-  const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const location = useLocation();
   const nav = useNavigate();
@@ -38,6 +40,7 @@ export default function SideBar({ component }) {
   
   // Get user data from Redux
   const { user } = useSelector(authSelector);
+  const dispatch = useDispatch();
   
   // Helper function to get user initials
   const getUserInitials = (name) => {
@@ -54,17 +57,24 @@ export default function SideBar({ component }) {
     return "User";
   };
 
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    nav("/login");
+  };
+
   const allNavigation = [
     { id: "dashboard", label: "Dashboard", icon: TrendingUp, module: null },
     { id: "invoices", label: "Sales", icon: FileText, module: Module.Invoice },
     { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
     { id: "expenses", label: "Expenses", icon: Receipt, module: Module.Expenses },
-    { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: null },
-    { id: "tdscompliance", label: "TDS Compliance", icon: Receipt, module: null },
+    { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: Module.Invoice },
+    { id: "tdscompliance", label: "TDS Compliance", icon: Receipt, module: Module.Invoice },
     { id: "customers", label: "Customers", icon: Users, module: Module.Customers },
     { id: "projects", label: "Projects", icon: FolderKanban, module: Module.Customers },
     { id: "cost-centers", label: "Cost Centers", icon: Layers, module: Module.Customers },
+    { id: "items", label: "Items", icon: Boxes, module: Module.Products },
     { id: "users", label: "User Management", icon: UserLockIcon, module: Module.Users },
+
     { id: "settings", label: "Settings", icon: Settings, module: null, adminOnly: true },
   ];
 
@@ -97,13 +107,14 @@ export default function SideBar({ component }) {
 
   // Show/hide scroll to top button
   useEffect(() => {
+    const scrollEl = mainRef.current;
     const handleScroll = () => {
       if (mainRef.current) {
         setShowScrollTop(mainRef.current.scrollTop > 300);
       }
     };
-    mainRef.current?.addEventListener('scroll', handleScroll);
-    return () => mainRef.current?.removeEventListener('scroll', handleScroll);
+    scrollEl?.addEventListener('scroll', handleScroll);
+    return () => scrollEl?.removeEventListener('scroll', handleScroll);
   }, []);
 
   const scrollToTop = () => {
@@ -135,6 +146,7 @@ export default function SideBar({ component }) {
       ) {
         setShowNotifications(false);
       }
+      setShowUserMenu(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -147,9 +159,9 @@ export default function SideBar({ component }) {
       {/* Sidebar */}
       <div
         className={`${sidebarOpen ? "w-64" : "w-24"
-          } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden`}
+          } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden flex h-full flex-col`}
       >
-        <div className="p-4 border-b border-gray-200 h-22 flex justify-between items-center">
+        <div className="shrink-0 p-4 border-b border-gray-200 h-22 flex justify-between items-center">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* Logo Icon - Always visible */}
             <div className="relative shrink-0">
@@ -217,7 +229,7 @@ export default function SideBar({ component }) {
             )}
           </div>
         </div>
-        <nav className="p-4 space-y-2">
+        <nav className="sidebar-scrollbar flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
           {navigation?.map((item) => {
             const Icon = item.icon;
             return (
@@ -302,18 +314,30 @@ export default function SideBar({ component }) {
                 </button>
 
                 {/* User Name and Position */}
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-700 leading-tight">
-                      {getDisplayName()}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {user?.role || "User"}
-                    </p>
+                <div className="relative">
+                  <div
+                    className="flex items-center gap-3 cursor-pointer"
+                    onClick={() => setShowUserMenu((p) => !p)}
+                  >
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-700 leading-tight">{getDisplayName()}</p>
+                      <p className="text-xs text-gray-500">{user?.role || "User"}</p>
+                    </div>
+                    <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
+                      {getUserInitials(getDisplayName())}
+                    </div>
                   </div>
-                  <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
-                    {getUserInitials(getDisplayName())}
-                  </div>
+                  {showUserMenu && (
+                    <div className="absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-50 overflow-hidden">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut size={16} />
+                        Logout
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

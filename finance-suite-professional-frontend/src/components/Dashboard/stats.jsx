@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchInvoiceData, invoiceSelector } from "../../ReduxApi/invoice";
 import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
 import { fetchGstSummary, gstSummarySelector } from "../../ReduxApi/gstSummary";
+import { fetchTdsSummary, tdsSummarySelector } from "../../ReduxApi/tdsSummary";
 import { formatCurrency } from "../../utils/formatNumber";
 
 // Convert a single invoice's total to INR using stored rates
@@ -25,12 +26,14 @@ export default function Stats() {
   const { invoiceData } = useSelector(invoiceSelector);
   const { currentOrganisation } = useSelector(orgamisationSelector);
   const { data: gstData, isLoading: gstLoading } = useSelector(gstSummarySelector);
+  const { data: tdsData } = useSelector(tdsSummarySelector);
 
   const orgCurrency = currentOrganisation?.currency || "INR";
 
   useEffect(() => {
     dispatch(fetchInvoiceData());
     dispatch(fetchGstSummary());
+    dispatch(fetchTdsSummary());
     const email = localStorage.getItem("email");
     if (email) dispatch(fetchOrganisationByEmail(email));
   }, [dispatch]);
@@ -62,11 +65,11 @@ export default function Stats() {
     ? `₹${totalGstOut.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : "₹0.00";
 
-  const paidAmount = gstLoading
-    ? "..."
-    : gstData
-    ? `₹${(inv?.paid_amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    : "₹0.00";
+  const totalTdsDeducted = tdsData?.combined?.total_tds_deducted || 0;
+  const tdsPending = tdsData?.combined?.tds_pending || 0;
+  const tdsMonth = tdsData?.month
+    ? new Date(tdsData.month + "-01").toLocaleString("en-IN", { month: "long", year: "numeric" })
+    : "This Month";
 
   const gstMonth = gstData?.month
     ? new Date(gstData.month + "-01").toLocaleString("en-IN", { month: "long", year: "numeric" })
@@ -97,7 +100,7 @@ export default function Stats() {
     {
       label: "Total GST Collected",
       value: gstCollected,
-      change: `${(inv?.invoice_count ?? 0) + (exp?.expense_count ?? 0) + (gen?.expense_count ?? 0)} records · ${gstMonth}`,
+      change: `${gstMonth}`,
       trend: "warning",
       icon: Receipt,
       tooltip: gstData ? [
@@ -107,12 +110,18 @@ export default function Stats() {
       ].join('\n') : "",
     },
     {
-      label: "Paid Amount",
-      value: paidAmount,
-      change: `${inv?.paid_invoice_count ?? 0} paid invoices · ${gstMonth}`,
-      trend: "up",
+      label: "Total TDS Deducted",
+      value: tdsData
+        ? `₹${totalTdsDeducted.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : "₹0.00",
+      change: tdsMonth,
+      trend: "warning",
       icon: IndianRupee,
-      tooltip: gstData ? `Sum of all Paid invoices generated in ${gstMonth}` : "",
+      tooltip: tdsData ? [
+        `Invoices — TDS: ₹${(tdsData.incoming_invoices?.total_tds_deducted||0).toFixed(2)}`,
+        `Salaries — TDS: ₹${(tdsData.salaries?.total_tds_deducted||0).toFixed(2)}`,
+        `Pending — ₹${tdsPending.toFixed(2)}`,
+      ].join('\n') : "",
     },
   ];
 

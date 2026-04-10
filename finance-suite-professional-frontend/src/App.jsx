@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Loader from "./shared/Loader/loader";
 import { useSelector, useDispatch } from "react-redux";
 import { authSelector, verifyToken, fetchUserProfile } from "./ReduxApi/auth";
@@ -28,6 +28,7 @@ const Settings = lazy(() => import("./components/Settings"));
 const GSTCompliance = lazy(() => import("./components/GSTCompliance"));
 const TDSCompliance = lazy(() => import("./components/TDSCompliance"));
 const Users = lazy(() => import("./components/User"));
+const Items = lazy(() => import("./components/Items"));
 const EditUser = lazy(() => import("./components/User/EditUser"));
 const AddUser = lazy(() => import("./components/User/UserCreation"));
 const ExpensesList = lazy(() => import("./components/Expenses/expenseList"));
@@ -91,6 +92,7 @@ export default function App() {
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/create-organization" element={<CreateOrganization />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </Suspense>
@@ -153,6 +155,7 @@ export default function App() {
               <Route path="/settings" element={user?.is_admin ? <Settings /> : <Forbidden />} />
 
               {/* User Management */}
+              <Route path="/items" element={<ProtectedRoute user={user} module={Module.Products}><Items /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute user={user} module={Module.Users}><Users /></ProtectedRoute>} />
               <Route path="/users/editUser/:id" element={<ProtectedRoute user={user} module={Module.Users}><EditUser /></ProtectedRoute>} />
               <Route path="/users/addUser" element={<ProtectedRoute user={user} module={Module.Users}><AddUser /></ProtectedRoute>} />
