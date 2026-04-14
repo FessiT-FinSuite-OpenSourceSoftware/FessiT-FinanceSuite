@@ -7,10 +7,10 @@ import TDSDeductions from "./TDSDeductions";
 import ChallansTab from "./challans";
 
 const initialTDSData = {
-  totalTDSDeducted: 325000,
-  totalTDSDeposited: 298000,
-  pendingDeposit: 27000,
-  pendingReturns: 1
+  totalTDSDeducted: 0,
+  totalTDSDeposited: 0,
+  pendingDeposit: 0,
+  pendingReturns: 0
 };
 
 const tdsReturns = [
@@ -224,18 +224,17 @@ export default function TDSCompliance() {
           <div className="flex">
             {[
               // { key: "returns",      label: "Returns" },
-              { key: "deductions",   label: "Deductions" },
+              { key: "deductions", label: "Deductions" },
               // { key: "challans",     label: "Challans" },
               // { key: "certificates", label: "Certificates" },
             ].map((t) => (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`px-5 py-2 text-sm font-medium transition-colors ${
-                  activeTab === t.key
+                className={`px-5 py-2 text-sm font-medium transition-colors ${activeTab === t.key
                     ? "border-b-2 border-blue-600 text-blue-600"
                     : "text-gray-500 hover:text-gray-700"
-                }`}
+                  }`}
               >
                 {t.label}
               </button>
@@ -265,6 +264,8 @@ export default function TDSCompliance() {
             <h3 className="text-sm font-medium text-green-700 mb-2">Total TDS Deposited</h3>
             <p className="text-3xl font-bold text-green-900">{formatCurrency(initialTDSData.totalTDSDeposited)}</p>
             <p className="text-xs text-green-600 mt-1">Deposited to government</p>
+            <p className="text-xs text-green-600 mt-1">Deposited to government</p>
+
           </div>
 
           <div className="bg-linear-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
@@ -403,9 +404,9 @@ export default function TDSCompliance() {
         {/* Challans Tab */}
         {activeTab === "challans" && (
           <>
-          <ChallansTab />
+            <ChallansTab />
           </>
-          
+
         )}
 
 

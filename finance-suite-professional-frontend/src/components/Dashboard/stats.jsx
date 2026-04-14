@@ -127,16 +127,16 @@ export default function Stats() {
 
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-5 lg:gap-6">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (
             <div
               key={idx}
               title={stat.tooltip || ""}
-              className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+              className="min-w-0 bg-white rounded-xl p-4 sm:p-5 border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden h-full"
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between gap-3 mb-4 min-w-0">
                 <div
                   className={`p-3 rounded-lg ${
                     stat.trend === "up"
@@ -154,7 +154,7 @@ export default function Stats() {
                         ? "text-orange-600"
                         : "text-blue-600"
                     }`}
-                    size={24}
+                    size={22}
                   />
                 </div>
                 <span
@@ -164,13 +164,17 @@ export default function Stats() {
                       : stat.trend === "warning"
                       ? "text-orange-600"
                       : "text-gray-600"
-                  }`}
+                  } max-w-[60%] text-right wrap-break-word leading-tight`}
                 >
                   {stat.change}
                 </span>
               </div>
-              <h3 className="text-gray-500 text-sm font-medium mb-1">{stat.label}</h3>
-              <p className="text-xl font-bold text-gray-800 break-all leading-tight">{stat.value}</p>
+              <h3 className="text-gray-500 text-sm font-medium mb-1 leading-tight wrap-break-word">
+                {stat.label}
+              </h3>
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 wrap-break-word leading-tight tabular-nums">
+                {stat.value}
+              </p>
             </div>
           );
         })}

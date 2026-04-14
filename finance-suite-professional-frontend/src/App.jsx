@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Loader from "./shared/Loader/loader";
 import { useSelector, useDispatch } from "react-redux";
 import { authSelector, verifyToken, fetchUserProfile } from "./ReduxApi/auth";
+import { forceLogout, getTokenExpiryMs } from "./utils/axiosInstance";
 import { canRead, Module } from "./utils/permissions";
 import Forbidden from "./pages/Forbidden";
 
@@ -65,6 +66,26 @@ export default function App() {
       dispatch(fetchUserProfile());
     }
   }, [dispatch, isAuthenticated, token, isLoading, user]);
+
+  // Auto logout when the token's actual expiry time is reached.
+  useEffect(() => {
+    if (!token) return;
+
+    const expiryMs = getTokenExpiryMs(token);
+    if (!expiryMs) return;
+
+    const remaining = expiryMs - Date.now();
+    if (remaining <= 0) {
+      forceLogout();
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      forceLogout();
+    }, remaining);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [token]);
 
 
 

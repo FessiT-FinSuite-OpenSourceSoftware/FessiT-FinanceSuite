@@ -14,6 +14,11 @@ let failedQueue = [];
 let _store = null;
 let _isLoggingOut = false;
 
+const clearAuthHeaders = () => {
+  delete axiosInstance.defaults.headers.common.Authorization;
+  delete axios.defaults.headers.common.Authorization;
+};
+
 export const injectStore = (store) => {
   _store = store;
 };
@@ -31,6 +36,9 @@ export const toastError = (error) => {
 export const forceLogout = () => {
   if (_isLoggingOut) return;
   _isLoggingOut = true;
+  isRefreshing = false;
+  failedQueue = [];
+  clearAuthHeaders();
   localStorage.clear();
   if (_store) {
     const { clearAuth } = require("../ReduxApi/auth");
@@ -39,18 +47,23 @@ export const forceLogout = () => {
   toast.info("Session expired. Please log in again.");
   setTimeout(() => {
     _isLoggingOut = false;
-    window.location.href = "/login";
+    window.location.replace("/");
   }, 1500);
 };
 
 // Proactively check token expiry by decoding JWT exp claim
-const isTokenExpired = (token) => {
+export const getTokenExpiryMs = (token) => {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.exp * 1000 < Date.now();
+    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
   } catch {
-    return true;
+    return null;
   }
+};
+
+export const isTokenExpired = (token) => {
+  const expiryMs = getTokenExpiryMs(token);
+  return !expiryMs || expiryMs <= Date.now();
 };
 
 // Check on tab focus — catches the case where user leaves and comes back

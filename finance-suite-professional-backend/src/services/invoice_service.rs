@@ -5,6 +5,7 @@ use crate::{
     repository::{
         invoice_repository::InvoiceRepository,
         organisation_repository::OrganisationRepository,
+        product_repository::ProductRepository,
         user_repository::UserRepository,
     },
 };
@@ -14,6 +15,7 @@ pub struct InvoiceService {
     repo: Arc<InvoiceRepository>,
     org_repo: Arc<OrganisationRepository>,
     user_repo: Arc<UserRepository>,
+    product_repo: Arc<ProductRepository>,
 }
 
 impl InvoiceService {
@@ -23,11 +25,13 @@ impl InvoiceService {
         user_repo: UserRepository,
         _expense_repo: crate::repository::expense_repository::ExpenseRepository,
         _general_expense_repo: crate::repository::general_expense_repository::GeneralExpenseRepository,
+        product_repo: ProductRepository,
     ) -> Self {
         Self {
             repo: Arc::new(repo),
             org_repo: Arc::new(org_repo),
             user_repo: Arc::new(user_repo),
+            product_repo: Arc::new(product_repo),
         }
     }
 
@@ -82,6 +86,19 @@ impl InvoiceService {
         
         let created = self.repo.create_invoice(invoice).await?;
         log::info!("Invoice created successfully with ID: {:?}", created.id);
+
+        // Increment sold_stocks for each item that has a product_id
+        for item in &created.items {
+            if let Some(pid) = &item.product_id {
+                let qty = item.hours.parse::<f64>().unwrap_or(0.0);
+                if qty > 0.0 {
+                    if let Err(e) = self.product_repo.add_sold_stocks(pid, qty).await {
+                        log::error!("Failed to update sold_stocks for product {}: {}", pid, e);
+                    }
+                }
+            }
+        }
+
         Ok(created)
     }
 
@@ -98,6 +115,10 @@ impl InvoiceService {
     pub async fn get_invoices_by_company_email(&self, company_email: &str) -> anyhow::Result<Vec<Invoice>> {
         let invoices = self.repo.get_invoices_by_company_email(company_email).await?;
         Ok(invoices)
+    }
+
+    pub async fn get_invoices_by_customer(&self, customer_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Vec<Invoice>> {
+        Ok(self.repo.get_invoices_by_customer(customer_id).await?)
     }
 
     pub async fn get_invoices_by_org_or_email(&self, org_id: &mongodb::bson::oid::ObjectId, company_email: &str) -> anyhow::Result<Vec<Invoice>> {

@@ -19,7 +19,7 @@ function ProjectModal({ onSave, onClose }) {
     onSave(form);
   };
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-semibold text-gray-800">Add Project</h3>
@@ -131,7 +131,8 @@ export default function ViewCustomer() {
               activeTab === "projects" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            Projects ({customer.projects.length > 0 && <span className="">{customer.projects.length}</span>})
+            Projects
+             {/* ({customer.projects.length > 0 && <span className="">{customer.projects.length}</span>}) */}
           </button>
         </div>
 

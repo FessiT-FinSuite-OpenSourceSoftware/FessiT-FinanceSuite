@@ -70,6 +70,9 @@ pub struct InvoiceItem {
     #[serde(default)]
     pub description: String,
 
+    #[serde(rename = "ProductId")]
+    pub product_id: Option<ObjectId>,
+
     #[serde(default)]
     pub hours: String,
 
@@ -207,6 +210,10 @@ pub struct Invoice {
 
     #[serde(default)]
     pub status: InvoiceStatus,
+
+    // Customer reference
+    #[serde(rename = "customerId", skip_serializing_if = "Option::is_none")]
+    pub customer_id: Option<ObjectId>,
 
     // Organisation reference
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]

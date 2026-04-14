@@ -67,6 +67,10 @@ impl InvoiceRepository {
         Ok(invoices)
     }
 
+    pub async fn get_invoices_by_customer(&self, customer_id: &ObjectId) -> Result<Vec<Invoice>, MongoError> {
+        self.fetch_many(doc! { "customerId": customer_id }).await
+    }
+
     pub async fn get_invoices_by_org_or_email(&self, org_id: &ObjectId, company_email: &str) -> Result<Vec<Invoice>, MongoError> {
         log::info!("🔍 Filtering invoices by organisationId: {} OR company_email: {}", org_id, company_email);
         let filter = doc! { "$or": [{ "organisationId": org_id }, { "company_email": company_email }] };

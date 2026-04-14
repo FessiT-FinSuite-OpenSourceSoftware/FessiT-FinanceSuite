@@ -133,4 +133,11 @@ impl ProductRepository {
         }
         self.get_by_id(id).await
     }
+
+    pub async fn add_sold_stocks(&self, oid: &ObjectId, quantity: f64) -> Result<(), MongoError> {
+        self.raw_collection
+            .update_one(doc! { "_id": oid }, doc! { "$inc": { "sold_stocks": quantity } }, None)
+            .await?;
+        Ok(())
+    }
 }

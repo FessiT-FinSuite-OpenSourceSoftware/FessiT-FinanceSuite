@@ -96,7 +96,13 @@ async fn main() -> std::io::Result<()> {
     let general_expense_repository = GeneralExpenseRepository::new(general_expense_collection);
     let general_expense_service = GeneralExpenseService::new(general_expense_repository.clone(), user_repository.clone());
 
-    let invoice_service = InvoiceService::new(invoice_repository, organisation_repository.clone(), user_repository.clone(), expense_repository, general_expense_repository);
+    // 🔹 Products (created before InvoiceService so it can be injected)
+    let product_collection = db_client.get_product_collection();
+    let product_repository = ProductRepository::new(product_collection);
+    let product_service = ProductService::new(product_repository.clone(), user_repository.clone());
+    product_service.ensure_indexes().await.expect("❌ Failed to create product indexes");
+
+    let invoice_service = InvoiceService::new(invoice_repository, organisation_repository.clone(), user_repository.clone(), expense_repository, general_expense_repository, product_repository);
 
     // Challans
     let challan_collection = db_client.get_challan_collection();
@@ -106,10 +112,6 @@ async fn main() -> std::io::Result<()> {
     let category_repository = CategoryRepository::new(category_collection);
     let category_service = CategoryService::new(category_repository, user_repository.clone());
     log::info!("Starting server at http://{}:{}", host, port);
-    let product_collection = db_client.get_product_collection();
-    let product_repository = ProductRepository::new(product_collection);
-    let product_service = ProductService::new(product_repository, user_repository.clone());
-    product_service.ensure_indexes().await.expect("❌ Failed to create product indexes");
 
     HttpServer::new(move || {
         let cors = Cors::permissive();

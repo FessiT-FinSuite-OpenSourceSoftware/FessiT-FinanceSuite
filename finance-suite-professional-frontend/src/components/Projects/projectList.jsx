@@ -66,8 +66,8 @@ function ProjectModal({ project, customers, existingProjects, onSave, onClose })
             {errors.projectOwner && <p className="text-xs text-red-600 mt-1">{errors.projectOwner}</p>}
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Owner Email</label>
-            <input type="email" className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter owner email" value={form.owner_email || ''} onChange={e => setForm(p => ({ ...p, owner_email: e.target.value }))} />
+            <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+            <input type="email" className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter email" value={form.owner_email || ''} onChange={e => setForm(p => ({ ...p, owner_email: e.target.value }))} />
             {errors.owner_email && <p className="text-xs text-red-600 mt-1">{errors.owner_email}</p>}
           </div>
           <div>

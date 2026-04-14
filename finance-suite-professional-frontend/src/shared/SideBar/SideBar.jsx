@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
-import { authSelector, logoutUser } from "../../ReduxApi/auth";
+import { authSelector, logoutUser, clearAuth } from "../../ReduxApi/auth";
 import { canRead, Module } from "../../utils/permissions";
 import {
   FileText,
@@ -36,6 +36,8 @@ export default function SideBar({ component }) {
   const nav = useNavigate();
   const modalRef = useRef(null);
   const bellRef = useRef(null);
+  const userMenuRef = useRef(null);
+  const userMenuTriggerRef = useRef(null);
   const mainRef = useRef(null);
   
   // Get user data from Redux
@@ -57,9 +59,16 @@ export default function SideBar({ component }) {
     return "User";
   };
 
-  const handleLogout = () => {
-    dispatch(logoutUser());
-    nav("/login");
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutUser()).unwrap();
+    } catch (error) {
+      // If the thunk fails, still clear local auth state so the UI can recover.
+      dispatch(clearAuth());
+    } finally {
+      setShowUserMenu(false);
+      nav("/", { replace: true });
+    }
   };
 
   const allNavigation = [
@@ -146,7 +155,14 @@ export default function SideBar({ component }) {
       ) {
         setShowNotifications(false);
       }
-      setShowUserMenu(false);
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target) &&
+        userMenuTriggerRef.current &&
+        !userMenuTriggerRef.current.contains(event.target)
+      ) {
+        setShowUserMenu(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -158,8 +174,8 @@ export default function SideBar({ component }) {
     <div className="flex h-screen overflow-hidden w-screen bg-gray-50">
       {/* Sidebar */}
       <div
-        className={`${sidebarOpen ? "w-64" : "w-24"
-          } transition-all duration-300 bg-white border-r border-gray-200 overflow-hidden flex h-full flex-col`}
+        className={`${sidebarOpen ? "w-64 " : "w-24"
+          } transition-all duration-300 bg-white border-r border-gray-200 flex h-screen flex-col`}
       >
         <div className="shrink-0 p-4 border-b border-gray-200 h-22 flex justify-between items-center">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -188,15 +204,19 @@ export default function SideBar({ component }) {
             </div>
 
             {/* Text content - only visible when sidebar is open */}
-            {sidebarOpen && (
-              <div className="flex-1 min-w-0">
-                <h1 className="text-base font-bold text-indigo-600 leading-tight">
+            <div
+              className={`min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${
+                sidebarOpen ? "max-w-[180px] opacity-100 translate-x-0" : "max-w-0 opacity-0 -translate-x-2"
+              }`}
+            >
+              <div className="min-w-[180px]">
+                <h1 className="text-base font-bold text-indigo-600 leading-tight whitespace-nowrap">
                   Financial Suite
                 </h1>
-                <p className="text-[11px] text-gray-500 mt-0.5">by FessiT Solutions</p>
+                <p className="text-[11px] text-gray-500 mt-0.5 whitespace-nowrap">by FessiT Solutions</p>
 
                 {/* Made in India indicator */}
-                <div className="flex items-center gap-1.5 mt-1.5">
+                <div className="flex items-center gap-1.5 mt-1.5 whitespace-nowrap">
                   <div className="flex gap-0.5">
                     <div className="w-1 h-3 bg-orange-500 rounded-sm"></div>
                     <div className="w-1 h-3 bg-white border border-gray-300 rounded-sm"></div>
@@ -207,7 +227,7 @@ export default function SideBar({ component }) {
                   </span>
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Toggle button */}
@@ -229,20 +249,20 @@ export default function SideBar({ component }) {
             )}
           </div>
         </div>
-        <nav className="sidebar-scrollbar flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
+        <nav className="sidebar-scrollbar flex-1 overflow-y-auto space-y-1/2 bg-gray-50">
           {navigation?.map((item) => {
             const Icon = item.icon;
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavigate(item?.id)}
-                className={`w-full flex items-center  rounded-lg transition-colors ${(item.id === "dashboard" && location.pathname === "/") || location.pathname.includes(`/${item.id}`)
+                className={`w-full flex items-center rounded-lg transition-colors ${(item.id === "dashboard" && location.pathname === "/") || location.pathname.includes(`/${item.id}`)
                     ? "bg-indigo-50 text-indigo-600 font-medium"
-                    : "text-gray-700 hover:bg-gray-50"
-                  } sider-button ${sidebarOpen ? "py-3 px-4 space-x-3" : ""}`}
+                    : "text-gray-600 hover:bg-gray-100"
+                  } sider-button ${sidebarOpen ? "px-4 py-3 space-x-3 justify-start" : "py-4 justify-center"}`}
                 title={item.label}
               >
-                <Icon size={20} />
+                <Icon size={20} className={`${sidebarOpen ? "shrink-0" : "mx-auto"} transition-transform duration-200`} />
                 <span className={`${sidebarOpen ? "block" : "hidden"}`}>
                   {item.label}
                 </span>
@@ -314,7 +334,7 @@ export default function SideBar({ component }) {
                 </button>
 
                 {/* User Name and Position */}
-                <div className="relative">
+                <div ref={userMenuTriggerRef} className="relative">
                   <div
                     className="flex items-center gap-3 cursor-pointer"
                     onClick={() => setShowUserMenu((p) => !p)}
@@ -328,7 +348,10 @@ export default function SideBar({ component }) {
                     </div>
                   </div>
                   {showUserMenu && (
-                    <div className="absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-50 overflow-hidden">
+                    <div
+                      ref={userMenuRef}
+                      className="absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-50 overflow-hidden"
+                    >
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"

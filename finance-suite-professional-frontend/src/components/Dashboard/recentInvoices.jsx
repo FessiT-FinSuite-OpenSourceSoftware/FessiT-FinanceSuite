@@ -62,9 +62,9 @@ export default function RecentInvoices() {
     const total = Number(inv?.total) || 0;
     const isIntl = inv?.invoice_type?.trim().toLowerCase() === "international";
     if (!isIntl) return total;
-    const cr  = Number(inv.conversionRate  || inv.conversion_rate)  || 0;
+    const cr = Number(inv.conversionRate || inv.conversion_rate) || 0;
     const acr = Number(inv.approxconversionRate) || 0;
-    const tcr = Number(inv.tempconversionRate)   || 0;
+    const tcr = Number(inv.tempconversionRate) || 0;
     const rate = cr > 0 ? cr : acr > 0 ? acr : tcr > 0 ? tcr : 1;
     return total * rate;
   };
@@ -72,11 +72,11 @@ export default function RecentInvoices() {
   /* Status Colors */
   const getStatusColor = (status) => {
     switch (status) {
-      case "Paid":    return "bg-green-100 text-green-800 border-green-200";
-      case "Issued":  return "bg-blue-100 text-blue-800 border-blue-200";
+      case "Paid": return "bg-green-100 text-green-800 border-green-200";
+      case "Issued": return "bg-blue-100 text-blue-800 border-blue-200";
       case "On Hold": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "New":     return "bg-gray-100 text-gray-800 border-gray-200";
-      default:        return "bg-gray-100 text-gray-800 border-gray-200";
+      case "New": return "bg-gray-100 text-gray-800 border-gray-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
@@ -106,7 +106,7 @@ export default function RecentInvoices() {
   };
 
   return (
-    <div>
+    <div className="mt-2">
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
@@ -114,7 +114,7 @@ export default function RecentInvoices() {
               Recent Invoices
             </h3>
 
-            <button className="text-indigo-600 hover:text-indigo-700 text-sm cursor-pointer font-medium" onClick={()=>{
+            <button className="text-indigo-600 hover:text-indigo-700 text-sm cursor-pointer font-medium" onClick={() => {
               nav(`/invoices`)
             }}>
               View All
@@ -134,14 +134,18 @@ export default function RecentInvoices() {
                 placeholder="Search invoices..."
                 value={searchTerm}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-1/4 pl-10 pr-4 py-2 
+             border border-gray-300 rounded-lg 
+             bg-white text-gray-900 
+             placeholder-gray-500
+             focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
+            {/* <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
               <Filter size={18} />
               <span>Filter</span>
-            </button>
+            </button> */}
           </div>
         </div>
 

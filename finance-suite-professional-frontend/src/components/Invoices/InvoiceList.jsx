@@ -276,7 +276,7 @@ export default function InvoiceList() {
                 }}
                 className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
               >
-                Domestic Invoice
+                🏠 Domestic
               </button>
               <button
                 onClick={() => {
@@ -285,7 +285,7 @@ export default function InvoiceList() {
                 }}
                 className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
               >
-                International Invoice
+                🌍 International
               </button>
             </div>
           )}

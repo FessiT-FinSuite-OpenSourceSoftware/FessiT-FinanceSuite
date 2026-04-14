@@ -66,6 +66,7 @@ export const logoutUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       localStorage.clear();
+      delete axiosInstance.defaults.headers.common.Authorization;
       return null;
     } catch (error) {
       const message = error.response?.data?.message || error.message || "Logout failed";
@@ -172,9 +173,11 @@ const authSlice = createSlice({
       state.token = null;
       state.refreshToken = null;
       state.isAuthenticated = false;
+      state.isLoading = false;
       state.error = null;
       state.loginAttempts = 0;
       state.lastLoginAttempt = null;
+      delete axiosInstance.defaults.headers.common.Authorization;
       localStorage.clear();
     },
     

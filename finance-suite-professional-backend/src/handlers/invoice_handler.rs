@@ -7,7 +7,7 @@ use serde_json::json;
 use serde::Deserialize;
 
 use crate::{
-    models::invoice::{CreateInvoiceRequest, UpdateInvoiceRequest},
+    models::invoice::{CreateInvoiceRequest, Invoice, UpdateInvoiceRequest},
     services::{ExpenseService, GeneralExpenseService, IncomingInvoiceService, InvoiceService},
     utils::auth::Claims,
     utils::permissions::{check_permission, Module, PermissionAction, create_permission_error},
@@ -16,6 +16,23 @@ use crate::{
 #[derive(Deserialize)]
 struct OrgEmailQuery {
     org_email: String,
+}
+
+async fn invoice_belongs_to_user_org(
+    service: &web::Data<InvoiceService>,
+    invoice: &Invoice,
+    org_id: mongodb::bson::oid::ObjectId,
+) -> actix_web::Result<bool> {
+    if invoice.organisation_id == Some(org_id) {
+        return Ok(true);
+    }
+
+    let org = service
+        .get_organisation_by_id(&org_id.to_string())
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    Ok(invoice.company_email == org.email)
 }
 
 /// POST /api/v1/invoices
@@ -234,12 +251,21 @@ pub async fn update_invoice(
 
     let id = id.into_inner();
 
+    let org_id = user.organisation_id
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
+
     // Fetch existing invoice to check its current status
     let existing = service
         .get_invoice_by_id(&id)
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorNotFound(json!({ "message": "Invoice not found" })))?;
+
+    if !invoice_belongs_to_user_org(&service, &existing, org_id).await? {
+        return Ok(HttpResponse::NotFound().json(json!({
+            "message": "Invoice not found"
+        })));
+    }
 
     // Only admins can modify a Paid invoice
     if existing.status == crate::models::invoice::InvoiceStatus::Paid && !user.is_admin {
@@ -248,8 +274,13 @@ pub async fn update_invoice(
         })));
     }
 
+    let mut updated_invoice = req.into_inner();
+    updated_invoice.organisation_id = existing.organisation_id;
+    updated_invoice.company_email = existing.company_email.clone();
+    updated_invoice.invoice_number = existing.invoice_number.clone();
+
     let maybe_updated = service
-        .update_invoice(&id, req.into_inner())
+        .update_invoice(&id, updated_invoice)
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
@@ -288,6 +319,21 @@ pub async fn delete_invoice(
 
     let id = id.into_inner();
 
+    let existing = service
+        .get_invoice_by_id(&id)
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .ok_or_else(|| actix_web::error::ErrorNotFound(json!({ "message": "Invoice not found" })))?;
+
+    let org_id = user.organisation_id
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
+
+    if !invoice_belongs_to_user_org(&service, &existing, org_id).await? {
+        return Ok(HttpResponse::NotFound().json(json!({
+            "message": "Invoice not found"
+        })));
+    }
+
     let deleted = service
         .delete_invoice(&id)
         .await
@@ -300,6 +346,32 @@ pub async fn delete_invoice(
             "message": "Invoice not found"
         })))
     }
+}
+
+/// GET /api/v1/invoices/customer/{customer_id}
+#[get("/invoices/customer/{customer_id}")]
+pub async fn list_invoices_by_customer(
+    service: web::Data<InvoiceService>,
+    customer_id: Path<String>,
+    http_req: HttpRequest,
+) -> actix_web::Result<impl Responder> {
+    let claims = http_req.extensions().get::<Claims>().cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
+
+    let user = service.get_user_permissions(&claims.sub).await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+
+    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+
+    let cid = mongodb::bson::oid::ObjectId::parse_str(&customer_id.into_inner())
+        .map_err(|_| actix_web::error::ErrorBadRequest("Invalid customer ID"))?;
+
+    let invoices = service.get_invoices_by_customer(&cid).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok().json(invoices))
 }
 
 /// GET /api/v1/invoices/gst-summary
@@ -408,6 +480,7 @@ pub async fn get_gst_summary(
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_next_invoice_number)
         .service(get_gst_summary)
+        .service(list_invoices_by_customer)
         .service(create_invoice)
         .service(list_invoices)
         .service(get_invoice)

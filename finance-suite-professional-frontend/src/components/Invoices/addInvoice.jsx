@@ -9,10 +9,12 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector } from "../../ReduxApi/organisation";
 import { createInvoice, fetchNextInvoiceNumber, invoiceSelector } from "../../ReduxApi/invoice";
 import { fetchProductData, productSelector } from "../../ReduxApi/product";
+import { fetchCustomerData, customerSelector } from "../../ReduxApi/customer";
 
 const createEmptyInvoiceItem = () => ({
   description: "",
   isManual: false,
+  ProductId: "",
   hours: "",
   rate: "",
   cgst: { cgstPercent: "", cgstAmount: "" },
@@ -28,6 +30,7 @@ const getInitialInvoiceData = (invoiceType = "domestic") => ({
   company_address: "",
   company_phone: "",
   company_email: "",
+  customerId: "",
   lut_no: "",
   iec_no: "",
   invoice_number: "",
@@ -62,6 +65,7 @@ export default function AddInvoice() {
   const { currentOrganisation } = useSelector(orgamisationSelector);
   const { nextInvoiceNumber } = useSelector(invoiceSelector);
   const { productData } = useSelector(productSelector);
+  const { customersData } = useSelector(customerSelector);
 
   const dispatch = useDispatch();
 
@@ -82,6 +86,10 @@ export default function AddInvoice() {
 
   useEffect(() => {
     dispatch(fetchProductData());
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchCustomerData());
   }, [dispatch]);
 
   useEffect(() => {
@@ -119,9 +127,56 @@ export default function AddInvoice() {
   const [showCustomCurrency, setShowCustomCurrency] = useState(false);
   const [customCurrency, setCustomCurrency] = useState("");
   const [itemSearchQueries, setItemSearchQueries] = useState([""]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
   const isDomestic = invoiceData.invoice_type === "domestic";
   const isInternational = invoiceData.invoice_type === "international";
+
+  const getCustomerId = (customer) =>
+    customer?._id?.$oid || customer?._id || customer?.id || "";
+
+  const getCustomerAddress = (customer) =>
+    customer?.addresses?.find((addr) => addr?.value)?.value ||
+    customer?.addresses?.[0]?.value ||
+    "";
+
+  const applyCustomerDetails = (customer) => {
+    if (!customer) return;
+
+    const displayName = customer.companyName || customer.customerName || "";
+    const address = getCustomerAddress(customer);
+    const gstin = customer.gstIN || "";
+    const customerId = getCustomerId(customer);
+
+    setInvoiceData((prev) => ({
+      ...prev,
+      customerId,
+      billcustomer_name: displayName,
+      billcustomer_address: address,
+      billcustomer_gstin: gstin,
+      shipcustomer_name: displayName,
+      shipcustomer_address: address,
+      shipcustomer_gstin: gstin,
+    }));
+  };
+
+  const handleCustomerInputChange = (e) => {
+    const value = e.target.value;
+    setCustomerSearchQuery(value);
+    setShowCustomerDropdown(true);
+    setSelectedCustomerId("");
+  };
+
+  const handleCustomerItemSelect = (customer) => {
+    const id = getCustomerId(customer);
+    const displayName = customer?.companyName || customer?.customerName || "";
+    setSelectedCustomerId(id);
+    setCustomerSearchQuery(displayName);
+    applyCustomerDetails(customer);
+    setShowCustomerDropdown(false);
+  };
 
   // ✅ Keep invoice_type in sync if URL changes (e.g., different query param)
   useEffect(() => {
@@ -141,6 +196,13 @@ export default function AddInvoice() {
       }));
     }
   }, [location.search]);
+
+  useEffect(() => {
+    if (!selectedCustomerId || !Array.isArray(customersData) || customersData.length === 0) return;
+    const customer = customersData.find((item) => getCustomerId(item) === selectedCustomerId);
+    applyCustomerDetails(customer);
+    setCustomerSearchQuery(customer?.companyName || customer?.customerName || "");
+  }, [customersData, selectedCustomerId]);
 
   useEffect(() => {
     if (currentOrganisation) {
@@ -518,16 +580,34 @@ export default function AddInvoice() {
     setInvoiceData({ ...invoiceData, items: updatedItems });
   };
 
-  const handleItemProductSelect = (index, selectedName) => {
+  const handleItemProductSelect = (index, selectedProduct) => {
     const updatedItems = [...invoiceData.items];
     const item = { ...updatedItems[index] };
 
-    if (selectedName === "__manual__") {
+    if (selectedProduct === "__manual__") {
       item.description = "";
       item.isManual = true;
+      item.ProductId = "";
     } else {
+      const selectedName =
+        typeof selectedProduct === "string"
+          ? selectedProduct
+          : selectedProduct?.name || "";
+      const selectedRate =
+        typeof selectedProduct === "object"
+          ? selectedProduct?.salePrice ?? selectedProduct?.sale_price ?? ""
+          : "";
+      const selectedProductId =
+        typeof selectedProduct === "object"
+          ? selectedProduct?._id?.$oid || selectedProduct?._id || selectedProduct?.id || ""
+          : "";
+
       item.description = selectedName;
       item.isManual = false;
+      item.ProductId = selectedProductId;
+      if (selectedRate !== "") {
+        item.rate = String(selectedRate);
+      }
     }
 
     updatedItems[index] = item;
@@ -1044,6 +1124,57 @@ export default function AddInvoice() {
             Customer Details
           </h2>
           <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="relative col-span-2">
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Select Customer
+              </label>
+              <div className="relative w-full sm:w-1/2 lg:w-1/3">
+                <input
+                  type="text"
+                  placeholder="Search or type customer name..."
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400"
+                  value={customerSearchQuery}
+                  onChange={handleCustomerInputChange}
+                  onFocus={() => setShowCustomerDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 150)}
+                />
+
+                {showCustomerDropdown && customerSearchQuery && (
+                  <div className="absolute z-50 top-full left-0 w-full bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                    {customersData
+                      ?.filter((customer) => {
+                        const label = `${customer?.companyName || ""} ${customer?.customerName || ""} ${customer?.gstIN || ""}`.toLowerCase();
+                        return label.includes(customerSearchQuery.toLowerCase());
+                      })
+                      .map((customer) => {
+                        const id = getCustomerId(customer);
+                        const label = customer?.companyName || customer?.customerName || "Unnamed Customer";
+                        return (
+                          <div
+                            key={id || label}
+                            className="px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
+                            onMouseDown={() => handleCustomerItemSelect(customer)}
+                          >
+                            <span className="font-medium">{label}</span>
+                            {customer?.gstIN && (
+                              <span className="text-xs text-gray-400 ml-2">
+                                {customer.gstIN}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    {customersData?.filter((customer) => {
+                      const label = `${customer?.companyName || ""} ${customer?.customerName || ""} ${customer?.gstIN || ""}`.toLowerCase();
+                      return label.includes(customerSearchQuery.toLowerCase());
+                    })?.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-gray-400">No customers found</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Bill To */}
             <div>
               <h3 className="font-semibold text-gray-700 mb-2 text-sm">
@@ -1191,7 +1322,7 @@ export default function AddInvoice() {
                     rowSpan="2"
                     className="border border-gray-300 px-3 py-2 text-center"
                   >
-                    Hours
+                    Hours/Qty
                   </th>
                   <th
                     rowSpan="2"
@@ -1319,9 +1450,14 @@ export default function AddInvoice() {
                                   <div
                                     key={p._id || p.id || p.name}
                                     className="px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
-                                    onMouseDown={() => handleItemProductSelect(index, p.name)}
+                                    onMouseDown={() => handleItemProductSelect(index, p)}
                                   >
                                     <span className="font-medium">{p.name}</span>
+                                    {(p.salePrice ?? p.sale_price) !== undefined && (p.salePrice ?? p.sale_price) !== null && (
+                                      <span className="text-xs text-gray-400 ml-2">
+                                        {formatNumber(p.salePrice ?? p.sale_price, invoiceData.currency_type)}
+                                      </span>
+                                    )}
                                     {(p.hsn || p.item_code || p.itemCode) && (
                                       <span className="text-xs text-gray-400 ml-2">
                                         {[p.hsn, p.item_code || p.itemCode].filter(Boolean).join(" · ")}

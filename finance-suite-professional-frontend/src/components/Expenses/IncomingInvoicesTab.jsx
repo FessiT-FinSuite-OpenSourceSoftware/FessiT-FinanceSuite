@@ -111,8 +111,8 @@ export default function IncomingInvoicesTab() {
             </button>
             {showTypeMenu && (
               <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                <button onClick={() => { setShowTypeMenu(false); nav("/expenses/addIncomingInvoice?type=domestic"); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">🏠 Domestic Bill</button>
-                <button onClick={() => { setShowTypeMenu(false); nav("/expenses/addIncomingInvoice?type=international"); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">🌍 International Bill</button>
+                <button onClick={() => { setShowTypeMenu(false); nav("/expenses/addIncomingInvoice?type=domestic"); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">🏠 Domestic</button>
+                <button onClick={() => { setShowTypeMenu(false); nav("/expenses/addIncomingInvoice?type=international"); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">🌍 International</button>
               </div>
             )}
           </div>

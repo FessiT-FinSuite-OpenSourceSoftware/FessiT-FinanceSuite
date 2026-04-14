@@ -26,7 +26,7 @@ function ProjectModal({ project, existingProjects, onSave, onClose }) {
     onSave(form);
   };
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-semibold text-gray-800">{project ? "Edit Project" : "Add Project"}</h3>
@@ -279,7 +279,7 @@ export default function CustomerCreation() {
     if (!customer.country.trim()) newErrors.country = "Country is required";
     if (!customer.companyName.trim())
       newErrors.companyName = "Company name is required";
-    if (!customer.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
+    // if (!customer.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
     if (customer.addresses.every((addr) => !addr.value.trim()))
       newErrors.address = "At least one address is required";
     if (!customer.phone.trim()) newErrors.phone = "Phone number is required";
@@ -413,7 +413,7 @@ export default function CustomerCreation() {
           {/* GSTIN */}
           <div className="relative">
             <label className="block text-gray-700 font-medium mb-1">
-              GSTIN *
+              GSTIN 
             </label>
             <input
               type="text"
