@@ -249,7 +249,11 @@ pub struct Invoice {
     // Organisation reference
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_object_id", default)]
     pub organisation_id: Option<ObjectId>,
+
+    #[serde(rename = "service_type_id", alias = "serviceTypeId", alias = "serviceId", skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_object_id", default)]
+    pub service_type_id: Option<ObjectId>,
 }
+
 
 /// For creation (POST /invoices)
 pub type CreateInvoiceRequest = Invoice;

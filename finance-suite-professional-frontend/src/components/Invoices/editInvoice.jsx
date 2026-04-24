@@ -32,6 +32,8 @@ const initialInvoiceData = {
   shipcustomer_address: "",
   shipcustomer_gstin: "",
   subject: "",
+  service: "",
+  serviceId: "",
   items: [
     {
       description: "",
@@ -61,6 +63,9 @@ export default function EditInvoice() {
   const [errors, setErrors] = useState({});
   const [selectedCountry, setSelectedCountry] = useState(countries[0]);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [serviceOptions, setServiceOptions] = useState([]);
+  const [serviceLoading, setServiceLoading] = useState(false);
+  const [serviceFetchError, setServiceFetchError] = useState("");
   const nav = useNavigate();
   const { id } = useParams();
 
@@ -172,6 +177,8 @@ export default function EditInvoice() {
         setInvoiceData({
           ...initialInvoiceData,
           ...data,
+          serviceId: data.serviceId || data.service || "",
+          service: data.service || data.serviceId || "",
           items: normalizedItems,
         });
       } catch (err) {
@@ -182,6 +189,49 @@ export default function EditInvoice() {
 
     fetchInvoice();
   }, [id]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      setServiceLoading(true);
+      setServiceFetchError("");
+
+      try {
+        const { data } = await axiosInstance.get("/services");
+        const options = Array.isArray(data)
+          ? data
+              .map((service) => {
+                if (!service) return null;
+
+                if (typeof service === "string") {
+                  return { value: service, label: service };
+                }
+
+                const value =
+                  service.id ||
+                  service._id?.$oid ||
+                  service._id ||
+                  service.serviceName ||
+                  service.name ||
+                  service.value ||
+                  "";
+                const label = service.serviceName || service.name || service.label || value;
+
+                return value ? { value, label } : null;
+              })
+              .filter(Boolean)
+          : [];
+
+        setServiceOptions(options);
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        setServiceFetchError("Unable to load service types");
+      } finally {
+        setServiceLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
 
   const handleSelect = (e) => {
     const selected = countries.find((c) => c.code === e.target.value);
@@ -234,6 +284,11 @@ export default function EditInvoice() {
     // Prevent changes to disabled fields
     const disabledFields = ['company_name', 'gstIN', 'company_address', 'company_email', 'invoice_number'];
     if (disabledFields.includes(name)) {
+      return;
+    }
+
+    if (name === "serviceId") {
+      setInvoiceData({ ...invoiceData, serviceId: value, service: value });
       return;
     }
 
@@ -885,6 +940,40 @@ export default function EditInvoice() {
                   {inputErrors?.place_of_supply && (
                     <p className="absolute text-[13px]  text-[#f10404]">
                       {inputErrors?.place_of_supply}
+                    </p>
+                  )}
+                </div>
+                <div className="relative">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Service Type
+                </label>
+                <select
+                  name="serviceId"
+                  value={invoiceData.serviceId || invoiceData.service || ""}
+                  onChange={handleChange}
+                  disabled={serviceLoading}
+                  className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 bg-white"
+                >
+                    <option value="">Select service type</option>
+                    {serviceLoading ? (
+                      <option value="" disabled>
+                        Loading services...
+                      </option>
+                    ) : serviceOptions.length > 0 ? (
+                      serviceOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>
+                        No services available
+                      </option>
+                    )}
+                  </select>
+                  {serviceFetchError && (
+                    <p className="absolute text-[13px] text-[#f10404]">
+                      {serviceFetchError}
                     </p>
                   )}
                 </div>

@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { Pencil, Save } from "lucide-react"; // 🖊️ and 💾 icons
 import { useSelector, useDispatch } from "react-redux";
 import { createOrganisation, fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector, updateOrganisationData, clearLoading } from "../../ReduxApi/organisation";
+import ServicesTab from "./ServicesTab";
 import Products from "./products";
 
 
@@ -78,6 +79,25 @@ const initialSettings = {
   cardApiKey: "",
   cashInstructions: "",
   customPaymentName: "",
+  services: [],
+};
+
+const mapServicePayload = (service) => ({
+  _id: service.id || service._id || undefined,
+  serviceName: service.serviceName,
+  serviceDescription: service.serviceDescription,
+  serviceAmount: parseFloat(service.serviceAmount) || 0,
+});
+
+const findDuplicateServiceName = (services) => {
+  const seen = new Set();
+  for (const service of services) {
+    const name = (service?.serviceName || "").trim().toLowerCase();
+    if (!name) continue;
+    if (seen.has(name)) return service.serviceName.trim();
+    seen.add(name);
+  }
+  return null;
 };
 
 export default function SettingsCreation() {
@@ -305,6 +325,12 @@ export default function SettingsCreation() {
 
     setInputErrors({});
 
+    const duplicateServiceName = findDuplicateServiceName(settings.services);
+    if (duplicateServiceName) {
+      toast.error(`Service name "${duplicateServiceName}" must be unique`);
+      return;
+    }
+
     const updateData = {
       organizationName: settings.organizationName,
       companyName: settings.companyName,
@@ -355,7 +381,8 @@ export default function SettingsCreation() {
       new_user_password: settings.newUserPassword,
       new_user_role: settings.newUserRole,
       new_user_status: settings.newUserStatus,
-      permissions: settings.permissions
+      permissions: settings.permissions,
+      services: settings.services.map(mapServicePayload),
     };
 
     console.log('Sending update data:', updateData);
@@ -407,6 +434,12 @@ export default function SettingsCreation() {
 
     //clear error message
     setInputErrors({});
+
+    const duplicateServiceName = findDuplicateServiceName(settings.services);
+    if (duplicateServiceName) {
+      toast.error(`Service name "${duplicateServiceName}" must be unique`);
+      return;
+    }
 
     // Map frontend field names to backend expected field names
     const mappedSettings = {
@@ -463,7 +496,8 @@ export default function SettingsCreation() {
       new_user_password: settings.newUserPassword,
       new_user_role: settings.newUserRole,
       new_user_status: settings.newUserStatus,
-      permissions: settings.permissions
+      permissions: settings.permissions,
+      services: settings.services.map(mapServicePayload),
     };
 
     if (isEditing) {
@@ -587,6 +621,14 @@ export default function SettingsCreation() {
         cardApiKey: currentOrganisation?.cardApiKey || "",
         cashInstructions: currentOrganisation?.cashInstructions || "",
         customPaymentName: currentOrganisation?.customPaymentName || "",
+        // Services
+        services: (currentOrganisation?.services || []).map((service) => ({
+          id: service.id || service._id || undefined,
+          _id: service.id || service._id || undefined,
+          serviceName: service.serviceName || "",
+          serviceDescription: service.serviceDescription || "",
+          serviceAmount: service.serviceAmount ?? "",
+        })),
         // User fields
         newUserName: currentOrganisation?.newUserName || "",
         newUserEmail: currentOrganisation?.newUserEmail || "",
@@ -636,9 +678,10 @@ export default function SettingsCreation() {
               { key: "invoice", label: "Invoice Settings" },
               { key: "tax", label: "Tax Settings" },
               { key: "payment", label: "Payment Methods" },
+                            { key: "services", label: "Services" },
 
               { key: "users", label: "Users & Roles" },
-              // { key: "Items", label: "Items & Categories" },
+              // { key: "services", label: "Services" },
 
             ].map((t) => (
               <button
@@ -704,13 +747,13 @@ export default function SettingsCreation() {
         {/* Form Content - Only show when not loading */}
         {!isLoading && (
           <>
-           {activeTab === "Items" && (
-           <>
-           <div>
-            <Products/>
-           </div>
+            {activeTab === "Items" && (
+              <>
+                <div>
+                  <Products />
+                </div>
 
-           </>
+              </>
             )}
 
             {activeTab === "organization" && (
@@ -1955,6 +1998,12 @@ export default function SettingsCreation() {
               </div> */}
                 </div>
               </>
+            )}
+            {activeTab === "services" && (
+              <ServicesTab
+                services={settings.services}
+                onChange={(updated) => setSettings((p) => ({ ...p, services: updated }))}
+              />
             )}
           </>
         )}

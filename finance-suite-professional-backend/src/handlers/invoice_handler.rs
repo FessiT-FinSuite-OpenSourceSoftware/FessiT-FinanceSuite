@@ -145,6 +145,7 @@ fn merge_invoice_update(existing: &Invoice, mut incoming: Invoice) -> Invoice {
     if incoming.payment_reference.trim().is_empty() { incoming.payment_reference = existing.payment_reference.clone(); }
     if incoming.customer_id.is_none() { incoming.customer_id = existing.customer_id; }
     if incoming.organisation_id.is_none() { incoming.organisation_id = existing.organisation_id; }
+    if incoming.service_type_id.is_none() { incoming.service_type_id = existing.service_type_id; }
     incoming
 }
 
@@ -172,7 +173,7 @@ pub async fn create_invoice(
     let invoice = service.create_invoice(req.into_inner(), &org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    // For a brand-new invoice, previous status is New
+    // For a brand-new invoice, previous status is Ne
     record_ledger_on_transition(&ledger_service, &invoice, &InvoiceStatus::New, user.id.as_ref()).await;
 
     Ok(HttpResponse::Created().json(invoice))

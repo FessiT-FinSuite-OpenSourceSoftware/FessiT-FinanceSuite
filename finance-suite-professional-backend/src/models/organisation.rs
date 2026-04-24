@@ -2,7 +2,7 @@ use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use super::address::Address;
+use super::{address::Address, service::Service};
 
 //
 // ================= ORGANISATION =================
@@ -171,6 +171,12 @@ pub struct Organisation {
     // Estimate sequence tracking
     #[serde(rename = "lastEstimateSequence", default)]
     pub last_estimate_sequence: i32,
+
+    #[serde(rename = "serviceIds", default)]
+    pub service_ids: Vec<ObjectId>,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub services: Vec<Service>,
 }
 
 //
@@ -249,6 +255,8 @@ pub struct CreateOrganisationRequest {
     pub card_api_key: String,
     pub cash_instructions: String,
     pub custom_payment_name: String,
+    #[serde(default)]
+    pub services: Vec<Service>,
 }
 
 //
@@ -321,6 +329,8 @@ pub struct UpdateOrganizationRequest {
     pub card_api_key: Option<String>,
     pub cash_instructions: Option<String>,
     pub custom_payment_name: Option<String>,
+    #[serde(default)]
+    pub services: Option<Vec<Service>>,
 }
 
 //
@@ -356,6 +366,7 @@ pub struct EnabledMethods {
     pub paypal: bool,
     pub cash: bool,
 }
+
 impl Organisation {
     pub fn new(req: CreateOrganisationRequest) -> Self {
         Self {
@@ -420,6 +431,8 @@ impl Organisation {
             custom_payment_name: req.custom_payment_name,
             last_invoice_sequence: 0,
             last_estimate_sequence: 0,
+            service_ids: Vec::new(),
+            services: Vec::new(),
         }
     }
 }

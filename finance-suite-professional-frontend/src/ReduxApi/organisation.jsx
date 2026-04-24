@@ -16,11 +16,39 @@ const normalizeAddress = (address) => {
   }
 }
 
+const normalizeServiceId = (serviceId) => {
+  if (!serviceId) return null
+  if (typeof serviceId === 'string') return serviceId
+  if (typeof serviceId === 'object') {
+    return serviceId.$oid || serviceId.oid || serviceId.id || null
+  }
+  return null
+}
+
+const normalizeService = (service) => {
+  if (!service || typeof service !== 'object') return service
+
+  return {
+    ...service,
+    id: normalizeServiceId(service.id ?? service._id),
+    serviceName: service.serviceName ?? service.service_name ?? '',
+    serviceDescription:
+      service.serviceDescription ?? service.service_description ?? '',
+    serviceAmount:
+      service.serviceAmount ?? service.service_amount ?? '',
+    organisationId:
+      normalizeServiceId(service.organisationId ?? service.organisation_id) ?? null,
+  }
+}
+
 const normalizeOrganisation = (organisation) => {
   if (!organisation || typeof organisation !== 'object') return organisation
 
   const addresses = Array.isArray(organisation.addresses)
     ? organisation.addresses.map(normalizeAddress).filter(Boolean)
+    : []
+  const services = Array.isArray(organisation.services)
+    ? organisation.services.map(normalizeService).filter(Boolean)
     : []
 
   return {
@@ -28,6 +56,12 @@ const normalizeOrganisation = (organisation) => {
     organizationName: organisation.organizationName || organisation.companyName || '',
     companyName: organisation.companyName || organisation.organizationName || '',
     addresses,
+    services,
+    serviceIds: Array.isArray(organisation.serviceIds)
+      ? organisation.serviceIds.map(normalizeServiceId).filter(Boolean)
+      : Array.isArray(organisation.service_ids)
+        ? organisation.service_ids.map(normalizeServiceId).filter(Boolean)
+        : [],
     invoicePrefix: organisation.invoicePrefix ?? organisation.invoice_prefix ?? '',
     startingInvoiceNo:
       organisation.startingInvoiceNo ?? organisation.starting_invoice_no ?? '',

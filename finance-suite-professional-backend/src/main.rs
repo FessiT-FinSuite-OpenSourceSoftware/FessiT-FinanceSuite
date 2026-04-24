@@ -20,14 +20,15 @@ use handlers::{
     configure_cost_center_routes, configure_salary_routes, configure_general_expense_routes,
     configure_challan_routes, configure_category_routes, configure_product_routes,
     configure_estimate_routes, configure_ledger_routes, configure_account_routes,
+    configure_service_routes,
 };
 use repository::{
     CustomerRepository, ExpenseRepository, InvoiceRepository, IncomingInvoiceRepository,
     OrganisationRepository, UserRepository, PurchaseOrderRepository, CostCenterRepository,
     SalaryRepository, GeneralExpenseRepository, ChallanRepository, CategoryRepository, ProductRepository,
-    EstimateRepository, LedgerRepository, AccountRepository,
+    EstimateRepository, LedgerRepository, AccountRepository, ServiceRepository,
 };
-use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService};
+use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService, ServiceService};
 use utils::jwt_middleware::JwtMiddleware;
 
 #[actix_web::main]
@@ -63,7 +64,10 @@ async fn main() -> std::io::Result<()> {
     // 🔹 Organisations
     let organisation_collection = db_client.get_organisation_collection();
     let organisation_repository = OrganisationRepository::new(organisation_collection);
-    let organisation_service = OrganisationService::new(organisation_repository.clone(), user_service.clone());
+    let service_collection = db_client.get_service_collection();
+    let service_repository = ServiceRepository::new(service_collection);
+    let service_service = ServiceService::new(service_repository.clone(), user_repository.clone());
+    let organisation_service = OrganisationService::new(organisation_repository.clone(), service_repository.clone(), user_service.clone());
 
     // 🔹 Invoices
     // Invoices - repository only, service created after all repos
@@ -119,7 +123,15 @@ async fn main() -> std::io::Result<()> {
     let account_service = AccountService::new(account_repository.clone());
     let ledger_service = LedgerService::new(ledger_repository, user_repository.clone(), customer_repository.clone(), account_repository);
 
-    let invoice_service = InvoiceService::new(invoice_repository, organisation_repository.clone(), user_repository.clone(), expense_repository, general_expense_repository, product_repository);
+    let invoice_service = InvoiceService::new(
+        invoice_repository,
+        organisation_repository.clone(),
+        service_repository.clone(),
+        user_repository.clone(),
+        expense_repository,
+        general_expense_repository,
+        product_repository,
+    );
 
     // Challans
     let challan_collection = db_client.get_challan_collection();
@@ -154,6 +166,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(estimate_service.clone()))
             .app_data(web::Data::new(ledger_service.clone()))
             .app_data(web::Data::new(account_service.clone()))
+            .app_data(web::Data::new(service_service.clone()))
             .service(
                 web::scope("/api/v1")
                     .configure(configure_user_routes) // Public: login, refresh
@@ -177,6 +190,7 @@ async fn main() -> std::io::Result<()> {
                             .configure(configure_estimate_routes)
                             .configure(configure_ledger_routes)
                             .configure(configure_account_routes)
+                            .configure(configure_service_routes)
                     )
             )
     })

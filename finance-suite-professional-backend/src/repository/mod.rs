@@ -14,6 +14,7 @@ pub mod product_repository;
 pub mod estimate_repository;
 pub mod ledger_repository;
 pub mod account_repository;
+pub mod service_repository;
 
 pub use customer_repository::CustomerRepository;
 pub use organisation_repository::OrganisationRepository;
@@ -31,3 +32,4 @@ pub use product_repository::ProductRepository;
 pub use estimate_repository::EstimateRepository;
 pub use ledger_repository::LedgerRepository;
 pub use account_repository::AccountRepository;
+pub use service_repository::ServiceRepository;

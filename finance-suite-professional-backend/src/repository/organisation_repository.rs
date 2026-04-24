@@ -299,6 +299,27 @@ impl OrganisationRepository{
 
         Ok(update_organisation)
     }
+
+    pub async fn set_service_ids(&self, id: &str, service_ids: Vec<ObjectId>) -> Result<Organisation, ApiError> {
+        let object_id = ObjectId::parse_str(id)
+            .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
+        let filter = doc! { "_id": object_id };
+        let service_ids_bson = mongodb::bson::to_bson(&service_ids)
+            .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+
+        self.collection
+            .update_one(
+                filter.clone(),
+                doc! { "$set": { "serviceIds": service_ids_bson } },
+                None,
+            )
+            .await?;
+
+        self.collection
+            .find_one(filter, None)
+            .await?
+            .ok_or_else(|| ApiError::NotFound("Organisation not found after service update".to_string()))
+    }
     
     pub async fn delete(&self, id: &str) -> Result<bool, ApiError> {
         let object_id = ObjectId::parse_str(id)

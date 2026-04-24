@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { countries } from "../../shared/countries";
 import { useNavigate, useLocation } from "react-router-dom";
 import { formatNumber, getCurrencySymbol, formatCurrency } from "../../utils/formatNumber";
+import axiosInstance from "../../utils/axiosInstance";
 import { KeyUri } from "../../shared/key";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector } from "../../ReduxApi/organisation";
@@ -57,6 +58,7 @@ const getInitialInvoiceData = (invoiceType = "domestic") => ({
   tempconversionRate: "",
   total: "",
   status: "New",
+  serviceId:"",
 });
 
 export default function AddInvoice() {
@@ -103,6 +105,43 @@ export default function AddInvoice() {
     fetchOrgData();
   }, [dispatch]);
 
+  useEffect(() => {
+    const fetchServices = async () => {
+      setServiceLoading(true);
+      setServiceFetchError("");
+
+      try {
+        const { data } = await axiosInstance.get("/services");
+        console.log(data)
+        console.log("raw service data", data);
+        const options = Array.isArray(data)
+          ? data
+              .map((service) => {
+                if (!service) return null;
+                if (typeof service === "string") return null;
+                const id =
+                  service._id?.$oid ||
+                  (typeof service._id === "string" ? service._id : null) ||
+                  service.id ||
+                  "";
+                const label = service.serviceName || service.name || id;
+                return id ? { value: id, label } : null;
+              })
+              .filter(Boolean)
+          : [];
+
+        setServiceOptions(options);
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        setServiceFetchError("Unable to load service options");
+      } finally {
+        setServiceLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [currentOrganisation?._id,dispatch]);
+
   console.log(currentOrganisation)
 
   // ✅ Initialise invoice_type from query param or state
@@ -130,6 +169,9 @@ export default function AddInvoice() {
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [serviceOptions, setServiceOptions] = useState([]);
+  const [serviceLoading, setServiceLoading] = useState(false);
+  const [serviceFetchError, setServiceFetchError] = useState("");
 
   const isDomestic = invoiceData.invoice_type === "domestic";
   const isInternational = invoiceData.invoice_type === "international";
@@ -411,6 +453,11 @@ export default function AddInvoice() {
       return; // Don't allow changes to these fields
     }
 
+    if (name === "serviceId") {
+      setInvoiceData({ ...invoiceData, serviceId: value });
+      return;
+    }
+
     // Handle currency type selection
     if (name === 'currency_type') {
       if (value === 'Others') {
@@ -457,73 +504,7 @@ export default function AddInvoice() {
     }
   };
 
-  /*const handleItemChange = (index, e) => {
-    const { name, value } = e.target;
-    const updatedItems = [...invoiceData.items];
-    const item = updatedItems[index];
-
-    if (
-      [
-        "hours",
-        "rate",
-        "cgstPercent",
-        "cgstAmount",
-        "sgstPercent",
-        "sgstAmount",
-        "igstPercent",
-        "igstAmount",
-        "itemTotal",
-      ].includes(name)
-    ) {
-      if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
-        if (name.startsWith("cgst")) {
-          item.cgst[name] = value;
-        } else if (name.startsWith("sgst")) {
-          item.sgst[name] = value;
-        } else if (name.startsWith("igst")) {
-          item.igst[name] = value;
-        } else {
-          item[name] = value;
-        }
-      }
-    } else {
-      item[name] = value;
-    }
-
-    const hours = parseFloat(item.hours) || 0;
-    const rate = parseFloat(item.rate) || 0;
-    const subTotal = hours * rate;
-
-    let total = subTotal;
-
-    if (isDomestic) {
-      const cgstPercent = parseFloat(item.cgst.cgstPercent) || 0;
-      const sgstPercent = parseFloat(item.sgst.sgstPercent) || 0;
-
-      if (name === "cgstPercent") {
-        item.cgst.cgstAmount = ((subTotal * cgstPercent) / 100).toFixed(2);
-      }
-      if (name === "sgstPercent") {
-        item.sgst.sgstAmount = ((subTotal * sgstPercent) / 100).toFixed(2);
-      }
-
-      total =
-        subTotal +
-        (parseFloat(item.cgst.cgstAmount) || 0) +
-        (parseFloat(item.sgst.cgstAmount) || 0);
-    } else {
-      const igstPercent = parseFloat(item.igst.igstPercent) || 0;
-
-      if (name === "igstPercent") {
-        item.igst.igstAmount = ((subTotal * igstPercent) / 100).toFixed(2);
-      }
-
-      total = subTotal + (parseFloat(item.igst.igstAmount) || 0);
-    }
-
-    item.itemTotal = total.toFixed(2);
-    setInvoiceData({ ...invoiceData, items: updatedItems });
-  };*/
+ 
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
     const updatedItems = [...invoiceData.items];
@@ -1061,6 +1042,40 @@ export default function AddInvoice() {
               {inputErrors?.place_of_supply && (
                 <p className="absolute text-[13px] text-[#f10404]">
                   {inputErrors?.place_of_supply}
+                </p>
+              )}
+            </div>
+            <div className="relative">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Service Type
+              </label>
+              <select
+                name="serviceId"
+                value={invoiceData.serviceId || ""}
+                onChange={handleChange}
+                disabled={serviceLoading}
+                className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 bg-white"
+              >
+                <option value="">Select service type</option>
+                {serviceLoading ? (
+                  <option value="" disabled>
+                    Loading services...
+                  </option>
+                ) : serviceOptions.length > 0 ? (
+                  serviceOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>
+                    No services available
+                  </option>
+                )}
+              </select>
+              {serviceFetchError && (
+                <p className="absolute text-[13px] text-[#f10404]">
+                  {serviceFetchError}
                 </p>
               )}
             </div>

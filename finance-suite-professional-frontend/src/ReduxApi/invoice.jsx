@@ -60,6 +60,7 @@ export const createInvoice = (invoiceData) => async (dispatch) => {
   dispatch(getInvoice())
 
   try {
+    console.log("the data that we are dealing with is ", invoiceData);
     const { data } = await axiosInstance.post('/invoices', invoiceData)
     toast.success('Invoice created successfully')
     dispatch(fetchInvoiceData())

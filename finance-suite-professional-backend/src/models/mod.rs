@@ -16,6 +16,7 @@ pub mod estimate;
 pub mod ledger;
 pub mod ledgerCounter;
 pub mod account;
+pub mod service;
 
 pub use customer::{CreateCustomerRequest, Customer, UpdateCustomerRequest};
 pub use organisation::{CreateOrganisationRequest, Organisation, UpdateOrganizationRequest};
@@ -34,3 +35,4 @@ pub use estimate::Estimate;
 pub use ledger::{EntryType, LedgerEntry, LedgerEntryType};
 pub use ledgerCounter::PartyCounter;
 pub use account::{Account, AccountType, AccountCategory, OrganizationBalance, AccountBalance};
+pub use service::{CreateServiceRequest, Service, UpdateServiceRequest};

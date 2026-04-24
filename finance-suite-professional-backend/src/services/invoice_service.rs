@@ -5,6 +5,7 @@ use crate::{
     repository::{
         invoice_repository::InvoiceRepository,
         organisation_repository::OrganisationRepository,
+        service_repository::ServiceRepository,
         product_repository::ProductRepository,
         user_repository::UserRepository,
     },
@@ -14,6 +15,7 @@ use crate::{
 pub struct InvoiceService {
     repo: Arc<InvoiceRepository>,
     org_repo: Arc<OrganisationRepository>,
+    service_repo: Arc<ServiceRepository>,
     user_repo: Arc<UserRepository>,
     product_repo: Arc<ProductRepository>,
 }
@@ -22,6 +24,7 @@ impl InvoiceService {
     pub fn new(
         repo: InvoiceRepository,
         org_repo: OrganisationRepository,
+        service_repo: ServiceRepository,
         user_repo: UserRepository,
         _expense_repo: crate::repository::expense_repository::ExpenseRepository,
         _general_expense_repo: crate::repository::general_expense_repository::GeneralExpenseRepository,
@@ -30,9 +33,32 @@ impl InvoiceService {
         Self {
             repo: Arc::new(repo),
             org_repo: Arc::new(org_repo),
+            service_repo: Arc::new(service_repo),
             user_repo: Arc::new(user_repo),
             product_repo: Arc::new(product_repo),
         }
+    }
+
+    async fn validate_service_type(
+        &self,
+        org_id: &mongodb::bson::oid::ObjectId,
+        service_type_id: Option<&mongodb::bson::oid::ObjectId>,
+    ) -> anyhow::Result<()> {
+        let Some(service_type_id) = service_type_id else {
+            return Ok(());
+        };
+
+        let service = self
+            .service_repo
+            .get_by_id(&service_type_id.to_hex())
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Service type not found"))?;
+
+        if service.organisation_id != Some(*org_id) {
+            return Err(anyhow::anyhow!("Service type does not belong to this organisation"));
+        }
+
+        Ok(())
     }
 
     pub async fn generate_invoice_number(&self, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<String> {
@@ -72,6 +98,7 @@ impl InvoiceService {
         
         // Set organisation_id on invoice
         invoice.organisation_id = Some(*org_id);
+        self.validate_service_type(org_id, invoice.service_type_id.as_ref()).await?;
         
         match self.generate_invoice_number(org_id).await {
             Ok(invoice_number) => {
@@ -136,6 +163,9 @@ impl InvoiceService {
         id: &str,
         invoice: Invoice,
     ) -> anyhow::Result<Option<Invoice>> {
+        if let Some(org_id) = invoice.organisation_id.as_ref() {
+            self.validate_service_type(org_id, invoice.service_type_id.as_ref()).await?;
+        }
         let updated = self.repo.update_invoice(id, invoice).await?;
         Ok(updated)
     }

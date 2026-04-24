@@ -3,7 +3,7 @@ use std::env;
 
 use crate::models::{
     Category, Challan, CostCenter, Customer, Expense, GeneralExpense, IncomingInvoice, Invoice,
-    Organisation, PartyCounter, Product, PurchaseOrder, Salary, User, Account,
+    Organisation, PartyCounter, Product, PurchaseOrder, Salary, User, Account, Service,
 };
 
 #[derive(Clone)]
@@ -104,5 +104,9 @@ impl MongoDbClient {
 
     pub fn get_account_collection(&self) -> Collection<Account> {
         self.database.collection("accounts")
+    }
+
+    pub fn get_service_collection(&self) -> Collection<Service> {
+        self.database.collection("services")
     }
 }

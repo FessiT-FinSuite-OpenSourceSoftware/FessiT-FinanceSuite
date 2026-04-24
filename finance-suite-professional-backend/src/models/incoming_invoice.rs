@@ -101,6 +101,9 @@ pub struct IncomingInvoice {
 
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,
+
+    #[serde(rename = "vendorId", skip_serializing_if = "Option::is_none")]
+    pub vendor_id: Option<ObjectId>,
 }
 
 pub type CreateIncomingInvoiceRequest = IncomingInvoice;

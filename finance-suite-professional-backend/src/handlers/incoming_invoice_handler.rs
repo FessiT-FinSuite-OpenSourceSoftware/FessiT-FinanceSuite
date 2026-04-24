@@ -116,6 +116,8 @@ pub async fn update_incoming_invoice(
         })));
     }
     let mut updated_req = req.into_inner();
+    updated_req.vendor_id = existing.vendor_id.clone();
+    updated_req.organisation_id = existing.organisation_id;
     if updated_req.status != "Paid" {
         updated_req.paid_date = existing.paid_date;
     }
@@ -266,6 +268,7 @@ pub async fn update_incoming_invoice_with_file(
         tds_applicable: fields.remove("tds_applicable").map(|v| v == "true" || v == "1").unwrap_or(existing.tds_applicable),
         tds_total: fields.remove("tds_total").unwrap_or(existing.tds_total),
         organisation_id: existing.organisation_id,
+        vendor_id: existing.vendor_id,
     };
 
     match service.update(&id, req).await

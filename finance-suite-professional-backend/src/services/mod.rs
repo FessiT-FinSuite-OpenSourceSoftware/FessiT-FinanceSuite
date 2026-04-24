@@ -14,6 +14,7 @@ pub mod product_service;
 pub mod estimate_service;
 pub mod ledger_service;
 pub mod account_service;
+pub mod service_service;
 
 pub use customer_service::CustomerService;
 pub use organisation_service::OrganisationService;
@@ -31,3 +32,4 @@ pub use product_service::ProductService;
 pub use estimate_service::EstimateService;
 pub use ledger_service::LedgerService;
 pub use account_service::AccountService;
+pub use service_service::ServiceService;
