@@ -38,7 +38,7 @@ export default function TdsSummaryCard() {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mt-2">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mt-2">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-semibold text-gray-800">TDS Compliance — {month}</h3>
         <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">Current Month</span>

@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { CirclePlus, CircleMinus, ArrowLeft, Eye } from "lucide-react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { fetchIncomingInvoices } from "../../ReduxApi/incomingInvoice";
+import { fetchCustomerData, customerSelector, updateCustomerData } from "../../ReduxApi/customer";
 
 const emptyItem = () => ({
   description: "",
@@ -47,6 +48,49 @@ export default function AddIncomingInvoice() {
   const nav = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  const { customersData } = useSelector(customerSelector);
+
+  // All customers for search
+  const allCustomers = Array.isArray(customersData) ? customersData : [];
+
+  const [vendorSearch, setVendorSearch]     = useState("");
+  const [showVendorDrop, setShowVendorDrop] = useState(false);
+  const [makingVendor, setMakingVendor]     = useState(null); // id being updated
+
+  useEffect(() => { dispatch(fetchCustomerData()); }, [dispatch]);
+
+  const filteredCustomers = allCustomers.filter((c) => {
+    const label = `${c.companyName || ""} ${c.customerName || ""}`.toLowerCase();
+    return label.includes(vendorSearch.toLowerCase());
+  });
+
+  const isVendor = (c) => c.isvendor === true || c.is_vendor_too === true;
+
+  const getCustomerId = (c) => c?._id?.$oid || c?._id || c?.id || "";
+
+  const handleVendorSelect = (c) => {
+    const address = c.addresses?.find((a) => a.value)?.value || c.addresses?.[0]?.value || "";
+    setField("vendor_name",    c.companyName || c.customerName || "");
+    setField("vendor_gstin",   c.gstIN || "");
+    setField("vendor_address", address);
+    setVendorSearch(c.companyName || c.customerName || "");
+    setShowVendorDrop(false);
+  };
+
+  const handleMakeVendor = async (c) => {
+    const id = getCustomerId(c);
+    setMakingVendor(id);
+    try {
+      await dispatch(updateCustomerData(id, { ...c, isvendor: true }));
+      // toast.success(`${c.companyName || c.customerName} is now a vendor`);
+      // auto-select after marking
+      handleVendorSelect({ ...c, isvendor: true });
+    } catch {
+      toast.error("Failed to update customer");
+    } finally {
+      setMakingVendor(null);
+    }
+  };
 
   const initialType = (() => {
     const t = new URLSearchParams(location.search).get("type");
@@ -198,6 +242,53 @@ export default function AddIncomingInvoice() {
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">Vendor Details</h2>
           <div className="grid grid-cols-2 gap-4">
+
+            {/* Customer/Vendor search */}
+            <div className="col-span-2 relative">
+              <label className={labelCls}>Select Vendor</label>
+              <div className="relative w-full sm:w-1/2 lg:w-1/3">
+                <input
+                  type="text"
+                  placeholder="Search customers or vendors..."
+                  className={inputCls}
+                  value={vendorSearch}
+                  onChange={(e) => { setVendorSearch(e.target.value); setShowVendorDrop(true); }}
+                  onFocus={() => setShowVendorDrop(true)}
+                  onBlur={() => setTimeout(() => setShowVendorDrop(false), 200)}
+                />
+                {showVendorDrop && vendorSearch && (
+                  <div className="absolute z-50 top-full left-0 w-full bg-white border border-gray-300 rounded shadow-lg max-h-56 overflow-y-auto">
+                    {filteredCustomers.length > 0 ? filteredCustomers.map((c) => (
+                      <div key={getCustomerId(c)} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                        <div
+                          className="flex-1 cursor-pointer"
+                          onMouseDown={() => handleVendorSelect(c)}
+                        >
+                          <span className="text-sm font-medium text-gray-800">{c.companyName || c.customerName}</span>
+                          {c.gstIN && <span className="text-xs text-gray-400 ml-2">{c.gstIN}</span>}
+                          {isVendor(c) && (
+                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold bg-green-100 text-green-700 rounded-full">Vendor</span>
+                          )}
+                        </div>
+                        {!isVendor(c) && (
+                          <button
+                            type="button"
+                            disabled={makingVendor === getCustomerId(c)}
+                            onMouseDown={(e) => { e.preventDefault(); handleMakeVendor(c); }}
+                            className="ml-2 shrink-0 px-2 py-1 text-xs font-medium text-blue-600 border border-blue-300 rounded hover:bg-blue-50 disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {makingVendor === getCustomerId(c) ? "Updating..." : "Make Vendor"}
+                          </button>
+                        )}
+                      </div>
+                    )) : (
+                      <div className="px-3 py-2 text-sm text-gray-400">No customers found</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="relative">
               <label className={labelCls}>Vendor Name *</label>
               <input className={inputCls} value={form.vendor_name} onChange={(e) => setField("vendor_name", e.target.value)} placeholder="Enter vendor name" />

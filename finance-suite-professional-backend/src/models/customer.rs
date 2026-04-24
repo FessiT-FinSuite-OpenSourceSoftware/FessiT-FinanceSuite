@@ -17,7 +17,7 @@ pub struct Project {
     #[serde(rename = "projectOwner")]
     pub project_owner: String,
 
-     #[serde(rename = "owner_email")]
+    #[serde(rename = "owner_email")]
     pub owner_email: Option<String>,
 }
 
@@ -58,6 +58,9 @@ pub struct Customer {
     ))]
     pub phone: String,
 
+    #[serde(default)]
+    pub is_vendor_too: bool,
+
     #[serde(rename = "isActive")]
     pub is_active: String,
 
@@ -67,7 +70,7 @@ pub struct Customer {
     #[serde(rename = "lastCostCenterSequence", default)]
     pub last_cost_center_sequence: i32,
 
-     #[serde(default)]
+    #[serde(default)]
     pub projects: Vec<Project>,
 }
 
@@ -85,6 +88,7 @@ pub struct CreateCustomerRequest {
     pub country: String,
     pub phone: String,
     pub email: String,
+    pub isvendor: bool,
     #[serde(rename = "countryCode")]
     pub country_code: String,
     #[serde(rename = "isActive")]
@@ -107,6 +111,7 @@ pub struct UpdateCustomerRequest {
     pub country: Option<String>,
     pub phone: Option<String>,
     pub email: Option<String>,
+    pub isvendor: Option<bool>,
     #[serde(rename = "countryCode")]
     pub country_code: Option<String>,
     #[serde(rename = "isActive")]
@@ -127,6 +132,7 @@ impl Customer {
             country: req.country,
             phone: req.phone,
             email: req.email,
+            is_vendor_too: req.isvendor,
             country_code: req.country_code,
             is_active: req.is_active,
             last_cost_center_sequence: 0,

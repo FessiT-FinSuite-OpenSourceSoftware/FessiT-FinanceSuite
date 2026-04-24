@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { countriesData } from "../../utils/countriesData";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { createCustomer } from "../../ReduxApi/customer";
 
 const emptyProject = { projectName: "", projectOwner: "", owner_email: "", description: "" };
@@ -71,8 +71,9 @@ const initialCustomer = {
   countryCode: "",
   phone: "",
   email: "",
-  isActive:"New",
+  isActive: "New",
   projects: [],
+  isvendor: false
 };
 
 export default function CustomerCreation() {
@@ -190,7 +191,7 @@ export default function CustomerCreation() {
           error = "Phone number is required.";
         } else if (value.length > 15) {
           error = "Phone number cannot exceed 15 digits.";
-        }else if(selected?.phone instanceof RegExp && !selected?.phone?.test(value)){
+        } else if (selected?.phone instanceof RegExp && !selected?.phone?.test(value)) {
           error = `Invalid phone number for ${selected?.country}.`;
 
         }
@@ -257,7 +258,7 @@ export default function CustomerCreation() {
 
       country: selectedCountry.country,
       countryCode: selectedCountry.code,
-      phone:""
+      phone: ""
     });
     setOpen(false);
     setQuery("");
@@ -301,7 +302,7 @@ export default function CustomerCreation() {
 
     dispatch(createCustomer(customer))
     nav("/customers");
-    
+
     setCustomer({
       ...initialCustomer,
       addresses: initialCustomer.addresses.map((addr) => ({ ...addr })),
@@ -316,7 +317,7 @@ export default function CustomerCreation() {
   const filteredCountries = countriesData?.countries?.filter((country) =>
     country?.country?.toLowerCase().includes(query.toLowerCase())
   );
-// console.log(selected)
+  // console.log(selected)
   return (
     <div className="relative">
       {/* Fixed Buttons */}
@@ -343,7 +344,7 @@ export default function CustomerCreation() {
                 Edit
               </button> */}
               <button
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleSubmit}
               >
                 Create
@@ -362,221 +363,84 @@ export default function CustomerCreation() {
         <div className="grid grid-cols-2 gap-6 text-sm">
           {/* Customer Name */}
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              Customer Name *
-            </label>
-            <input
-              type="text"
-              name="customerName"
-              value={customer.customerName}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter customer name"
-            />
-            {inputErrors.customerName && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {inputErrors.customerName}
-              </p>
-            )}
-            {errors.customerName && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {errors.customerName}
-              </p>
-            )}
+            <label className="block text-gray-700 font-medium mb-1">Customer Name *</label>
+            <input type="text" name="customerName" value={customer.customerName} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500" placeholder="Enter customer name" />
+            {(inputErrors.customerName || errors.customerName) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.customerName || errors.customerName}</p>}
           </div>
 
           {/* Company Name */}
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              Company Name *
-            </label>
-            <input
-              type="text"
-              name="companyName"
-              value={customer.companyName}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter company name"
-            />
-            {inputErrors.companyName && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {inputErrors.companyName}
-              </p>
-            )}
-            {errors.companyName && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {errors.companyName}
-              </p>
-            )}
+            <label className="block text-gray-700 font-medium mb-1">Company Name *</label>
+            <input type="text" name="companyName" value={customer.companyName} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500" placeholder="Enter company name" />
+            {(inputErrors.companyName || errors.companyName) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.companyName || errors.companyName}</p>}
           </div>
 
           {/* GSTIN */}
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              GSTIN 
-            </label>
-            <input
-              type="text"
-              name="gstIN"
-              value={customer.gstIN}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter GSTIN"
-            />
-            {inputErrors.gstIN && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {inputErrors.gstIN}
-              </p>
-            )}
-            {errors.gstIN && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {errors.gstIN}
-              </p>
-            )}
+            <label className="block text-gray-700 font-medium mb-1">GSTIN</label>
+            <input type="text" name="gstIN" value={customer.gstIN} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500" placeholder="Enter GSTIN" />
+            {(inputErrors.gstIN || errors.gstIN) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.gstIN || errors.gstIN}</p>}
           </div>
 
           {/* Customer Code */}
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              Customer Code
-            </label>
-            <input
-              type="text"
-              name="CustomerCode"
-              value={customer.CustomerCode}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter customer code"
-            />
-          </div>
-
-          {/* Country */}
-
-          <div className="relative w-full" ref={dropdownRef}>
-            <label className="block text-gray-700 font-medium mb-1">
-              Country *
-            </label>
-
-            <button
-              type="button"
-              onClick={() => setOpen(!open)}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full text-left focus:ring-1 focus:ring-black"
-            >
-              {selected ? `${selected.country}` : "Select country"}
-            </button>
-
-            {open && (
-              <div className="absolute z-10 bg-white border border-gray-200 rounded-md mt-1 w-full shadow-md max-h-64 overflow-hidden">
-                <div className="flex items-center px-3 py-2 border-b border-gray-200 bg-gray-50">
-                  <Search className="h-4 w-4 text-gray-400 mr-2" />
-                  <input
-                    type="text"
-                    placeholder="Search country..."
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="w-full text-sm outline-none bg-transparent"
-                  />
-                </div>
-
-                {/* Country List */}
-                <ul className="max-h-56 overflow-y-auto">
-                  {filteredCountries.length > 0 ? (
-                    filteredCountries.map((country, index) => (
-                      <li
-                        key={index}
-                        onClick={() => handleSelect(country)}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
-                      >
-                        <img
-                          src={country.flag}
-                          alt={country.country}
-                          className="rounded-sm object-contain h-5 w-6"
-                        />
-                        <span>{country.country}</span>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="px-4 py-2 text-gray-500 text-sm">
-                      No results found
-                    </li>
-                  )}
-                </ul>
-              </div>
-            )}
-            {inputErrors.country && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {inputErrors.country}
-              </p>
-            )}
-          </div>
-
-          {/* Phone */}
-          <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              Phone Number *
-            </label>
-            <div className="flex">
-              {selected?.code && (
-                <div
-                  className="px-4 w-18
-              
-              text-gray-900 bg-gray-100  border border-gray-300
-              flex justify-center  items-center font-medium rounded-tl-md rounded-bl-md"
-                >
-                  {selected?.code}
-                </div>
-              )}
-
-              <input
-                type="text"
-                name="phone"
-                value={customer.phone}
-                onChange={handlePhoneChange}
-                className={`border border-gray-300 
-              ${
-                (selected?.code && "rounded-tr-md rounded-br-md ") ||
-                "rounded-md"
-              }
-              
-              px-3 py-2 w-full focus:ring-1 focus:ring-blue-500`}
-                placeholder="Enter phone number"
-              />
-            </div>
-            {inputErrors.phone && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {inputErrors.phone}
-              </p>
-            )}
-            {errors.phone && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {errors.phone}
-              </p>
-            )}
+            <label className="block text-gray-700 font-medium mb-1">Customer Code</label>
+            <input type="text" name="CustomerCode" value={customer.CustomerCode} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500" placeholder="Enter customer code" />
           </div>
 
           {/* Email */}
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              Email *
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={customer.email}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter customer email"
-            />
-            {inputErrors.email && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {inputErrors.email}
-              </p>
+            <label className="block text-gray-700 font-medium mb-1">Email *</label>
+            <input type="email" name="email" value={customer.email} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500" placeholder="Enter customer email" />
+            {(inputErrors.email || errors.email) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.email || errors.email}</p>}
+          </div>
+
+          {/* Country */}
+          <div className="relative w-full" ref={dropdownRef}>
+            <label className="block text-gray-700 font-medium mb-1">Country *</label>
+            <button type="button" onClick={() => setOpen(!open)} className="border border-gray-300 rounded-md px-3 py-2 w-full text-left focus:ring-1 focus:ring-black">
+              {selected ? `${selected.country}` : "Select country"}
+            </button>
+            {open && (
+              <div className="absolute z-10 bg-white border border-gray-200 rounded-md mt-1 w-full shadow-md max-h-64 overflow-hidden">
+                <div className="flex items-center px-3 py-2 border-b border-gray-200 bg-gray-50">
+                  <Search className="h-4 w-4 text-gray-400 mr-2" />
+                  <input type="text" placeholder="Search country..." value={query} onChange={(e) => setQuery(e.target.value)} className="w-full text-sm outline-none bg-transparent" />
+                </div>
+                <ul className="max-h-56 overflow-y-auto">
+                  {filteredCountries.length > 0 ? filteredCountries.map((country, index) => (
+                    <li key={index} onClick={() => handleSelect(country)} className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2">
+                      <img src={country.flag} alt={country.country} className="rounded-sm object-contain h-5 w-6" />
+                      <span>{country.country}</span>
+                    </li>
+                  )) : <li className="px-4 py-2 text-gray-500 text-sm">No results found</li>}
+                </ul>
+              </div>
             )}
-            {errors.email && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {errors.email}
-              </p>
-            )}
+            {inputErrors.country && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.country}</p>}
+          </div>
+
+          {/* Phone */}
+          <div className="relative">
+            <label className="block text-gray-700 font-medium mb-1">Phone Number *</label>
+            <div className="flex">
+              {selected?.code && (
+                <div className="px-4 w-18 text-gray-900 bg-gray-100 border border-gray-300 flex justify-center items-center font-medium rounded-tl-md rounded-bl-md">
+                  {selected?.code}
+                </div>
+              )}
+              <input type="text" name="phone" value={customer.phone} onChange={handlePhoneChange}
+                className={`border border-gray-300 ${selected?.code ? "rounded-tr-md rounded-br-md" : "rounded-md"} px-3 py-2 w-full focus:ring-1 focus:ring-blue-500`}
+                placeholder="Enter phone number"
+              />
+            </div>
+            {(inputErrors.phone || errors.phone) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.phone || errors.phone}</p>}
+          </div>
+
+          {/* Is Vendor */}
+          <div className="flex items-center gap-2 pt-6">
+            <input type="checkbox" id="isvendor" name="isvendor" checked={customer.isvendor} onChange={(e) => setCustomer((prev) => ({ ...prev, isvendor: e.target.checked }))} className="w-4 h-4 cursor-pointer accent-blue-600" />
+            <label htmlFor="isvendor" className="text-sm font-semibold text-gray-700 cursor-pointer">Is Vendor</label>
           </div>
 
           {/* Addresses */}

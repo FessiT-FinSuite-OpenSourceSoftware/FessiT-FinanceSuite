@@ -1,5 +1,29 @@
-use mongodb::bson::oid::ObjectId;
-use serde::{Deserialize, Serialize};
+use mongodb::bson::{oid::ObjectId, Bson};
+use serde::{Deserialize, Deserializer, Serialize};
+
+fn deserialize_optional_object_id<'de, D>(deserializer: D) -> Result<Option<ObjectId>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: Option<Bson> = Option::deserialize(deserializer)?;
+    match value {
+        None | Some(Bson::Null) => Ok(None),
+        Some(Bson::ObjectId(id)) => Ok(Some(id)),
+        Some(Bson::String(value)) => {
+            if value.trim().is_empty() {
+                Ok(None)
+            } else {
+                ObjectId::parse_str(&value)
+                    .map(Some)
+                    .map_err(serde::de::Error::custom)
+            }
+        }
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "expected ObjectId or string, got {:?}",
+            other
+        ))),
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum InvoiceStatus {
@@ -70,7 +94,7 @@ pub struct InvoiceItem {
     #[serde(default)]
     pub description: String,
 
-    #[serde(rename = "ProductId")]
+    #[serde(rename = "ProductId", deserialize_with = "deserialize_optional_object_id", default)]
     pub product_id: Option<ObjectId>,
 
     #[serde(default)]
@@ -211,12 +235,19 @@ pub struct Invoice {
     #[serde(default)]
     pub status: InvoiceStatus,
 
+
+    #[serde(default)]
+    pub payment_type: String,
+
+    #[serde(default)]
+    pub payment_reference: String,
+
     // Customer reference
-    #[serde(rename = "customerId", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "customerId", skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_object_id", default)]
     pub customer_id: Option<ObjectId>,
 
     // Organisation reference
-    #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_object_id", default)]
     pub organisation_id: Option<ObjectId>,
 }
 

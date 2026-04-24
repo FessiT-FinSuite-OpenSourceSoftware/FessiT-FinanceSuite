@@ -13,6 +13,8 @@ import salaryReducer from './salary';
 import generalExpenseReducer from './generalExpense';
 import challanReducer from './challan';
 import categoryReducer from './category';
+import estimateReducer from './estimate';
+import ledgerReducer from './ledger';
 import productReducer from './product';
 import gstSummaryReducer from './gstSummary';
 import tdsSummaryReducer from './tdsSummary';
@@ -34,6 +36,8 @@ const store = configureStore({
     generalExpense: generalExpenseReducer,
     challan: challanReducer,
     category: categoryReducer,
+    estimate: estimateReducer,
+    ledger:   ledgerReducer,
     product: productReducer,
     gstSummary: gstSummaryReducer,
     tdsSummary: tdsSummaryReducer,

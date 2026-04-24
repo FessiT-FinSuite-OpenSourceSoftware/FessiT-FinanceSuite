@@ -22,6 +22,8 @@ import {
   FolderKanban,
   Boxes,
   LogOut,
+  BookOpen,
+  ReceiptText,
 } from "lucide-react";
 
 export default function SideBar({ component }) {
@@ -74,6 +76,8 @@ export default function SideBar({ component }) {
   const allNavigation = [
     { id: "dashboard", label: "Dashboard", icon: TrendingUp, module: null },
     { id: "invoices", label: "Sales", icon: FileText, module: Module.Invoice },
+    { id: "estimates", label: "Quotations", icon: ReceiptText, module: Module.Invoice },
+    { id: "ledger", label: "Ledger", icon: BookOpen, module: Module.Invoice },
     { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
     { id: "expenses", label: "Expenses", icon: Receipt, module: Module.Expenses },
     { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: Module.Invoice },
@@ -83,7 +87,6 @@ export default function SideBar({ component }) {
     { id: "cost-centers", label: "Cost Centers", icon: Layers, module: Module.Customers },
     { id: "items", label: "Items", icon: Boxes, module: Module.Products },
     { id: "users", label: "User Management", icon: UserLockIcon, module: Module.Users },
-
     { id: "settings", label: "Settings", icon: Settings, module: null, adminOnly: true },
   ];
 
@@ -292,6 +295,8 @@ export default function SideBar({ component }) {
                     {(location.pathname === "/" || location.pathname.includes("/dashboard")) && (
                       <p>Dashboard</p>
                     )}
+                    {location.pathname.includes("/estimates") && <p>Estimates</p>}
+                    {location.pathname.includes("/ledger") && <p>Ledger</p>}
                     {location.pathname.includes("/invoices") && <p>Invoices</p>}
                     {location.pathname.includes("/purchases") && (
                       <p>Purchases</p>

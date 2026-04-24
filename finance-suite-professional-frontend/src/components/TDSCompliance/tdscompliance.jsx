@@ -264,7 +264,7 @@ export default function TDSCompliance() {
             <h3 className="text-sm font-medium text-green-700 mb-2">Total TDS Deposited</h3>
             <p className="text-3xl font-bold text-green-900">{formatCurrency(initialTDSData.totalTDSDeposited)}</p>
             <p className="text-xs text-green-600 mt-1">Deposited to government</p>
-            <p className="text-xs text-green-600 mt-1">Deposited to government</p>
+            <p className="text-xs text-green-600 mt-1">(Feature Coming soon)</p>
 
           </div>
 
@@ -272,12 +272,15 @@ export default function TDSCompliance() {
             <h3 className="text-sm font-medium text-orange-700 mb-2">Pending Deposit</h3>
             <p className="text-3xl font-bold text-orange-900">{formatCurrency(initialTDSData.pendingDeposit)}</p>
             <p className="text-xs text-orange-600 mt-1">Due for deposit</p>
+            <p className="text-xs text-orange-600 mt-1">(Feature Coming soon)</p>
+
           </div>
 
           <div className="bg-linear-to-br from-red-50 to-red-100 p-6 rounded-lg border border-red-200">
             <h3 className="text-sm font-medium text-red-700 mb-2">Returns Pending</h3>
             <p className="text-3xl font-bold text-red-900">{initialTDSData.pendingReturns}</p>
             <p className="text-xs text-red-600 mt-1">Due this quarter</p>
+            <p className="text-xs text-red-600 mt-1">(Feature Coming soon)</p>
           </div>
         </div>
 

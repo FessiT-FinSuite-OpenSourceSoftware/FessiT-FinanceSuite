@@ -30,6 +30,8 @@ const GSTCompliance = lazy(() => import("./components/GSTCompliance"));
 const TDSCompliance = lazy(() => import("./components/TDSCompliance"));
 const Users = lazy(() => import("./components/User"));
 const Items = lazy(() => import("./components/Items"));
+const Estimates = lazy(() => import("./components/Estimates"));
+const Ledger    = lazy(() => import("./components/Ledger"));
 const EditUser = lazy(() => import("./components/User/EditUser"));
 const AddUser = lazy(() => import("./components/User/UserCreation"));
 const ExpensesList = lazy(() => import("./components/Expenses/expenseList"));
@@ -41,6 +43,12 @@ const CreateOrganization = lazy(() => import("./pages/Auth Pages/create_org"));
 const CostCenterList = lazy(() => import("./components/CostCenter/CostCenterList"));
 const AddCostCenter = lazy(() => import("./components/CostCenter/AddCostCenter"));
 const EditCostCenter = lazy(() => import("./components/CostCenter/EditCostCenter"));
+
+const Estimats= lazy(()=>import('./components/Estimates'))
+const AddEstimate = lazy(()=>import('./components/Estimates/AddEstimate'))
+const EditEstimate = lazy(()=>import('./components/Estimates/EditEstimate'))
+
+
 
 function ProtectedRoute({ user, module, children }) {
   if (!canRead(user, module)) return <Forbidden />;
@@ -177,6 +185,10 @@ export default function App() {
 
               {/* User Management */}
               <Route path="/items" element={<ProtectedRoute user={user} module={Module.Products}><Items /></ProtectedRoute>} />
+              <Route path="/estimates" element={<ProtectedRoute user={user} module={Module.Invoice}><Estimates /></ProtectedRoute>} />
+              <Route path="/ledger" element={<ProtectedRoute user={user} module={Module.Invoice}><Ledger /></ProtectedRoute>} />
+              <Route path="/estimates/create" element={<ProtectedRoute user={user} module={Module.Invoice}><AddEstimate /></ProtectedRoute>} />
+              <Route path="/estimates/edit/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditEstimate /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute user={user} module={Module.Users}><Users /></ProtectedRoute>} />
               <Route path="/users/editUser/:id" element={<ProtectedRoute user={user} module={Module.Users}><EditUser /></ProtectedRoute>} />
               <Route path="/users/addUser" element={<ProtectedRoute user={user} module={Module.Users}><AddUser /></ProtectedRoute>} />

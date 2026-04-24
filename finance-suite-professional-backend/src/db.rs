@@ -1,13 +1,14 @@
-use mongodb::{Client, Collection, Database};
+use mongodb::{Client, Collection, Database, options::ClientOptions};
 use std::env;
 
 use crate::models::{
     Category, Challan, CostCenter, Customer, Expense, GeneralExpense, IncomingInvoice, Invoice,
-    Organisation, Product, PurchaseOrder, Salary, User,
+    Organisation, PartyCounter, Product, PurchaseOrder, Salary, User, Account,
 };
 
 #[derive(Clone)]
 pub struct MongoDbClient {
+    pub client: Client,
     pub database: Database,
 }
 
@@ -16,7 +17,10 @@ impl MongoDbClient {
         let mongodb_uri = env::var("MONGODB_URI").expect("MONGODB_URI must be set");
         let database_name = env::var("DATABASE_NAME").expect("DATABASE_NAME must be set");
 
-        let client = Client::with_uri_str(&mongodb_uri).await?;
+        let mut client_options = ClientOptions::parse(&mongodb_uri).await?;
+        client_options.retry_writes = Some(false);
+
+        let client = Client::with_options(client_options)?;
 
         client
             .database("admin")
@@ -27,7 +31,11 @@ impl MongoDbClient {
 
         let database = client.database(&database_name);
 
-        Ok(Self { database })
+        Ok(Self { client, database })
+    }
+
+    pub fn client(&self) -> Client {
+        self.client.clone()
     }
 
     pub fn get_customers_collection(&self) -> Collection<Customer> {
@@ -80,5 +88,21 @@ impl MongoDbClient {
 
     pub fn get_category_collection(&self) -> Collection<Category> {
         self.database.collection::<Category>("categories")
+    }
+
+    pub fn get_estimate_collection(&self) -> Collection<crate::models::estimate::Estimate> {
+        self.database.collection("estimates")
+    }
+
+    pub fn get_ledger_collection(&self) -> Collection<crate::models::ledger::LedgerEntry> {
+        self.database.collection("ledger")
+    }
+
+    pub fn get_ledger_counter_collection(&self) -> Collection<PartyCounter> {
+        self.database.collection("ledger_counters")
+    }
+
+    pub fn get_account_collection(&self) -> Collection<Account> {
+        self.database.collection("accounts")
     }
 }

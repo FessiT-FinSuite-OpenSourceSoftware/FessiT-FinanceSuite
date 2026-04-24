@@ -19,13 +19,15 @@ use handlers::{
     configure_user_routes, configure_protected_user_routes, configure_purchase_order_routes,
     configure_cost_center_routes, configure_salary_routes, configure_general_expense_routes,
     configure_challan_routes, configure_category_routes, configure_product_routes,
+    configure_estimate_routes, configure_ledger_routes, configure_account_routes,
 };
 use repository::{
     CustomerRepository, ExpenseRepository, InvoiceRepository, IncomingInvoiceRepository,
     OrganisationRepository, UserRepository, PurchaseOrderRepository, CostCenterRepository,
     SalaryRepository, GeneralExpenseRepository, ChallanRepository, CategoryRepository, ProductRepository,
+    EstimateRepository, LedgerRepository, AccountRepository,
 };
-use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService};
+use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService};
 use utils::jwt_middleware::JwtMiddleware;
 
 #[actix_web::main]
@@ -102,6 +104,21 @@ async fn main() -> std::io::Result<()> {
     let product_service = ProductService::new(product_repository.clone(), user_repository.clone());
     product_service.ensure_indexes().await.expect("❌ Failed to create product indexes");
 
+    let estimate_collection = db_client.get_estimate_collection();
+    let estimate_repository = EstimateRepository::new(estimate_collection);
+    let estimate_service = EstimateService::new(estimate_repository, user_repository.clone(), organisation_repository.clone(), customer_repository.clone());
+
+    let ledger_collection = db_client.get_ledger_collection();
+    let ledger_counter_collection = db_client.get_ledger_counter_collection();
+    let ledger_repository = LedgerRepository::new(db_client.client(), ledger_collection, ledger_counter_collection);
+    ledger_repository.ensure_indexes().await.expect("❌ Failed to create ledger indexes");
+    
+    let account_collection = db_client.get_account_collection();
+    let account_repository = AccountRepository::new(db_client.client(), account_collection);
+    account_repository.ensure_indexes().await.expect("❌ Failed to create account indexes");
+    let account_service = AccountService::new(account_repository.clone());
+    let ledger_service = LedgerService::new(ledger_repository, user_repository.clone(), customer_repository.clone(), account_repository);
+
     let invoice_service = InvoiceService::new(invoice_repository, organisation_repository.clone(), user_repository.clone(), expense_repository, general_expense_repository, product_repository);
 
     // Challans
@@ -134,6 +151,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(category_service.clone()))
             // all APIs under /api/v1
             .app_data(web::Data::new(product_service.clone()))
+            .app_data(web::Data::new(estimate_service.clone()))
+            .app_data(web::Data::new(ledger_service.clone()))
+            .app_data(web::Data::new(account_service.clone()))
             .service(
                 web::scope("/api/v1")
                     .configure(configure_user_routes) // Public: login, refresh
@@ -154,6 +174,9 @@ async fn main() -> std::io::Result<()> {
                             .configure(configure_challan_routes)
                             .configure(configure_category_routes)
                             .configure(configure_product_routes)
+                            .configure(configure_estimate_routes)
+                            .configure(configure_ledger_routes)
+                            .configure(configure_account_routes)
                     )
             )
     })

@@ -109,6 +109,7 @@ pub async fn create_customer(
         .map_err(|e| ApiError::Forbidden(create_permission_error(&e)))?;
 
     let mut customer_data = req.into_inner();
+    print!("Got some info while creating customer {:?}", customer_data);
     let _customer = service.create_customer(customer_data, user.organisation_id).await?;
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "message": "Customer created successfully"

@@ -4,6 +4,7 @@ import Logo from "../../assets/FessitLogoTrans.png";
 import { useDispatch } from "react-redux";
 import { loginUser } from "../../ReduxApi/auth";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function Login() {
   const [loginData, setLoginData] = useState({
@@ -69,21 +70,15 @@ export default function Login() {
     }
 
     setIsLoading(true);
-
     try {
-      // Console log the entered details
-      console.log("Login Details:", {
-        email: loginData.email,
-        password: loginData.password,
-        timestamp: new Date().toISOString()
-      });
-
-      // Dispatch login action - profile will be fetched by App.jsx useEffect
-      await dispatch(loginUser(loginData));
-      console.log("Login successful!");
-      
+      const result = await dispatch(loginUser(loginData));
+      if (result?.error) {
+        toast.error(result.payload || "Invalid email or password");
+      } else {
+        toast.success("Login successful! Welcome back.");
+      }
     } catch (error) {
-      console.error("Login error:", error);
+      toast.error("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }

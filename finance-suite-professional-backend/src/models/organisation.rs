@@ -167,6 +167,10 @@ pub struct Organisation {
     // Invoice sequence tracking
     #[serde(rename = "lastInvoiceSequence", default)]
     pub last_invoice_sequence: i32,
+
+    // Estimate sequence tracking
+    #[serde(rename = "lastEstimateSequence", default)]
+    pub last_estimate_sequence: i32,
 }
 
 //
@@ -415,6 +419,7 @@ impl Organisation {
             cash_instructions: req.cash_instructions,
             custom_payment_name: req.custom_payment_name,
             last_invoice_sequence: 0,
+            last_estimate_sequence: 0,
         }
     }
 }

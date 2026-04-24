@@ -32,7 +32,7 @@ export const loginUser = createAsyncThunk(
       
       return { token, refreshToken: refresh_token, user };
     } catch (error) {
-      const message = error.response?.data?.message || error.message || "Login failed";
+      const message ="Please Check your Credentails";
       return rejectWithValue(message);
     }
   }

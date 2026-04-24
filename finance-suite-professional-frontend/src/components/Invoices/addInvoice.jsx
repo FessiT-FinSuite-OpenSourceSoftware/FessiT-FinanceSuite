@@ -652,14 +652,14 @@ export default function AddInvoice() {
       newErrors.invoice_number = "Invoice number is required";
     if (!invoiceData?.invoice_date?.trim())
       newErrors.invoice_date = "Invoice date is required";
-    if (!invoiceData?.invoice_dueDate?.trim())
-      newErrors.invoice_dueDate = "Invoice due date is required";
-    if (!invoiceData?.po_number?.trim())
-      newErrors.po_number = "P.O. No is required";
-    if (!invoiceData?.po_date?.trim())
-      newErrors.po_date = "P.O. Date is required";
-    if (!invoiceData?.place_of_supply?.trim())
-      newErrors.place_of_supply = "Place of supply is required";
+    // if (!invoiceData?.invoice_dueDate?.trim())
+    //   newErrors.invoice_dueDate = "Invoice due date is required";
+    // if (!invoiceData?.po_number?.trim())
+    //   newErrors.po_number = "P.O. No is required";
+    // if (!invoiceData?.po_date?.trim())
+    //   newErrors.po_date = "P.O. Date is required";
+    // if (!invoiceData?.place_of_supply?.trim())
+    //   newErrors.place_of_supply = "Place of supply is required";
     if (!invoiceData?.billcustomer_name?.trim())
       newErrors.billcustomer_name = "Customer name is required";
     if (!invoiceData?.billcustomer_address?.trim())
@@ -982,7 +982,7 @@ export default function AddInvoice() {
             </div>
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Due Date *
+                Due Date 
               </label>
               <input
                 type="date"
@@ -1012,7 +1012,7 @@ export default function AddInvoice() {
             </div>
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                P.O. No *
+                P.O. No
               </label>
               <input
                 type="text"
@@ -1030,7 +1030,7 @@ export default function AddInvoice() {
             </div>
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                P.O. Date *
+                P.O. Date
               </label>
               <input
                 type="date"
@@ -1048,7 +1048,7 @@ export default function AddInvoice() {
             </div>
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Place of Supply *
+                Place of Supply
               </label>
               <input
                 type="text"

@@ -13,6 +13,7 @@ use uuid::Uuid;
 use crate::{
     models::incoming_invoice::{CreateIncomingInvoiceRequest, UpdateIncomingInvoiceRequest},
     services::IncomingInvoiceService,
+    services::LedgerService,
     services::salary_service::SalaryService,
     utils::auth::Claims,
     utils::permissions::{check_permission, Module, PermissionAction, create_permission_error},
@@ -85,10 +86,15 @@ pub async fn get_incoming_invoice(
     }
 }
 
+fn parse_amount(s: &str) -> f64 {
+    s.trim().chars().filter(|c| c.is_ascii_digit() || *c == '.').collect::<String>().parse::<f64>().unwrap_or(0.0)
+}
+
 /// PUT /api/v1/incoming-invoices/{id}
 #[put("/incoming-invoices/{id}")]
 pub async fn update_incoming_invoice(
     service: web::Data<IncomingInvoiceService>,
+    ledger_service: web::Data<LedgerService>,
     id: Path<String>,
     req: Json<UpdateIncomingInvoiceRequest>,
     http_req: HttpRequest,
@@ -113,10 +119,34 @@ pub async fn update_incoming_invoice(
     if updated_req.status != "Paid" {
         updated_req.paid_date = existing.paid_date;
     }
+    let was_paid = existing.status.to_lowercase() == "paid";
     match service.update(&id, updated_req).await
         .map_err(actix_web::error::ErrorInternalServerError)?
     {
-        Some(inv) => Ok(HttpResponse::Ok().json(inv)),
+        Some(inv) => {
+            let now_paid = inv.status.to_lowercase() == "paid";
+            if now_paid && !was_paid {
+                if let Some(org_id) = inv.organisation_id {
+                    if let Ok(inv_id) = mongodb::bson::oid::ObjectId::parse_str(&id) {
+                        let amount = parse_amount(&inv.total);
+                        let currency = if inv.currency_type.is_empty() { "INR" } else { &inv.currency_type };
+                        if let Err(e) = ledger_service.record_incoming_invoice_payment(
+                            &inv_id,
+                            &inv.invoice_number,
+                            &inv.vendor_name,
+                            amount,
+                            currency,
+                            &org_id,
+                            mongodb::bson::DateTime::now(),
+                            user.id.as_ref(),
+                        ).await {
+                            log::error!("Ledger entry failed for incoming invoice {}: {}", id, e);
+                        }
+                    }
+                }
+            }
+            Ok(HttpResponse::Ok().json(inv))
+        },
         None => Ok(HttpResponse::NotFound().json(json!({ "message": "Not found" }))),
     }
 }

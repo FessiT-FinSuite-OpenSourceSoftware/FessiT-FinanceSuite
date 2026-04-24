@@ -11,6 +11,9 @@ pub mod general_expense_handler;
 pub mod challan_handler;
 pub mod category_handler;
 pub mod product_handler;
+pub mod estimate_handler;
+pub mod ledger_handler;
+pub mod account_handler;
 
 pub use customer_handler::configure_routes as configure_customer_routes;
 pub use organisation_handler::{configure_routes as configure_organisation_routes, configure_public_routes as configure_organisation_public_routes};
@@ -25,3 +28,6 @@ pub use general_expense_handler::configure_routes as configure_general_expense_r
 pub use challan_handler::configure_routes as configure_challan_routes;
 pub use category_handler::configure_routes as configure_category_routes;
 pub use product_handler::configure_routes as configure_product_routes;
+pub use estimate_handler::configure_routes as configure_estimate_routes;
+pub use ledger_handler::configure_routes as configure_ledger_routes;
+pub use account_handler::configure_routes as configure_account_routes;

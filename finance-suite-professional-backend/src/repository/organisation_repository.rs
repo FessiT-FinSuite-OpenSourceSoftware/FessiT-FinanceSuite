@@ -420,4 +420,36 @@ impl OrganisationRepository{
         // For now, returning None as this should be called from UserRepository
         Ok(None)
     }
+
+    pub async fn get_next_estimate_sequence_by_id(&self, org_id: &ObjectId) -> Result<i32, ApiError> {
+        // Ensure the field exists before incrementing (handles orgs created before this field was added)
+        self.collection
+            .update_one(
+                doc! { "_id": org_id, "lastEstimateSequence": { "$exists": false } },
+                doc! { "$set": { "lastEstimateSequence": 0 } },
+                None,
+            )
+            .await?;
+
+        let filter = doc! { "_id": org_id };
+        let update = doc! { "$inc": { "lastEstimateSequence": 1 } };
+        let options = mongodb::options::FindOneAndUpdateOptions::builder()
+            .upsert(false)
+            .return_document(mongodb::options::ReturnDocument::After)
+            .build();
+        let result = self.collection.find_one_and_update(filter, update, options).await?;
+        match result {
+            Some(org) => Ok(org.last_estimate_sequence),
+            None => Err(ApiError::NotFound("Organisation not found".to_string())),
+        }
+    }
+
+    pub async fn peek_next_estimate_sequence_by_id(&self, org_id: &ObjectId) -> Result<i32, ApiError> {
+        let filter = doc! { "_id": org_id };
+        let result = self.collection.find_one(filter, None).await?;
+        match result {
+            Some(org) => Ok(org.last_estimate_sequence + 1),
+            None => Err(ApiError::NotFound("Organisation not found".to_string())),
+        }
+    }
 }

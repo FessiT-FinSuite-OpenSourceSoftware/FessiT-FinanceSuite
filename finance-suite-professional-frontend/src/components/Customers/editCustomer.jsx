@@ -29,7 +29,7 @@ function ProjectModal({ project, existingProjects, onSave, onClose }) {
     onSave(form);
   };
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-semibold text-gray-800">{project ? "Edit Project" : "Add Project"}</h3>
@@ -72,7 +72,8 @@ const initialCustomer = {
   countryCode: "",
   phone: "",
   email: "",
-  isActive:"",
+  isActive: "",
+  isvendor: false,
   projects: [],
 };
 
@@ -299,7 +300,8 @@ export default function EditCustomer() {
         country: currentCustomer.country || "",
         phone: currentCustomer.phone || "",
         email: currentCustomer.email || "",
-        isActive:currentCustomer.isActive||"",
+        isActive: currentCustomer.isActive || "",
+        isvendor: currentCustomer.isvendor ?? currentCustomer.is_vendor_too ?? false,
         projects: currentCustomer.projects || [],
         addresses: currentCustomer.addresses?.length
           ? currentCustomer.addresses
@@ -609,27 +611,15 @@ export default function EditCustomer() {
 
           {/* Email */}
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">
-              Email *
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={customer.email}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter customer email"
-            />
-            {inputErrors.email && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {inputErrors.email}
-              </p>
-            )}
-            {errors.email && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {errors.email}
-              </p>
-            )}
+            <label className="block text-gray-700 font-medium mb-1">Email *</label>
+            <input type="email" name="email" value={customer.email} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500" placeholder="Enter customer email" />
+            {(inputErrors.email || errors.email) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.email || errors.email}</p>}
+          </div>
+
+          {/* Is Vendor */}
+          <div className="flex items-center gap-2 pt-6">
+            <input type="checkbox" id="isvendor" name="isvendor" checked={customer.isvendor} onChange={(e) => setCustomer((prev) => ({ ...prev, isvendor: e.target.checked }))} className="w-4 h-4 cursor-pointer accent-blue-600" />
+            <label htmlFor="isvendor" className="text-sm font-semibold text-gray-700 cursor-pointer">Is Vendor</label>
           </div>
 
           {/* Addresses */}

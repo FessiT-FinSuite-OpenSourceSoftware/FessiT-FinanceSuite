@@ -1,10 +1,11 @@
 import React, { useEffect } from "react";
-import { Receipt, TrendingUp, IndianRupee, CheckCircle, Clock } from "lucide-react";
+import { Receipt, TrendingUp, IndianRupee, CheckCircle, Clock, TrendingUpDown, TrendingUpIcon, LucideTrendingUp } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchInvoiceData, invoiceSelector } from "../../ReduxApi/invoice";
 import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
 import { fetchGstSummary, gstSummarySelector } from "../../ReduxApi/gstSummary";
 import { fetchTdsSummary, tdsSummarySelector } from "../../ReduxApi/tdsSummary";
+import { fetchEstimates, estimateSelector } from "../../ReduxApi/estimate";
 import { formatCurrency } from "../../utils/formatNumber";
 
 // Convert a single invoice's total to INR using stored rates
@@ -27,6 +28,7 @@ export default function Stats() {
   const { currentOrganisation } = useSelector(orgamisationSelector);
   const { data: gstData, isLoading: gstLoading } = useSelector(gstSummarySelector);
   const { data: tdsData } = useSelector(tdsSummarySelector);
+  const { estimateData } = useSelector(estimateSelector);
 
   const orgCurrency = currentOrganisation?.currency || "INR";
 
@@ -34,6 +36,7 @@ export default function Stats() {
     dispatch(fetchInvoiceData());
     dispatch(fetchGstSummary());
     dispatch(fetchTdsSummary());
+    dispatch(fetchEstimates());
     const email = localStorage.getItem("email");
     if (email) dispatch(fetchOrganisationByEmail(email));
   }, [dispatch]);
@@ -71,6 +74,9 @@ export default function Stats() {
     ? new Date(tdsData.month + "-01").toLocaleString("en-IN", { month: "long", year: "numeric" })
     : "This Month";
 
+  const estimatedRevenue = (Array.isArray(estimateData) ? estimateData : [])
+    .reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
   const gstMonth = gstData?.month
     ? new Date(gstData.month + "-01").toLocaleString("en-IN", { month: "long", year: "numeric" })
     : "This Month";
@@ -84,17 +90,24 @@ export default function Stats() {
       icon: TrendingUp,
     },
     {
-      label: "Paid Invoices",
-      value: String(paid.length),
-      change: `of ${invoiceData.length} invoices`,
+      label: "Total Estimates Revenue",
+      value: fmt(estimatedRevenue),
+      change: `${(Array.isArray(estimateData) ? estimateData : []).length} total estimates`,
       trend: "neutral",
-      icon: CheckCircle,
+      icon: TrendingUpIcon,
     },
+    // {
+    //   label: "Paid Invoices",
+    //   value: String(paid.length),
+    //   change: `of ${invoiceData.length} invoices`,
+    //   trend: "neutral",
+    //   icon: CheckCircle,
+    // },
     {
       label: "Pending",
       value: String(pending.length),
       change: `of ${invoiceData.length} invoices`,
-      trend: "neutral",
+      trend: "danger",
       icon: Clock,
     },
     {
@@ -141,6 +154,8 @@ export default function Stats() {
                   className={`p-3 rounded-lg ${
                     stat.trend === "up"
                       ? "bg-green-50"
+                      : stat.trend === "danger"
+                      ? "bg-red-50"
                       : stat.trend === "warning"
                       ? "bg-orange-50"
                       : "bg-blue-50"
@@ -150,6 +165,8 @@ export default function Stats() {
                     className={`${
                       stat.trend === "up"
                         ? "text-green-600"
+                        : stat.trend === "danger"
+                        ? "text-red-600"
                         : stat.trend === "warning"
                         ? "text-orange-600"
                         : "text-blue-600"
@@ -161,6 +178,8 @@ export default function Stats() {
                   className={`text-sm font-medium ${
                     stat.trend === "up"
                       ? "text-green-600"
+                      : stat.trend === "danger"
+                      ? "text-red-600"
                       : stat.trend === "warning"
                       ? "text-orange-600"
                       : "text-gray-600"

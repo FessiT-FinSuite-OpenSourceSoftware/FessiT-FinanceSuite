@@ -14,11 +14,15 @@ pub struct InvoiceRepository {
     raw_collection: Arc<Collection<Document>>,
 }
 
-fn doc_to_invoice(mut raw: Document) -> Option<Invoice> {
-    let oid = raw.get_object_id("_id").ok();
-    let mut invoice: Invoice = from_document(raw).ok()?;
-    invoice.id = oid;
-    Some(invoice)
+fn doc_to_invoice(raw: Document) -> Option<Invoice> {
+    let id = raw.get_object_id("_id").ok();
+    match from_document::<Invoice>(raw) {
+        Ok(mut inv) => { inv.id = id; Some(inv) }
+        Err(e) => {
+            log::warn!("Skipping invoice {:?} - deserialization failed: {}", id, e);
+            None
+        }
+    }
 }
 
 impl InvoiceRepository {
@@ -41,11 +45,21 @@ impl InvoiceRepository {
     async fn fetch_many(&self, filter: impl Into<Option<Document>>) -> Result<Vec<Invoice>, MongoError> {
         let mut cursor = self.raw_collection.find(filter, None).await?;
         let mut invoices = Vec::new();
-        while let Some(raw) = cursor.try_next().await.unwrap_or(None) {
-            if let Some(inv) = doc_to_invoice(raw) {
-                invoices.push(inv);
+        loop {
+            match cursor.try_next().await {
+                Ok(Some(raw)) => {
+                    if let Some(inv) = doc_to_invoice(raw) {
+                        invoices.push(inv);
+                    }
+                }
+                Ok(None) => break,
+                Err(e) => {
+                    log::error!("Cursor error while fetching invoices: {}", e);
+                    return Err(e);
+                }
             }
         }
+        log::info!("fetch_many returning {} invoices", invoices.len());
         Ok(invoices)
     }
 

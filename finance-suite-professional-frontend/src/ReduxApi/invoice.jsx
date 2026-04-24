@@ -80,6 +80,7 @@ export const fetchNextInvoiceNumber = () => async (dispatch) => {
   try {
     const { data } = await axiosInstance.get('/invoices/next-number')
     dispatch(setNextInvoiceNumber(data.invoice_number))
+    console.log("this is what ive received from backend after getting estimiate request")
     return data.invoice_number
   } catch (error) {
     console.error('Error fetching next invoice number:', error)

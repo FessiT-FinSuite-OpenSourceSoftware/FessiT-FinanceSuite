@@ -204,7 +204,7 @@ export default function CreateOrganization() {
       };
 
       await dispatch(createOrganisation(mappedData));
-      toast.success("Organization created successfully!");
+      // toast.success("Organization created successfully!");
       navigate("/login");
     } catch (error) {
       console.error("Create failed:", error);

@@ -5,7 +5,7 @@ import {NavLink} from "react-router-dom"
 export default function QuickActions() {
   return (
     <div>
-      <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mt-2">
+      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm mt-2">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Quick Actions
         </h3>

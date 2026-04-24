@@ -92,6 +92,8 @@ export default function InvoiceList() {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [conversionRate, setConversionRate] = useState("");
   const [approxConversionRate, setApproxConversionRate] = useState("");
+  const [paymentType, setPaymentType] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
 
   useEffect(() => {
     dispatch(fetchInvoiceData());
@@ -149,6 +151,8 @@ export default function InvoiceList() {
     setSelectedStatus(currentStatus);
     setConversionRate(invoice.conversionRate ? String(invoice.conversionRate) : "");
     setApproxConversionRate(invoice.approxconversionRate ? String(invoice.approxconversionRate) : "");
+    setPaymentType(invoice.payment_type || "");
+    setPaymentReference(invoice.payment_reference || "");
     setStatusModal({
       id: getInvoiceId(invoice),
       currentStatus,
@@ -161,6 +165,8 @@ export default function InvoiceList() {
     setSelectedStatus("");
     setConversionRate("");
     setApproxConversionRate("");
+    setPaymentType("");
+    setPaymentReference("");
   };
 
   const handleStatusUpdate = async () => {
@@ -173,6 +179,10 @@ export default function InvoiceList() {
 
     if (selectedStatus === "Paid" && !isSameCurrency && !conversionRate.trim()) {
       toast.error("Conversion rate is required for Paid status");
+      return;
+    }
+    if (selectedStatus === "Paid" && !paymentType) {
+      toast.error("Payment type is required for Paid status");
       return;
     }
     if (selectedStatus === "Issued" && !isSameCurrency && !approxConversionRate.trim()) {
@@ -195,6 +205,8 @@ export default function InvoiceList() {
             ? "1"
             : String(approxConversionRate)
           : fullInvoice.approxconversionRate || "",
+      payment_type: selectedStatus === "Paid" ? paymentType : fullInvoice.payment_type || "",
+      payment_reference: selectedStatus === "Paid" ? paymentReference : fullInvoice.payment_reference || "",
     };
 
     const result = await dispatch(updateInvoice(statusModal.id, payload));
@@ -205,14 +217,14 @@ export default function InvoiceList() {
 
   const statusOptions = statusModal
     ? (isAdmin
-        ? [ "Issued", "Paid", "On Hold"]
-        : statusModal.currentStatus === "New"
-          ? ["Issued"]
-          : statusModal.currentStatus === "Issued"
-            ? ["Issued", "Paid", "On Hold"]
-            : statusModal.currentStatus === "On Hold"
-              ? ["On Hold", "Issued", "Paid"]
-              : [statusModal.currentStatus])
+      ? ["Issued", "Paid", "On Hold"]
+      : statusModal.currentStatus === "New"
+        ? ["Issued"]
+        : statusModal.currentStatus === "Issued"
+          ? ["Issued", "Paid", "On Hold"]
+          : statusModal.currentStatus === "On Hold"
+            ? ["On Hold", "Issued", "Paid"]
+            : [statusModal.currentStatus])
     : [];
 
   return (
@@ -257,11 +269,10 @@ export default function InvoiceList() {
           <button
             onClick={() => hasWrite && setShowCreateMenu((prev) => !prev)}
             disabled={!hasWrite}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
-              hasWrite
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${hasWrite
                 ? "bg-blue-600 text-white hover:bg-blue-700"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
+              }`}
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Create</span>
@@ -344,9 +355,8 @@ export default function InvoiceList() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       onClick={() => !locked && openStatusModal(invoice)}
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status || "New")} ${
-                        !locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"
-                      }`}
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status || "New")} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"
+                        }`}
                     >
                       {invoice.status || "New"}
                     </span>
@@ -422,34 +432,65 @@ export default function InvoiceList() {
                     value={approxConversionRate}
                     onChange={(e) => setApproxConversionRate(e.target.value)}
                     disabled={statusModal.currency === orgCurrency}
-                    className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      statusModal.currency === orgCurrency
+                    className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${statusModal.currency === orgCurrency
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
                         : "border-gray-300"
-                    }`}
+                      }`}
                   />
                 </div>
               </div>
             )}
 
             {selectedStatus === "Paid" && (
-              <div className="mt-4">
-                <label className="block text-sm text-gray-600 mb-1">Conversion Rate</label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500 whitespace-nowrap">1 {statusModal.currency} x</span>
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Conversion Rate</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500 whitespace-nowrap">1 {statusModal.currency} x</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder={statusModal.currency === orgCurrency ? "1" : "Enter rate"}
+                      value={conversionRate}
+                      onChange={(e) => setConversionRate(e.target.value)}
+                      disabled={statusModal.currency === orgCurrency}
+                      className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${statusModal.currency === orgCurrency
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
+                          : "border-gray-300"
+                        }`}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Payment Type *</label>
+                  <select
+                    value={paymentType}
+                    onChange={(e) => setPaymentType(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select payment type</option>
+                    {/* <option value="Bank Transfer">Bank Transfer</option> */}
+                    <option value="UPI">UPI</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Cheque">Cheque</option>
+                    {/* <option value="Credit Card">Credit Card</option> */}
+                    {/* <option value="Debit Card">Debit Card</option> */}
+                    <option value="NEFT/RTGS">NEFT/RTGS</option>
+                    {/* <option value="RTGS">RTGS</option> */}
+                    {/* <option value="IMPS">IMPS</option> */}
+                    {/* <option value="PayPal">PayPal</option> */}
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Payment Reference</label>
                   <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    placeholder={statusModal.currency === orgCurrency ? "1" : "Enter rate"}
-                    value={conversionRate}
-                    onChange={(e) => setConversionRate(e.target.value)}
-                    disabled={statusModal.currency === orgCurrency}
-                    className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      statusModal.currency === orgCurrency
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200"
-                        : "border-gray-300"
-                    }`}
+                    type="text"
+                    placeholder="UTR / Cheque no. / Transaction ID"
+                    value={paymentReference}
+                    onChange={(e) => setPaymentReference(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>

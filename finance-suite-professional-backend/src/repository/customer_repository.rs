@@ -98,6 +98,16 @@ impl CustomerRepository {
         Ok(customer)
     }
 
+    /// Returns only the display name (companyName) for a customer id — cheap lookup.
+    pub async fn get_display_name(&self, id: &ObjectId) -> Result<Option<String>, ApiError> {
+        let result = self.collection
+            .find_one(doc! { "_id": id }, None)
+            .await?;
+        Ok(result.map(|c| {
+            if !c.company_name.is_empty() { c.company_name } else { c.customer_name }
+        }))
+    }
+
     pub async fn update(&self, id: &str, req: UpdateCustomerRequest) -> Result<Customer, ApiError> {
         let object_id = ObjectId::parse_str(id)
             .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
@@ -159,6 +169,12 @@ impl CustomerRepository {
                 .get_document_mut("$set")
                 .unwrap()
                 .insert("isActive", is_active);
+        }
+        if let Some(is_vendor) = req.isvendor {
+            update_doc
+                .get_document_mut("$set")
+                .unwrap()
+                .insert("is_vendor_too", is_vendor);
         }
 
         if let Some(phone) = req.phone {

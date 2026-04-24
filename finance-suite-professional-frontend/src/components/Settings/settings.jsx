@@ -364,6 +364,7 @@ export default function SettingsCreation() {
     try {
       await dispatch(updateOrganisationData(orgId, updateData))
       localStorage.setItem("email", settings.email)
+      await dispatch(fetchOrganisationByEmail(settings.email, true))
       // Force clear loading state after successful update
       setTimeout(() => {
         dispatch(clearLoading())
@@ -472,6 +473,7 @@ export default function SettingsCreation() {
       try {
         await dispatch(updateOrganisationData(orgId, mappedSettings))
         localStorage.setItem("email", settings.email)
+        await dispatch(fetchOrganisationByEmail(settings.email, true))
       } catch (error) {
         console.error('Update failed:', error)
       }
