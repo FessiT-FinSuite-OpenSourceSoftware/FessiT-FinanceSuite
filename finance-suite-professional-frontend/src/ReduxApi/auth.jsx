@@ -84,11 +84,13 @@ export const verifyToken = createAsyncThunk(
       if (!token) {
         throw new Error("No token found");
       }
-      
       const response = await axiosInstance.get("/auth/verify");
       return response.data.user;
     } catch (error) {
-      localStorage.clear();
+      // Only clear storage on explicit auth failures (401), not network/server errors
+      if (error.response?.status === 401) {
+        localStorage.clear();
+      }
       const message = error.response?.data?.message || error.message || "Token verification failed";
       return rejectWithValue(message);
     }
@@ -278,10 +280,13 @@ const authSlice = createSlice({
       })
       .addCase(verifyToken.rejected, (state, action) => {
         state.isLoading = false;
-        state.isAuthenticated = false;
-        state.user = null;
-        state.token = null;
-        state.refreshToken = null;
+        // Only deauthenticate on explicit 401, keep session alive on network errors
+        if (action.payload === "Token verification failed" || action.payload?.includes?.("401")) {
+          state.isAuthenticated = false;
+          state.user = null;
+          state.token = null;
+          state.refreshToken = null;
+        }
         state.error = action.payload;
       })
       

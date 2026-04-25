@@ -13,6 +13,10 @@ const KeyUri = {
   BACKENDURI: "http://127.0.0.1:8082/api/v1",
   //production server
   // BACKENDURI: "http://65.0.26.187:8082/api/v1",
+
+  // fessit server
+    // BACKENDURI: "http://3.26.44.70:8082/api/v1",
+
   //render server
   // BACKENDURI: "https://fessit-financesuite.onrender.com/api/v1"
 

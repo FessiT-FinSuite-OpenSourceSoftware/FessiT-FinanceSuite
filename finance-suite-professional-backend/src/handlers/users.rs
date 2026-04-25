@@ -270,6 +270,38 @@ pub async fn delete_user(
     }
 }
 
+/// GET /api/v1/auth/verify
+#[get("/auth/verify")]
+pub async fn verify_token_handler(
+    service: web::Data<UserService>,
+    http_req: HttpRequest,
+) -> actix_web::Result<impl Responder> {
+    let claims = http_req
+        .extensions()
+        .get::<Claims>()
+        .cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
+
+    let user = service
+        .get_user_by_id(&claims.sub)
+        .await
+        .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+
+    let profile = crate::models::users::UserResponse {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        organisation_id: user.organisation_id,
+        permissions: user.permissions,
+        is_admin: user.is_admin,
+        is_active: user.is_active,
+    };
+
+    Ok(HttpResponse::Ok().json(json!({ "user": profile })))
+}
+
 /// POST /api/v1/auth/login
 #[post("/auth/login")]
 pub async fn login(
@@ -326,7 +358,8 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
 
 /// Register protected routes (JWT required)
 pub fn configure_protected_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(get_profile)
+    cfg.service(verify_token_handler)
+        .service(get_profile)
         .service(create_user)
         .service(list_users)
         .service(get_user)

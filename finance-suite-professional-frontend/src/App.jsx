@@ -62,11 +62,10 @@ export default function App() {
   // Check for existing token on app load
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
-    if (storedToken && !isAuthenticated) {
-      // Verify the stored token
+    if (storedToken && !isAuthenticated && !token) {
       dispatch(verifyToken());
     }
-  }, [dispatch, isAuthenticated]);
+  }, []);
 
   // Fetch user profile after successful authentication (only if user data is missing)
   useEffect(() => {
