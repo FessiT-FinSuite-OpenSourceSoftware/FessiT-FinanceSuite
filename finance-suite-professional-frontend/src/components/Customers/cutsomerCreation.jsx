@@ -182,6 +182,9 @@ export default function CustomerCreation() {
       case "customerName":
         if (!value) error = "Customer name is required";
         break;
+      case "CustomerCode":
+        if (!value) error = "Customer code is required";
+        break;
       case "country":
         if (!value) error = "Country is required";
         break;
@@ -255,9 +258,9 @@ export default function CustomerCreation() {
     setSelected(selectedCountry);
     setCustomer({
       ...customer,
-
       country: selectedCountry.country,
       countryCode: selectedCountry.code,
+      CustomerCode: "", // Reset customer code when country changes
       phone: ""
     });
     setOpen(false);
@@ -280,6 +283,8 @@ export default function CustomerCreation() {
     if (!customer.country.trim()) newErrors.country = "Country is required";
     if (!customer.companyName.trim())
       newErrors.companyName = "Company name is required";
+    if (!customer.CustomerCode.trim())
+      newErrors.CustomerCode = "Customer code is required";
     // if (!customer.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
     if (customer.addresses.every((addr) => !addr.value.trim()))
       newErrors.address = "At least one address is required";
@@ -300,7 +305,13 @@ export default function CustomerCreation() {
     //clear error message
     setInputErrors({});
 
-    dispatch(createCustomer(customer))
+    // Combine ISO code with customer code for backend
+    const customerDataForBackend = {
+      ...customer,
+      CustomerCode: selected?.iso ? selected.iso + customer.CustomerCode : customer.CustomerCode
+    };
+
+    dispatch(createCustomer(customerDataForBackend))
     nav("/customers");
 
     setCustomer({
@@ -344,10 +355,10 @@ export default function CustomerCreation() {
                 Edit
               </button> */}
               <button
-                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+                className="px-6 py-2 cursor-pointer text-black rounded-full border border-blue-600 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleSubmit}
               >
-                Create
+                Save
               </button>
             </div>
           </div>
@@ -382,11 +393,7 @@ export default function CustomerCreation() {
             {(inputErrors.gstIN || errors.gstIN) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.gstIN || errors.gstIN}</p>}
           </div>
 
-          {/* Customer Code */}
-          <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">Customer Code</label>
-            <input type="text" name="CustomerCode" value={customer.CustomerCode} onChange={handleChange} className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500" placeholder="Enter customer code" />
-          </div>
+          
 
           {/* Email */}
           <div className="relative">
@@ -435,6 +442,26 @@ export default function CustomerCreation() {
               />
             </div>
             {(inputErrors.phone || errors.phone) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.phone || errors.phone}</p>}
+          </div>
+          {/* Customer Code */}
+          <div className="relative">
+            <label className="block text-gray-700 font-medium mb-1">Customer Code *</label>
+            <div className="flex">
+              {selected?.iso && (
+                <div className="px-4 w-18 text-gray-900 bg-gray-100 border border-gray-300 flex justify-center items-center font-medium rounded-tl-md rounded-bl-md">
+                  {selected?.iso}
+                </div>
+              )}
+              <input 
+                type="text" 
+                name="CustomerCode" 
+                value={customer.CustomerCode} 
+                onChange={handleChange} 
+                className={`border border-gray-300 ${selected?.iso ? "rounded-tr-md rounded-br-md" : "rounded-md"} px-3 py-2 w-full focus:ring-1 focus:ring-blue-500`}
+                placeholder="Enter customer code" 
+              />
+            </div>
+            {(inputErrors.CustomerCode || errors.CustomerCode) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.CustomerCode || errors.CustomerCode}</p>}
           </div>
 
           {/* Is Vendor */}

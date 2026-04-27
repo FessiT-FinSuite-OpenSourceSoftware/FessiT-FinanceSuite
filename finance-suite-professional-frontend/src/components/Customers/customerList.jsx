@@ -146,6 +146,8 @@ export default function CustomerList() {
   const [showAction, setShowAction] = useState(null);
   const [page, setPage] = useState(10);
   const [projectModal, setProjectModal] = useState(null); // { id, customerName, projects }
+  const [statusModal, setStatusModal] = useState(null); // { id, currentStatus }
+  const [selectedStatus, setSelectedStatus] = useState("");
   const { id } = useParams();
   const dispatch = useDispatch();
   const nav = useNavigate();
@@ -178,18 +180,16 @@ export default function CustomerList() {
   }, [dispatch]);
 
   const getStatusColor = (status) => {
-    // console.log(status)
     switch (status) {
       case "Active":
         return "bg-green-100 text-green-800";
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800";
+      case "Prospect":
+        return "bg-blue-100 text-blue-800";
+      case "Closed":
+        return "bg-gray-100 text-gray-800";
       case "New":
-        return "bg-red-100 text-red-800";
-      case "Draft":
-        return "bg-gray-100 text-gray-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-red-100 text-red-800";
     }
   };
 
@@ -199,6 +199,43 @@ export default function CustomerList() {
     const updated = { ...target, projects: [...(target.projects || []), form] };
     dispatch(updateCustomerData(projectModal.id, updated));
     setProjectModal(null);
+  };
+
+  const openStatusModal = (customer) => {
+    const currentStatus = customer.isActive || "New";
+    if (!hasWrite) return;
+    
+    setSelectedStatus(currentStatus);
+    setStatusModal({
+      id: customer._id?.$oid,
+      currentStatus,
+      customerName: customer.customerName
+    });
+  };
+
+  const closeStatusModal = () => {
+    setStatusModal(null);
+    setSelectedStatus("");
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!statusModal) return;
+
+    const fullCustomer = customersData.find((customer) => customer._id?.$oid === statusModal.id);
+    if (!fullCustomer) return;
+
+    const payload = {
+      ...fullCustomer,
+      isActive: selectedStatus,
+    };
+
+    try {
+      await dispatch(updateCustomerData(statusModal.id, payload));
+      closeStatusModal();
+    } catch (error) {
+      // Error handling is already done in the Redux action
+      console.error('Status update failed:', error);
+    }
   };
 
   const onCreateNew = () => {
@@ -235,7 +272,7 @@ export default function CustomerList() {
     <div>
       <div className="max-w-7xl lg:w-full md:w-full ">
         {/* Action Bar */}
-        <div className="sticky top-[88px] z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm mb-10">
+        <div className="sticky top-[88px] z-10 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm mb-10">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             {/* Search Bar */}
             <div className="relative flex-1 max-w-md">
@@ -260,9 +297,9 @@ export default function CustomerList() {
                 >
                   <option value="All">All Status</option>
                   <option value="New">New</option>
-
+                  <option value="Prospect">Prospect</option>
                   <option value="Active">Active</option>
-                  <option value="Pending">Pending</option>
+                  <option value="Closed">Closed</option>
                 </select>
               </div>
 
@@ -297,15 +334,15 @@ export default function CustomerList() {
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Pending</p>
-            <p className="text-2xl font-bold text-yellow-600">
-              {customersData.filter((i) => i.isActive === "Pending").length}
+            <p className="text-sm text-gray-600 mb-1">Prospect</p>
+            <p className="text-2xl font-bold text-blue-600">
+              {customersData.filter((i) => i.isActive === "Prospect").length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">New Entry</p>
-            <p className="text-2xl font-bold text-red-600">
-              {customersData.filter((i) => i.isActive === "New").length}
+            <p className="text-sm text-gray-600 mb-1">Closed</p>
+            <p className="text-2xl font-bold text-gray-600">
+              {customersData.filter((i) => i.isActive === "Closed").length}
             </p>
           </div>
         </div>
@@ -361,11 +398,12 @@ export default function CustomerList() {
 
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
+                          onClick={() => hasWrite && openStatusModal(item)}
                           className={`inline-flex px-2 py-1 capitalize text-xs font-semibold rounded-full ${getStatusColor(
                             item?.isActive
-                          )}`}
+                          )} ${hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
                         >
-                          {item?.isActive}
+                          {item?.isActive || "New"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
@@ -503,6 +541,82 @@ export default function CustomerList() {
           onSave={handleAddProject}
           onClose={() => setProjectModal(null)}
         />
+      )}
+      
+      {statusModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-96 relative z-[10000]">
+            <h3 className="text-base font-semibold text-gray-800 mb-4">
+              Update Customer Status
+            </h3>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              Update status for <span className="font-medium capitalize">{statusModal.customerName}</span>
+            </p>
+
+            <div className="flex flex-wrap gap-4 mb-4">
+              {["New", "Prospect", "Active", "Closed"].map((option) => {
+                // Define status progression rules
+                const currentStatus = statusModal.currentStatus;
+                let isDisabled = false;
+                
+                // Status progression: New -> Prospect -> Active -> Closed
+                if (currentStatus === "New" && !["New", "Prospect"].includes(option)) {
+                  isDisabled = true;
+                }
+                if (currentStatus === "Prospect" && !["Prospect", "Active", "New"].includes(option)) {
+                  isDisabled = true;
+                }
+                if (currentStatus === "Active" && !["Active", "Closed"].includes(option)) {
+                  isDisabled = true;
+                }
+                if (currentStatus === "Closed" && option !== "Closed") {
+                  isDisabled = true;
+                }
+                
+                return (
+                  <label 
+                    key={option} 
+                    className={`flex items-center gap-2 text-sm cursor-pointer text-gray-700 ${
+                      isDisabled ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="status"
+                      value={option}
+                      checked={selectedStatus === option}
+                      onChange={() => !isDisabled && setSelectedStatus(option)}
+                      disabled={isDisabled}
+                      className="w-4 h-4 accent-blue-600"
+                    />
+                    <span className="font-medium">{option}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={closeStatusModal}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleStatusUpdate}
+                disabled={!selectedStatus}
+                className={`px-4 py-2 text-sm rounded-lg ${
+                  selectedStatus 
+                    ? "bg-blue-600 text-white hover:bg-blue-700" 
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                Update
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

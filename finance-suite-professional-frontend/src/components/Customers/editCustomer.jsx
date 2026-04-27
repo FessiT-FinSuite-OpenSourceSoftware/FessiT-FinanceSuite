@@ -167,8 +167,13 @@ export default function EditCustomer() {
         break;
       case "customerName":
         if (!value) error = "Customer name is required";
+        break;
+      case "CustomerCode":
+        if (!value) error = "Customer code is required";
+        break;
       case "country":
         if (!value) error = "Country is required";
+        break;
       case "phone":
         if (!value) {
           error = "Phone number is required.";
@@ -235,7 +240,6 @@ export default function EditCustomer() {
     setSelected(selectedCountry);
     setCustomer({
       ...customer,
-
       country: selectedCountry.country,
       countryCode: selectedCountry.code,
     });
@@ -259,6 +263,8 @@ export default function EditCustomer() {
   if (!customer.country.trim()) newErrors.country = "Country is required";
   if (!customer.companyName.trim())
     newErrors.companyName = "Company name is required";
+  if (!customer.CustomerCode.trim())
+    newErrors.CustomerCode = "Customer code is required";
   if (!customer.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
   if (customer.addresses.every((addr) => !addr.value.trim()))
     newErrors.address = "At least one address is required";
@@ -276,8 +282,14 @@ export default function EditCustomer() {
     return;
   }
 
+  // Combine ISO code with customer code for backend
+  const customerDataForBackend = {
+    ...customer,
+    CustomerCode: selected?.iso ? selected.iso + customer.CustomerCode : customer.CustomerCode
+  };
+
   // ✅ valid form, dispatch update
-  dispatch(updateCustomerData( id, customer )); // <-- pass properly
+  dispatch(updateCustomerData( id, customerDataForBackend )); // <-- pass properly
   nav("/customers");
   setInputErrors({});
 };
@@ -291,12 +303,36 @@ export default function EditCustomer() {
 
   useEffect(() => {
     if (currentCustomer) {
+      // Separate ISO code from customer code for display
+      let displayCustomerCode = currentCustomer.CustomerCode || "";
+      let foundCountry = null;
+      
+      // Check if customer code starts with a country ISO code
+      if (displayCustomerCode.length >= 2) {
+        const possibleISO = displayCustomerCode.substring(0, 2).toUpperCase();
+        foundCountry = countriesData.countries.find(c => c.iso === possibleISO);
+        
+        if (foundCountry) {
+          // Remove ISO code from display value
+          displayCustomerCode = displayCustomerCode.substring(2);
+        }
+      }
+      
+      // If no country found from customer code, try to find by country name
+      if (!foundCountry) {
+        foundCountry = countriesData.countries.find(
+          (c) =>
+            c.country === currentCustomer.country ||
+            c.code === currentCustomer.countryCode
+        );
+      }
+
       setCustomer((prev) => ({
         ...prev,
         customerName: currentCustomer.customerName || "",
         companyName: currentCustomer.companyName || "",
         gstIN: currentCustomer.gstIN || "",
-        CustomerCode: currentCustomer.CustomerCode || "",
+        CustomerCode: displayCustomerCode,
         country: currentCustomer.country || "",
         phone: currentCustomer.phone || "",
         email: currentCustomer.email || "",
@@ -307,12 +343,6 @@ export default function EditCustomer() {
           ? currentCustomer.addresses
           : prev.addresses,
       }));
-
-      const foundCountry = countriesData.countries.find(
-        (c) =>
-          c.country === currentCustomer.country ||
-          c.code === currentCustomer.countryCode
-      );
 
       if (foundCountry) setSelected(foundCountry);
 
@@ -407,9 +437,9 @@ export default function EditCustomer() {
             >
               <option value="">Change status</option>
               <option value="New">New</option>
+              <option value="Prospect">Prospect</option>
               <option value="Active">Active</option>
-              <option value="Pending">Pending</option>
-            
+              <option value="Closed">Closed</option>
             </select>
           </div>
         </div>
@@ -493,16 +523,24 @@ export default function EditCustomer() {
           {/* Customer Code */}
           <div className="relative">
             <label className="block text-gray-700 font-medium mb-1">
-              Customer Code
+              Customer Code *
             </label>
-            <input
-              type="text"
-              name="CustomerCode"
-              value={customer.CustomerCode}
-              onChange={handleChange}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter customer code"
-            />
+            <div className="flex">
+              {selected?.iso && (
+                <div className="px-4 w-18 text-gray-900 bg-gray-100 border border-gray-300 flex justify-center items-center font-medium rounded-tl-md rounded-bl-md">
+                  {selected?.iso}
+                </div>
+              )}
+              <input
+                type="text"
+                name="CustomerCode"
+                value={customer.CustomerCode}
+                onChange={handleChange}
+                className={`border border-gray-300 ${selected?.iso ? "rounded-tr-md rounded-br-md" : "rounded-md"} px-3 py-2 w-full focus:ring-1 focus:ring-blue-500`}
+                placeholder="Enter customer code"
+              />
+            </div>
+            {(inputErrors.CustomerCode || errors.CustomerCode) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.CustomerCode || errors.CustomerCode}</p>}
           </div>
 
           {/* Country */}

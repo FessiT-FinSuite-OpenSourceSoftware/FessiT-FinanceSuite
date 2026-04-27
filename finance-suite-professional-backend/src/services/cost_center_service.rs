@@ -62,7 +62,7 @@ impl CostCenterService {
 
         let series_letter = (b'A' + series_index as u8) as char;
 
-        Ok(format!("{}{}-{}{:06}", code, fy_suffix, series_letter, digits))
+        Ok(format!("{}-Y{}-{}{:03}", code, fy_suffix, series_letter, digits))
     }
 
     pub async fn create_cost_center(&self, req: CreateCostCenterRequest, org_id: ObjectId) -> Result<CostCenter, ApiError> {

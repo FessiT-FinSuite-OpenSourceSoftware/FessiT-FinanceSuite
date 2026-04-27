@@ -51,8 +51,8 @@ export default function AddCostCenter() {
           </div>
           <div className="flex gap-2 mr-5">
             <button onClick={handleSubmit}
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all">
-              Create
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-blue-600 hover:border-blue-500 hover:text-blue-600 transition-all">
+              Save
             </button>
           </div>
         </div>

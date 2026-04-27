@@ -9,7 +9,7 @@ pub struct Address {
     #[validate(length(min = 1, message = "Address value cannot be empty"))]
     pub value: String,
     
-    #[serde(skip_serializing, skip_deserializing)]
+    #[serde(skip)]
     pub is_editing: bool,
 }
 

@@ -76,6 +76,7 @@ export default function Login() {
         toast.error(result.payload || "Invalid email or password");
       } else {
         toast.success("Login successful! Welcome back.");
+        navigate("/dashboard");
       }
     } catch (error) {
       toast.error("Login failed. Please try again.");

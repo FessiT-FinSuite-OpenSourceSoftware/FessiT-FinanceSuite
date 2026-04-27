@@ -329,7 +329,6 @@ pub struct UpdateOrganizationRequest {
     pub card_api_key: Option<String>,
     pub cash_instructions: Option<String>,
     pub custom_payment_name: Option<String>,
-    #[serde(default)]
     pub services: Option<Vec<Service>>,
 }
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "finance-suite-professional",
-  "version": "1.1.322",
+  "version": "1.1.3223",
   "identifier": "com.fessit.finsuite",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Finance-suite",
+        "title": "Finance-suite-Fessit",
         "width": 800,
         "height": 600,
         "resizable": true,
