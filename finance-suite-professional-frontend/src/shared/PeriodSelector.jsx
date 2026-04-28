@@ -39,8 +39,8 @@ function monthRange(fromY, fromM, toY, toM) {
 }
 
 const PRESETS_CURRENT = [
-  { label: "This Month",    key: "this_month" },
-  { label: "Last Month",    key: "last_month" },
+  { label: "Current Month",    key: "this_month" },
+  { label: "Previous Month",    key: "last_month" },
   { label: "Last 3 Months", key: "last_3" },
   { label: "Last 6 Months", key: "last_6" },
   { label: "Last 1 Year",   key: "last_12" },
@@ -48,11 +48,11 @@ const PRESETS_CURRENT = [
 ];
 
 const PRESETS_PAST = [
-  { label: "March",        key: "past_mar" },
-  { label: "Jan – Mar",    key: "past_q4" },
-  { label: "Oct – Mar",    key: "past_h2" },
-  { label: "Apr – Mar",    key: "past_full" },
-  { label: "Custom",       key: "custom" },
+  { label: "Quarter 1 (Apr–Jun)", key: "past_q1" },
+  { label: "Quarter 2 (Jul–Sep)", key: "past_q2" },
+  { label: "Quarter 3 (Oct–Dec)", key: "past_q3" },
+  { label: "Quarter 4 (Jan–Mar)", key: "past_q4" },
+  { label: "Custom Date Range",   key: "custom" },
 ];
 
 /**
@@ -111,12 +111,11 @@ export default function PeriodSelector({ onChange }) {
     if (p === "last_6")  return available.slice(-6).length  ? available.slice(-6)  : [last];
     if (p === "last_12") return available;
 
-    // past FY presets — always relative to end of that FY (March)
-    const fyEnd = { year: fy + 1, month: 3 };
-    if (p === "past_mar")  return [fyEnd];
-    if (p === "past_q4")   return monthRange(fy + 1, 1, fy + 1, 3);   // Jan–Mar
-    if (p === "past_h2")   return monthRange(fy, 10, fy + 1, 3);      // Oct–Mar
-    if (p === "past_full") return monthRange(fy, 4, fy + 1, 3);       // Apr–Mar
+    // past FY presets — quarters relative to FY start (Apr)
+    if (p === "past_q1") return monthRange(fy, 4, fy, 6);       // Apr–Jun
+    if (p === "past_q2") return monthRange(fy, 7, fy, 9);       // Jul–Sep
+    if (p === "past_q3") return monthRange(fy, 10, fy, 12);     // Oct–Dec
+    if (p === "past_q4") return monthRange(fy + 1, 1, fy + 1, 3); // Jan–Mar
 
     return null;
   }
@@ -145,7 +144,7 @@ export default function PeriodSelector({ onChange }) {
 
   function handleFYChange(newFY) {
     setFYStart(newFY);
-    setPreset(newFY < currentFYStart ? "past_full" : "this_month");
+    setPreset(newFY < currentFYStart ? "past_q1" : "this_month");
     const cf = clampToFY(customFrom.year, customFrom.month, newFY);
     const ct = clampToFY(customTo.year,   customTo.month,   newFY);
     setCustomFrom(cf);
@@ -205,10 +204,8 @@ export default function PeriodSelector({ onChange }) {
           onChange={(e) => setPreset(e.target.value)}
           className="text-xs font-semibold text-gray-700 bg-transparent border-none outline-none cursor-pointer"
         >
-          {PRESETS.map((p) => (
-            <option key={p.key} value={p.key} disabled={disabledPresets.has(p.key)}>
-              {p.label}
-            </option>
+          {PRESETS.filter(p => !disabledPresets.has(p.key)).map((p) => (
+            <option key={p.key} value={p.key}>{p.label}</option>
           ))}
         </select>
       </div>
@@ -268,7 +265,7 @@ function MonthPicker({ value, fyStart, onChange, minValue, maxValue }) {
       }}
       className="text-xs font-semibold text-gray-700 bg-transparent border-none outline-none cursor-pointer"
     >
-      {allFYMonths.map(({ year, month }) => (
+      {allFYMonths.filter(({ year, month }) => !isDisabled(year, month)).map(({ year, month }) => (
         <option
           key={`${year}-${month}`}
           value={`${year}-${String(month).padStart(2, "0")}`}
@@ -300,10 +297,10 @@ function ActiveBadge({ preset, fyStart, now }) {
     if (s.length) label = `${MONTHS[s[0].month-1]} ${s[0].year} – ${MONTHS[s[s.length-1].month-1]} ${s[s.length-1].year}`;
   } else if (preset === "last_12") {
     if (available.length) label = `${MONTHS[available[0].month-1]} ${available[0].year} – ${MONTHS[available[available.length-1].month-1]} ${available[available.length-1].year}`;
-  } else if (preset === "past_mar")  { label = `Mar ${fyStart + 1}`; }
-  else if (preset === "past_q4")     { label = `Jan – Mar ${fyStart + 1}`; }
-  else if (preset === "past_h2")     { label = `Oct ${fyStart} – Mar ${fyStart + 1}`; }
-  else if (preset === "past_full")   { label = `Apr ${fyStart} – Mar ${fyStart + 1}`; }
+  } else if (preset === "past_q1") { label = `Apr – Jun ${fyStart}`; }
+  else if (preset === "past_q2")   { label = `Jul – Sep ${fyStart}`; }
+  else if (preset === "past_q3")   { label = `Oct – Dec ${fyStart}`; }
+  else if (preset === "past_q4")   { label = `Jan – Mar ${fyStart + 1}`; }
 
   if (!label) return null;
   return (

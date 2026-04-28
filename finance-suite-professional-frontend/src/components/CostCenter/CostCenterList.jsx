@@ -155,8 +155,8 @@ export default function CostCenterList() {
       
       {/* Delete Confirmation Modal */}
       {deleteModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-96 relative z-[10000]">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-96 relative z-10000">
             {
               console.log('Delete Modal Data:', deleteModal)
             }

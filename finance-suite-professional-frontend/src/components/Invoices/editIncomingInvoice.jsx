@@ -114,6 +114,7 @@ export default function EditIncomingInvoice() {
         tds_available: tdsApplicable ? "yes" : "no",
         tds_percent: tdsPercent,
         total_tds: data.tds_total || data.total_tds || "0.00",
+        cost_type: data.cost_type || "indirect",
       });
     });
   }, [id]);
@@ -269,6 +270,13 @@ export default function EditIncomingInvoice() {
               <select className={inputCls} value={form.invoice_type || "domestic"} onChange={(e) => setField("invoice_type", e.target.value)}>
                 <option value="domestic">Domestic</option>
                 <option value="international">International</option>
+              </select>
+            </div>
+            <div className="relative">
+              <label className={labelCls}>Cost Type</label>
+              <select className={inputCls} value={form.cost_type || "indirect"} onChange={(e) => setField("cost_type", e.target.value)}>
+                <option value="indirect">Indirect</option>
+                <option value="direct">Direct</option>
               </select>
             </div>
             <div className="relative">

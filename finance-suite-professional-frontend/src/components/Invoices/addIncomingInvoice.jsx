@@ -19,6 +19,7 @@ const emptyItem = () => ({
 
 const initialForm = {
   invoice_type: "domestic",
+  cost_type: "indirect",
   vendor_name: "",
   vendor_gstin: "",
   vendor_address: "",
@@ -199,7 +200,7 @@ export default function AddIncomingInvoice() {
       await axiosInstance.post("/incoming-invoices", payload);
       toast.success("Incoming invoice created successfully");
       dispatch(fetchIncomingInvoices());
-      nav("/expenses");
+      nav(-1);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to create incoming invoice");
     } finally {
@@ -217,7 +218,7 @@ export default function AddIncomingInvoice() {
       <div className="sticky top-[88px] w-full z-100 rounded-lg bg-white border border-gray-300 py-4 shadow-sm">
         <div className="flex justify-between items-center">
           <div className="px-4 py-2 flex items-center gap-3">
-            <ArrowLeft strokeWidth={1} onClick={() => nav("/invoices")} className="cursor-pointer" />
+            <ArrowLeft strokeWidth={1} onClick={() => nav(-1)} className="cursor-pointer" />
             <span className="text-sm font-semibold text-gray-700">Add Incoming Invoice</span>
             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isDomestic ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
               {isDomestic ? "₹ Domestic" : "$ International"}
@@ -245,7 +246,7 @@ export default function AddIncomingInvoice() {
 
             {/* Customer/Vendor search */}
             <div className="col-span-2 relative">
-              <label className={labelCls}>Select Vendor</label>
+              <label className={labelCls}>Select Vendor/Customer</label>
               <div className="relative w-full sm:w-1/2 lg:w-1/3">
                 <input
                   type="text"
@@ -290,16 +291,16 @@ export default function AddIncomingInvoice() {
             </div>
 
             <div className="relative">
-              <label className={labelCls}>Vendor Name *</label>
+              <label className={labelCls}>Vendor/Customer Name *</label>
               <input className={inputCls} value={form.vendor_name} onChange={(e) => setField("vendor_name", e.target.value)} placeholder="Enter vendor name" />
               {errors.vendor_name && <p className={errCls}>{errors.vendor_name}</p>}
             </div>
             <div className="relative">
-              <label className={labelCls}>Vendor GSTIN</label>
+              <label className={labelCls}>Vendor/Customer GSTIN</label>
               <input className={inputCls} value={form.vendor_gstin} onChange={(e) => setField("vendor_gstin", e.target.value)} placeholder="Enter GSTIN" />
             </div>
             <div className="col-span-2 relative">
-              <label className={labelCls}>Vendor Address</label>
+              <label className={labelCls}>Vendor/Customer Address</label>
               <textarea rows={3} className={inputCls} value={form.vendor_address} onChange={(e) => setField("vendor_address", e.target.value)} placeholder="Enter vendor address" />
             </div>
           </div>
@@ -332,6 +333,13 @@ export default function AddIncomingInvoice() {
               <select className={inputCls} value={form.invoice_type} onChange={(e) => setField("invoice_type", e.target.value)}>
                 <option value="domestic">Domestic</option>
                 <option value="international">International</option>
+              </select>
+            </div>
+            <div className="relative">
+              <label className={labelCls}>Cost Type</label>
+              <select className={inputCls} value={form.cost_type || "indirect"} onChange={(e) => setField("cost_type", e.target.value)}>
+                <option value="indirect">Indirect</option>
+                <option value="direct">Direct</option>
               </select>
             </div>
             <div className="relative">

@@ -42,7 +42,10 @@ const cap = (s) => (s || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUppe
 // Backend stores amounts in paise (smallest unit) — divide by 100 for display
 const fmtAmount = (paise) => {
   if (paise == null) return "-";
-  return `₹${(Number(paise) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const val = Number(paise) / 100;
+  const abs = Math.abs(val);
+  const formatted = abs.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return val < 0 ? `-₹${formatted}` : `₹${formatted}`;
 };
 
 const fmtDate = (val) => {
@@ -185,7 +188,11 @@ export default function LedgerPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total Entries" value={total} />
-        <StatCard label="Total Amount" value={fmtAmount(totalAmount * 100)} valueClass="text-indigo-700" />
+        <StatCard
+          label="Total Balance"
+          value={fmtAmount(totalAmount * 100)}
+          valueClass={totalAmount < 0 ? "text-red-600" : "text-indigo-700"}
+        />
         {/* <StatCard
           label="Debits (Page)"
           value={fmtAmount(filtered.reduce((s, e) => s + (Number(e.debit) || 0), 0))}
@@ -244,7 +251,9 @@ export default function LedgerPage() {
                 <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-medium text-green-600">
                   {entry.credit > 0 ? fmtAmount(entry.credit) : "-"}
                 </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-bold text-gray-900">
+                <td className={`px-6 py-3 whitespace-nowrap text-sm text-right font-bold ${
+                  entry.balance < 0 ? "text-red-600" : "text-gray-900"
+                }`}>
                   {fmtAmount(entry.balance)}
                 </td>
                 <td className="px-6 py-3 whitespace-nowrap text-sm">

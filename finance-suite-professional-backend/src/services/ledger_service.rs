@@ -322,6 +322,7 @@ impl LedgerService {
         invoice_id: &ObjectId,
         invoice_number: &str,
         vendor_name: &str,
+        vendor_id: Option<&ObjectId>,
         amount: f64,
         currency: &str,
         org_id: &ObjectId,
@@ -331,10 +332,17 @@ impl LedgerService {
         let amount_paise = Self::to_smallest_unit(amount)?;
         let now = DateTime::now();
 
+        // Use vendor_id directly if present, else try name-match, else fall back to org_id
+        let party_id = if let Some(vid) = vendor_id {
+            *vid
+        } else {
+            self.resolve_party_id(org_id, None, vendor_name).await.unwrap_or(*org_id)
+        };
+
         let entry = LedgerEntry {
             id: None,
             organisation_id: *org_id,
-            party_id: *org_id, // vendor not in customer collection, use org as party
+            party_id,
             date: payment_date,
             created_at: now,
             sequence: 0,

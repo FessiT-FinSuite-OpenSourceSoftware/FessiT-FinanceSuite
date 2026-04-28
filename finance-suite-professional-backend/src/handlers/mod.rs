@@ -15,6 +15,7 @@ pub mod estimate_handler;
 pub mod ledger_handler;
 pub mod account_handler;
 pub mod service_handler;
+pub mod report_handler;
 
 pub use customer_handler::configure_routes as configure_customer_routes;
 pub use organisation_handler::{configure_routes as configure_organisation_routes, configure_public_routes as configure_organisation_public_routes};
@@ -33,3 +34,4 @@ pub use estimate_handler::configure_routes as configure_estimate_routes;
 pub use ledger_handler::configure_routes as configure_ledger_routes;
 pub use account_handler::configure_routes as configure_account_routes;
 pub use service_handler::configure_routes as configure_service_routes;
+pub use report_handler::configure_routes as configure_report_routes;

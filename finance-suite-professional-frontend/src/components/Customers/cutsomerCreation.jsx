@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
-import { Pencil, Save, X } from "lucide-react";
-import { ArrowLeft } from "lucide-react";
+import { Pencil, Save, X, ArrowLeft } from "lucide-react";
 import { countriesData } from "../../utils/countriesData";
 import { useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { createCustomer } from "../../ReduxApi/customer";
 
@@ -73,7 +71,7 @@ const initialCustomer = {
   email: "",
   isActive: "New",
   projects: [],
-  isvendor: false
+  role: "Customer"
 };
 
 export default function CustomerCreation() {
@@ -405,24 +403,28 @@ export default function CustomerCreation() {
           {/* Country */}
           <div className="relative w-full" ref={dropdownRef}>
             <label className="block text-gray-700 font-medium mb-1">Country *</label>
-            <button type="button" onClick={() => setOpen(!open)} className="border border-gray-300 rounded-md px-3 py-2 w-full text-left focus:ring-1 focus:ring-black">
-              {selected ? `${selected.country}` : "Select country"}
-            </button>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search country..."
+                value={open ? query : (selected ? selected.country : "")}
+                onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+                onFocus={() => { setQuery(""); setOpen(true); }}
+                className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+              />
+              {selected && !open && (
+                <img src={selected.flag} alt={selected.country} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-6 rounded-sm object-contain" />
+              )}
+            </div>
             {open && (
-              <div className="absolute z-10 bg-white border border-gray-200 rounded-md mt-1 w-full shadow-md max-h-64 overflow-hidden">
-                <div className="flex items-center px-3 py-2 border-b border-gray-200 bg-gray-50">
-                  <Search className="h-4 w-4 text-gray-400 mr-2" />
-                  <input type="text" placeholder="Search country..." value={query} onChange={(e) => setQuery(e.target.value)} className="w-full text-sm outline-none bg-transparent" />
-                </div>
-                <ul className="max-h-56 overflow-y-auto">
-                  {filteredCountries.length > 0 ? filteredCountries.map((country, index) => (
-                    <li key={index} onClick={() => handleSelect(country)} className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2">
-                      <img src={country.flag} alt={country.country} className="rounded-sm object-contain h-5 w-6" />
-                      <span>{country.country}</span>
-                    </li>
-                  )) : <li className="px-4 py-2 text-gray-500 text-sm">No results found</li>}
-                </ul>
-              </div>
+              <ul className="absolute z-10 bg-white border border-gray-200 rounded-md mt-1 w-full shadow-md max-h-56 overflow-y-auto">
+                {filteredCountries.length > 0 ? filteredCountries.map((country, index) => (
+                  <li key={index} onClick={() => handleSelect(country)} className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2">
+                    <img src={country.flag} alt={country.country} className="rounded-sm object-contain h-5 w-6" />
+                    <span>{country.country}</span>
+                  </li>
+                )) : <li className="px-4 py-2 text-gray-500 text-sm">No results found</li>}
+              </ul>
             )}
             {inputErrors.country && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.country}</p>}
           </div>
@@ -464,10 +466,24 @@ export default function CustomerCreation() {
             {(inputErrors.CustomerCode || errors.CustomerCode) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.CustomerCode || errors.CustomerCode}</p>}
           </div>
 
-          {/* Is Vendor */}
-          <div className="flex items-center gap-2 pt-6">
-            <input type="checkbox" id="isvendor" name="isvendor" checked={customer.isvendor} onChange={(e) => setCustomer((prev) => ({ ...prev, isvendor: e.target.checked }))} className="w-4 h-4 cursor-pointer accent-blue-600" />
-            <label htmlFor="isvendor" className="text-sm font-semibold text-gray-700 cursor-pointer">Is Vendor</label>
+          {/* Role */}
+          <div className="flex flex-col gap-1 pt-2">
+            <label className="block text-gray-700 font-medium mb-1">Role *</label>
+            <div className="flex gap-4">
+              {["Customer", "Vendor", "Both"].map((r) => (
+                <label key={r} className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
+                  <input
+                    type="radio"
+                    name="role"
+                    value={r}
+                    checked={customer.role === r}
+                    onChange={(e) => setCustomer((prev) => ({ ...prev, role: e.target.value }))}
+                    className="w-4 h-4 accent-blue-600"
+                  />
+                  <span className="font-medium">{r}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Addresses */}

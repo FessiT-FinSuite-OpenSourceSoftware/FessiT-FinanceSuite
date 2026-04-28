@@ -171,10 +171,18 @@ impl CustomerRepository {
                 .insert("isActive", is_active);
         }
         if let Some(is_vendor) = req.isvendor {
-            update_doc
-                .get_document_mut("$set")
-                .unwrap()
-                .insert("is_vendor_too", is_vendor);
+            let role = if is_vendor { crate::models::customer::CustomerRole::Both } else { crate::models::customer::CustomerRole::Customer };
+            let role_bson = mongodb::bson::to_bson(&role)
+                .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+            update_doc.get_document_mut("$set").unwrap().insert("role", role_bson);
+            update_doc.get_document_mut("$set").unwrap().insert("is_vendor_too", is_vendor);
+        }
+        if let Some(role) = req.role {
+            let is_vendor_too = matches!(role, crate::models::customer::CustomerRole::Vendor | crate::models::customer::CustomerRole::Both);
+            let role_bson = mongodb::bson::to_bson(&role)
+                .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+            update_doc.get_document_mut("$set").unwrap().insert("role", role_bson);
+            update_doc.get_document_mut("$set").unwrap().insert("is_vendor_too", is_vendor_too);
         }
 
         if let Some(phone) = req.phone {

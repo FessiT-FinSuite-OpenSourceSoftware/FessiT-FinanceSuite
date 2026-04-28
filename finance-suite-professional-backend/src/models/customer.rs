@@ -4,6 +4,22 @@ use validator::Validate;
 
 use super::address::Address;
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum CustomerRole {
+    #[serde(rename = "Customer")]
+    Customer,
+    #[serde(rename = "Vendor")]
+    Vendor,
+    #[serde(rename = "Both")]
+    Both,
+}
+
+impl Default for CustomerRole {
+    fn default() -> Self {
+        CustomerRole::Customer
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Validate)]
 pub struct Project {
     #[validate(length(min = 1, message = "Project name is required"))]
@@ -49,6 +65,7 @@ pub struct Customer {
 
     #[validate(length(min = 1, message = "Country is required"))]
     pub country: String,
+
     #[serde(rename = "countryCode")]
     pub country_code: String,
 
@@ -58,14 +75,19 @@ pub struct Customer {
     ))]
     pub phone: String,
 
-    #[serde(default)]
-    pub is_vendor_too: bool,
-
     #[serde(rename = "isActive")]
     pub is_active: String,
 
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
+
+    /// "Customer" | "Vendor" | "Both"
+    #[serde(default)]
+    pub role: CustomerRole,
+
+    /// Legacy field kept for backward compat — mirrors role
+    #[serde(default)]
+    pub is_vendor_too: bool,
 
     #[serde(rename = "lastCostCenterSequence", default)]
     pub last_cost_center_sequence: i32,
@@ -88,6 +110,11 @@ pub struct CreateCustomerRequest {
     pub country: String,
     pub phone: String,
     pub email: String,
+    /// New: "Customer" | "Vendor" | "Both"
+    #[serde(default)]
+    pub role: Option<CustomerRole>,
+    /// Legacy bool still accepted
+    #[serde(default)]
     pub isvendor: bool,
     #[serde(rename = "countryCode")]
     pub country_code: String,
@@ -111,6 +138,9 @@ pub struct UpdateCustomerRequest {
     pub country: Option<String>,
     pub phone: Option<String>,
     pub email: Option<String>,
+    #[serde(default)]
+    pub role: Option<CustomerRole>,
+    #[serde(default)]
     pub isvendor: Option<bool>,
     #[serde(rename = "countryCode")]
     pub country_code: Option<String>,
@@ -121,6 +151,10 @@ pub struct UpdateCustomerRequest {
 
 impl Customer {
     pub fn new(req: CreateCustomerRequest) -> Self {
+        let role = req.role.unwrap_or_else(|| {
+            if req.isvendor { CustomerRole::Both } else { CustomerRole::Customer }
+        });
+        let is_vendor_too = matches!(role, CustomerRole::Vendor | CustomerRole::Both);
         Self {
             id: None,
             organisation_id: None,
@@ -132,7 +166,8 @@ impl Customer {
             country: req.country,
             phone: req.phone,
             email: req.email,
-            is_vendor_too: req.isvendor,
+            role,
+            is_vendor_too,
             country_code: req.country_code,
             is_active: req.is_active,
             last_cost_center_sequence: 0,

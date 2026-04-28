@@ -1,6 +1,17 @@
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum CostType {
+    Direct,
+    Indirect,
+}
+
+impl Default for CostType {
+    fn default() -> Self { CostType::Indirect }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct IncomingInvoiceItem {
     #[serde(default)]
@@ -104,6 +115,9 @@ pub struct IncomingInvoice {
 
     #[serde(rename = "vendorId", skip_serializing_if = "Option::is_none")]
     pub vendor_id: Option<ObjectId>,
+
+    #[serde(default)]
+    pub cost_type: CostType,
 }
 
 pub type CreateIncomingInvoiceRequest = IncomingInvoice;

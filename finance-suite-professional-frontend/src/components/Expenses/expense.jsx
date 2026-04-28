@@ -43,6 +43,7 @@ export default function Expense() {
     expenseDate: "",
     currency: "",
     comment: "",
+    costType: "indirect",
   });
 
   // 🔹 Multiple line items under one Expense Title
@@ -81,7 +82,7 @@ export default function Expense() {
   };
 
   useEffect(() => {
-    setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "" });
+    setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "", costType: "indirect" });
     setItems([emptyExpenseItem()]);
     setInputErrors({});
     setCcSearch("");
@@ -217,6 +218,7 @@ export default function Expense() {
       formData.append("submissionDate", formatDateForApi(header.expenseDate));
       formData.append("currency", header.currency);
       formData.append("notes", header.comment || "");
+      formData.append("costType", header.costType || "indirect");
 
       // Prepare items array as JSON (without files)
       const itemsData = items.map((item) => {
@@ -258,7 +260,7 @@ export default function Expense() {
       toast.success(response.data.message || 'Expense created successfully!');
       dispatch(fetchExpenseData());
 
-      setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "" });
+      setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "", costType: "indirect" });
       setItems([emptyExpenseItem()]);
       nav("/expenses");
     } catch (err) {
@@ -463,6 +465,22 @@ export default function Expense() {
                 {inputErrors["header_currency"]}
               </p>
             )}
+          </div>
+
+          <div className="relative">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Cost Type
+            </label>
+            <select
+              name="costType"
+              data-header="true"
+              value={header.costType}
+              onChange={handleHeaderChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+            >
+              <option value="indirect">Indirect</option>
+              <option value="direct">Direct</option>
+            </select>
           </div>
         </div>
 

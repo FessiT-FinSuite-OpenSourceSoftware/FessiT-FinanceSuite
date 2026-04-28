@@ -2,6 +2,17 @@ use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum CostType {
+    Direct,
+    Indirect,
+}
+
+impl Default for CostType {
+    fn default() -> Self { CostType::Indirect }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub enum GeneralExpenseStatus {
     Pending,
@@ -97,6 +108,9 @@ pub struct GeneralExpense {
 
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,
+
+    #[serde(default)]
+    pub cost_type: CostType,
 }
 
 fn default_f64() -> f64 {

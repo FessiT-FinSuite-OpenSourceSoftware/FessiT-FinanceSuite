@@ -92,6 +92,7 @@ export default function EditExpense() {
     submissionDate: "",
     currency: "INR",
     comment: "",
+    costType: "indirect",
   });
   const [items, setItems] = useState([emptyExpenseItem()]);
   const [inputErrors, setInputErrors] = useState({});
@@ -111,6 +112,7 @@ export default function EditExpense() {
         submissionDate: "",
         currency: "INR",
         comment: "",
+        costType: "indirect",
       });
       setItems([emptyExpenseItem()]);
       dispatch(fetchOneExpense(id));
@@ -126,6 +128,7 @@ export default function EditExpense() {
         submissionDate: "",
         currency: "INR",
         comment: "",
+        costType: "indirect",
       });
       setItems([emptyExpenseItem()]);
       toast.error("Unable to load expense details");
@@ -142,6 +145,7 @@ export default function EditExpense() {
       submissionDate: toInputDate(currentExpense.submission_date || ""),
       currency: currentExpense.items?.[0]?.currency || "INR",
       comment: currentExpense.notes || "",
+      costType: currentExpense.cost_type || "indirect",
     });
 
     const mappedItems = Array.isArray(currentExpense.items) && currentExpense.items.length > 0
@@ -321,6 +325,7 @@ export default function EditExpense() {
       formData.append("submissionDate", toStoredDate(header.submissionDate));
       formData.append("currency", header.currency);
       formData.append("notes", header.comment || "");
+      formData.append("costType", header.costType || "indirect");
 
       const itemsPayload = items.map((item) => {
         const amount = parseFloat(item.amount) || 0;
@@ -449,6 +454,20 @@ export default function EditExpense() {
               <option value="JPY">JPY</option>
             </select>
             {inputErrors.header_currency && <p className="absolute text-[13px] top-15 text-[#f10404]">{inputErrors.header_currency}</p>}
+          </div>
+
+          <div className="relative">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Cost Type</label>
+            <select
+              name="costType"
+              data-header="true"
+              value={header.costType}
+              onChange={handleHeaderChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+            >
+              <option value="indirect">Indirect</option>
+              <option value="direct">Direct</option>
+            </select>
           </div>
         </div>
 

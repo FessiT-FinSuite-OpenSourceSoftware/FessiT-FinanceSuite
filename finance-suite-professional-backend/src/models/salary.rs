@@ -1,6 +1,17 @@
 use mongodb::bson::{oid::ObjectId, Bson};
 use serde::{Deserialize, Deserializer, Serialize};
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum CostType {
+    Direct,
+    Indirect,
+}
+
+impl Default for CostType {
+    fn default() -> Self { CostType::Indirect }
+}
+
 fn deserialize_string_or_number<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
@@ -91,6 +102,9 @@ pub struct Salary {
 
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,
+
+    #[serde(default)]
+    pub cost_type: CostType,
 }
 
 pub type CreateSalaryRequest = Salary;

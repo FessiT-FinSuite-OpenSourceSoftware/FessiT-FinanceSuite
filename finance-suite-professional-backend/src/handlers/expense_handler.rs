@@ -14,7 +14,7 @@ use uuid::Uuid;
 use mongodb::bson::DateTime;
 
 use crate::{
-    models::expense::{Expense, ExpenseItem, ExpenseStatus},
+    models::expense::{CostType, Expense, ExpenseItem, ExpenseStatus},
     services::expense_service::ExpenseService,
     utils::auth::Claims,
     utils::permissions::{check_permission, Module, PermissionAction, create_permission_error},
@@ -231,6 +231,10 @@ pub async fn create_expense(
         created_at: Some(now),
         updated_at: Some(now),
         organisation_id: Some(org_id),
+        cost_type: fields.get("costType").and_then(|v| match v.to_lowercase().as_str() {
+            "direct" => Some(CostType::Direct),
+            _ => Some(CostType::Indirect),
+        }).unwrap_or_default(),
     };
 
     let saved = service
@@ -567,6 +571,10 @@ pub async fn update_expense(
         created_at: existing_expense.created_at,
         updated_at: Some(DateTime::now()),
         organisation_id: existing_expense.organisation_id,
+        cost_type: fields.get("costType").and_then(|v| match v.to_lowercase().as_str() {
+            "direct" => Some(CostType::Direct),
+            _ => Some(CostType::Indirect),
+        }).unwrap_or(existing_expense.cost_type),
     };
 
     let updated = service

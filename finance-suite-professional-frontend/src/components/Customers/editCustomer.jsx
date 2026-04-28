@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
-import { Pencil, Save, X } from "lucide-react";
-import { ArrowLeft } from "lucide-react";
+import { Pencil, Save, X, ArrowLeft } from "lucide-react";
 import { countriesData } from "../../utils/countriesData";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   customerSelector,
@@ -73,7 +71,7 @@ const initialCustomer = {
   phone: "",
   email: "",
   isActive: "",
-  isvendor: false,
+  role: "Customer",
   projects: [],
 };
 
@@ -93,7 +91,7 @@ export default function EditCustomer() {
   console.log(currentCustomer);
 
   useEffect(() => {
-    dispatch(fetchOneCustomer (id));
+    dispatch(fetchOneCustomer(id));
   }, [dispatch, id]);
   // Country select
 
@@ -255,44 +253,44 @@ export default function EditCustomer() {
   };
 
   const handleSubmit = (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const newErrors = {};
-  if (!customer.customerName.trim())
-    newErrors.customerName = "Customer name is required";
-  if (!customer.country.trim()) newErrors.country = "Country is required";
-  if (!customer.companyName.trim())
-    newErrors.companyName = "Company name is required";
-  if (!customer.CustomerCode.trim())
-    newErrors.CustomerCode = "Customer code is required";
-  if (!customer.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
-  if (customer.addresses.every((addr) => !addr.value.trim()))
-    newErrors.address = "At least one address is required";
-  if (!customer.phone.trim()) newErrors.phone = "Phone number is required";
-  if (!customer.email.trim()) newErrors.email = "Email is required";
+    const newErrors = {};
+    if (!customer.customerName.trim())
+      newErrors.customerName = "Customer name is required";
+    if (!customer.country.trim()) newErrors.country = "Country is required";
+    if (!customer.companyName.trim())
+      newErrors.companyName = "Company name is required";
+    if (!customer.CustomerCode.trim())
+      newErrors.CustomerCode = "Customer code is required";
+    // if (!customer.gstIN.trim()) newErrors.gstIN = "GSTIN is required";
+    if (customer.addresses.every((addr) => !addr.value.trim()))
+      newErrors.address = "At least one address is required";
+    if (!customer.phone.trim()) newErrors.phone = "Phone number is required";
+    if (!customer.email.trim()) newErrors.email = "Email is required";
 
-  if (Object.keys(newErrors).length > 0) {
-    setInputErrors(newErrors);
-    const firstErrorKey = Object.keys(newErrors)[0];
-    const el = document.querySelector(`[name="${firstErrorKey}"]`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.focus();
+    if (Object.keys(newErrors).length > 0) {
+      setInputErrors(newErrors);
+      const firstErrorKey = Object.keys(newErrors)[0];
+      const el = document.querySelector(`[name="${firstErrorKey}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      }
+      return;
     }
-    return;
-  }
 
-  // Combine ISO code with customer code for backend
-  const customerDataForBackend = {
-    ...customer,
-    CustomerCode: selected?.iso ? selected.iso + customer.CustomerCode : customer.CustomerCode
+    // Combine ISO code with customer code for backend
+    const customerDataForBackend = {
+      ...customer,
+      CustomerCode: selected?.iso ? selected.iso + customer.CustomerCode : customer.CustomerCode
+    };
+
+    // ✅ valid form, dispatch update
+    dispatch(updateCustomerData(id, customerDataForBackend)); // <-- pass properly
+    nav("/customers");
+    setInputErrors({});
   };
-
-  // ✅ valid form, dispatch update
-  dispatch(updateCustomerData( id, customerDataForBackend )); // <-- pass properly
-  nav("/customers");
-  setInputErrors({});
-};
 
   const handleNavToCustomers = () => {
     nav("/customers");
@@ -306,18 +304,18 @@ export default function EditCustomer() {
       // Separate ISO code from customer code for display
       let displayCustomerCode = currentCustomer.CustomerCode || "";
       let foundCountry = null;
-      
+
       // Check if customer code starts with a country ISO code
       if (displayCustomerCode.length >= 2) {
         const possibleISO = displayCustomerCode.substring(0, 2).toUpperCase();
         foundCountry = countriesData.countries.find(c => c.iso === possibleISO);
-        
+
         if (foundCountry) {
           // Remove ISO code from display value
           displayCustomerCode = displayCustomerCode.substring(2);
         }
       }
-      
+
       // If no country found from customer code, try to find by country name
       if (!foundCountry) {
         foundCountry = countriesData.countries.find(
@@ -337,7 +335,7 @@ export default function EditCustomer() {
         phone: currentCustomer.phone || "",
         email: currentCustomer.email || "",
         isActive: currentCustomer.isActive || "",
-        isvendor: currentCustomer.isvendor ?? currentCustomer.is_vendor_too ?? false,
+        role: currentCustomer.role || (currentCustomer.is_vendor_too ? "Both" : "Customer"),
         projects: currentCustomer.projects || [],
         addresses: currentCustomer.addresses?.length
           ? currentCustomer.addresses
@@ -398,7 +396,7 @@ export default function EditCustomer() {
  >                Edit
               </button> */}
               <button
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+                className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 onClick={handleSubmit}
               >
                 Update
@@ -410,13 +408,27 @@ export default function EditCustomer() {
 
       {/* Form Section */}
       <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6 mt-10">
-      <div className=" flex justify-between border-b mb-4 border-gray-300 ">
+        <div className=" flex gap-5 border-b mb-4 border-gray-300 ">
           <h2 className="text-lg font-semibold text-gray-800 pb-2">
-          Customer Details
-        
+            Customer Details
 
-        </h2>
-        <div className="flex justify-end gap-3">
+
+          </h2>
+
+          <span
+            className={`text-sm px-3 mb-2 font-semibold flex justify-center items-center rounded-full
+    ${customer?.isActive === "New" && "text-red-800 bg-red-100"}
+    ${customer?.isActive === "Prospect" && "text-yellow-800 bg-yellow-100"}
+    ${customer?.isActive === "Active" && "text-green-800 bg-green-100"}
+        ${customer?.isActive === "Closed" && "text-red-800 bg-red-100"}
+
+  `}
+          >
+            {customer?.isActive}
+          </span>
+
+
+          {/* <div className="flex justify-end gap-3">
           <div className="flex ">
              <p className="text-sm font-bold flex items-center">Current status :- </p>
 
@@ -442,8 +454,8 @@ export default function EditCustomer() {
               <option value="Closed">Closed</option>
             </select>
           </div>
+        </div> */}
         </div>
-      </div>
         <div className="grid grid-cols-2 gap-6 text-sm">
           {/* Customer Name */}
           <div className="relative">
@@ -544,63 +556,32 @@ export default function EditCustomer() {
           </div>
 
           {/* Country */}
-
           <div className="relative w-full" ref={dropdownRef}>
-            <label className="block text-gray-700 font-medium mb-1">
-              Country *
-            </label>
-
-            <button
-              type="button"
-              onClick={() => setOpen(!open)}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full text-left focus:ring-1 focus:ring-black"
-            >
-              {selected ? `${selected.country}` : "Select country"}
-            </button>
-
+            <label className="block text-gray-700 font-medium mb-1">Country *</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search country..."
+                value={open ? query : (selected ? selected.country : "")}
+                onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+                onFocus={() => { setQuery(""); setOpen(true); }}
+                className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+              />
+              {selected && !open && (
+                <img src={selected.flag} alt={selected.country} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-6 rounded-sm object-contain" />
+              )}
+            </div>
             {open && (
-              <div className="absolute z-10 bg-white border border-gray-200 rounded-md mt-1 w-full shadow-md max-h-64 overflow-hidden">
-                <div className="flex items-center px-3 py-2 border-b border-gray-200 bg-gray-50">
-                  <Search className="h-4 w-4 text-gray-400 mr-2" />
-                  <input
-                    type="text"
-                    placeholder="Search country..."
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="w-full text-sm outline-none bg-transparent"
-                  />
-                </div>
-
-                {/* Country List */}
-                <ul className="max-h-56 overflow-y-auto">
-                  {filteredCountries.length > 0 ? (
-                    filteredCountries.map((country, index) => (
-                      <li
-                        key={index}
-                        onClick={() => handleSelect(country)}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
-                      >
-                        <img
-                          src={country.flag}
-                          alt={country.country}
-                          className="rounded-sm object-contain h-5 w-6"
-                        />
-                        <span>{country.country}</span>
-                      </li>
-                    ))
-                  ) : (
-                    <li className="px-4 py-2 text-gray-500 text-sm">
-                      No results found
-                    </li>
-                  )}
-                </ul>
-              </div>
+              <ul className="absolute z-10 bg-white border border-gray-200 rounded-md mt-1 w-full shadow-md max-h-56 overflow-y-auto">
+                {filteredCountries.length > 0 ? filteredCountries.map((country, index) => (
+                  <li key={index} onClick={() => handleSelect(country)} className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2">
+                    <img src={country.flag} alt={country.country} className="rounded-sm object-contain h-5 w-6" />
+                    <span>{country.country}</span>
+                  </li>
+                )) : <li className="px-4 py-2 text-gray-500 text-sm">No results found</li>}
+              </ul>
             )}
-            {inputErrors.country && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {inputErrors.country}
-              </p>
-            )}
+            {inputErrors.country && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.country}</p>}
           </div>
 
           {/* Phone */}
@@ -626,10 +607,9 @@ export default function EditCustomer() {
                 value={customer.phone}
                 onChange={handlePhoneChange}
                 className={`border border-gray-300 
-              ${
-                (selected?.code && "rounded-tr-md rounded-br-md ") ||
-                "rounded-md"
-              }
+              ${(selected?.code && "rounded-tr-md rounded-br-md ") ||
+                  "rounded-md"
+                  }
               
               px-3 py-2 w-full focus:ring-1 focus:ring-blue-500`}
                 placeholder="Enter phone number"
@@ -654,10 +634,24 @@ export default function EditCustomer() {
             {(inputErrors.email || errors.email) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.email || errors.email}</p>}
           </div>
 
-          {/* Is Vendor */}
-          <div className="flex items-center gap-2 pt-6">
-            <input type="checkbox" id="isvendor" name="isvendor" checked={customer.isvendor} onChange={(e) => setCustomer((prev) => ({ ...prev, isvendor: e.target.checked }))} className="w-4 h-4 cursor-pointer accent-blue-600" />
-            <label htmlFor="isvendor" className="text-sm font-semibold text-gray-700 cursor-pointer">Is Vendor</label>
+          {/* Role */}
+          <div className="flex flex-col gap-1 pt-2">
+            <label className="block text-gray-700 font-medium mb-1">Role *</label>
+            <div className="flex gap-4">
+              {["Customer", "Vendor", "Both"].map((r) => (
+                <label key={r} className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
+                  <input
+                    type="radio"
+                    name="role"
+                    value={r}
+                    checked={customer.role === r}
+                    onChange={(e) => setCustomer((prev) => ({ ...prev, role: e.target.value }))}
+                    className="w-4 h-4 accent-blue-600"
+                  />
+                  <span className="font-medium">{r}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Addresses */}

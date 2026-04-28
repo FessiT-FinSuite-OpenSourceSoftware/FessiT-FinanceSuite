@@ -142,6 +142,7 @@ export default function CustomerList() {
   // const [customers,setCustomers] = useState(customersData);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [roleFilter, setRoleFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAction, setShowAction] = useState(null);
   const [page, setPage] = useState(10);
@@ -158,10 +159,12 @@ export default function CustomerList() {
       item.gstIN.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.companyName.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "All" || item.isActive === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesStatus = statusFilter === "All" || item.isActive === statusFilter;
+    const matchesRole = roleFilter === "All" ||
+      (roleFilter === "Customer" && (item.role === "Customer" || item.role === "Both" || (!item.role && !item.is_vendor_too))) ||
+      (roleFilter === "Vendor"   && (item.role === "Vendor"   || item.role === "Both" || (!item.role && item.is_vendor_too))) ||
+      (roleFilter === "Both"     && item.role === "Both");
+    return matchesSearch && matchesStatus && matchesRole;
   });
 
   const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
@@ -301,6 +304,16 @@ export default function CustomerList() {
                   <option value="Active">Active</option>
                   <option value="Closed">Closed</option>
                 </select>
+                <select
+                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-grey-500"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                >
+                  <option value="All">All Roles</option>
+                  <option value="Customer">Customer</option>
+                  <option value="Vendor">Vendor</option>
+                  <option value="Both">Both</option>
+                </select>
               </div>
 
               <button
@@ -320,29 +333,33 @@ export default function CustomerList() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-2">
           <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Total Customers</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {customersData.length}
+            <p className="text-sm text-gray-600 mb-1">Total</p>
+            <p className="text-2xl font-bold text-gray-900">{customersData.length}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <p className="text-sm text-gray-600 mb-1">Customers</p>
+            <p className="text-2xl font-bold text-blue-600">
+              {customersData.filter((i) => i.role === "Customer" || (!i.role && !i.is_vendor_too)).length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <p className="text-sm text-gray-600 mb-1">Vendors</p>
+            <p className="text-2xl font-bold text-purple-600">
+              {customersData.filter((i) => i.role === "Vendor").length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm">
+            <p className="text-sm text-gray-600 mb-1">Both</p>
+            <p className="text-2xl font-bold text-green-600">
+              {customersData.filter((i) => i.role === "Both" || (!i.role && i.is_vendor_too)).length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <p className="text-sm text-gray-600 mb-1">Active</p>
             <p className="text-2xl font-bold text-green-600">
               {customersData.filter((i) => i.isActive === "Active").length}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Prospect</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {customersData.filter((i) => i.isActive === "Prospect").length}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Closed</p>
-            <p className="text-2xl font-bold text-gray-600">
-              {customersData.filter((i) => i.isActive === "Closed").length}
             </p>
           </div>
         </div>
@@ -362,7 +379,9 @@ export default function CustomerList() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
                     GSTIN
                   </th>
-
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Role
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     Status
                   </th>
@@ -394,8 +413,15 @@ export default function CustomerList() {
                       <td className="px-6 py-4 capitalize whitespace-nowrap hidden md:table-cell">
                         {item?.gstIN}
                       </td>
-
-
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          (item?.role === "Customer" || (!item?.role && !item?.is_vendor_too)) ? "bg-blue-100 text-blue-800" :
+                          item?.role === "Vendor" ? "bg-purple-100 text-purple-800" :
+                          "bg-green-100 text-green-800"
+                        }`}>
+                          {item?.role || (item?.is_vendor_too ? "Both" : "Customer")}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           onClick={() => hasWrite && openStatusModal(item)}
@@ -555,45 +581,19 @@ export default function CustomerList() {
             </p>
 
             <div className="flex flex-wrap gap-4 mb-4">
-              {["New", "Prospect", "Active", "Closed"].map((option) => {
-                // Define status progression rules
-                const currentStatus = statusModal.currentStatus;
-                let isDisabled = false;
-                
-                // Status progression: New -> Prospect -> Active -> Closed
-                if (currentStatus === "New" && !["New", "Prospect"].includes(option)) {
-                  isDisabled = true;
-                }
-                if (currentStatus === "Prospect" && !["Prospect", "Active", "New"].includes(option)) {
-                  isDisabled = true;
-                }
-                if (currentStatus === "Active" && !["Active", "Closed"].includes(option)) {
-                  isDisabled = true;
-                }
-                if (currentStatus === "Closed" && option !== "Closed") {
-                  isDisabled = true;
-                }
-                
-                return (
-                  <label 
-                    key={option} 
-                    className={`flex items-center gap-2 text-sm cursor-pointer text-gray-700 ${
-                      isDisabled ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="status"
-                      value={option}
-                      checked={selectedStatus === option}
-                      onChange={() => !isDisabled && setSelectedStatus(option)}
-                      disabled={isDisabled}
-                      className="w-4 h-4 accent-blue-600"
-                    />
-                    <span className="font-medium">{option}</span>
-                  </label>
-                );
-              })}
+              {["New", "Prospect", "Active", "Closed"].map((option) => (
+                <label key={option} className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
+                  <input
+                    type="radio"
+                    name="status"
+                    value={option}
+                    checked={selectedStatus === option}
+                    onChange={() => setSelectedStatus(option)}
+                    className="w-4 h-4 accent-blue-600"
+                  />
+                  <span className="font-medium">{option}</span>
+                </label>
+              ))}
             </div>
 
             <div className="flex justify-end gap-2 mt-5">

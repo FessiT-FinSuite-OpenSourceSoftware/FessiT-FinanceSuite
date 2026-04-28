@@ -14,6 +14,11 @@ pub struct SearchQuery {
 }
 
 #[derive(Deserialize)]
+pub struct RoleFilter {
+    role: Option<String>,
+}
+
+#[derive(Deserialize)]
 pub struct DeleteQuery {
     gstin: Option<String>,
     email: Option<String>,
@@ -119,6 +124,7 @@ pub async fn create_customer(
 #[get("/customers")]
 pub async fn get_all_customers(
     service: web::Data<CustomerService>,
+    query: web::Query<RoleFilter>,
     http_req: HttpRequest,
 ) -> Result<impl Responder, ApiError> {
     let claims = http_req
@@ -133,7 +139,21 @@ pub async fn get_all_customers(
     check_permission(&permissions, Module::Customers, PermissionAction::Read, user.is_admin)
         .map_err(|e| ApiError::Forbidden(create_permission_error(&e)))?;
 
-    let customers = service.get_customers_by_organisation(&user.organisation_id.unwrap()).await?;
+    let mut customers = service.get_customers_by_organisation(&user.organisation_id.unwrap()).await?;
+    
+    // Filter by role if provided
+    if let Some(role_str) = &query.role {
+        let role_lower = role_str.to_lowercase();
+        customers.retain(|c| {
+            match role_lower.as_str() {
+                "customer" => c.role == crate::models::customer::CustomerRole::Customer || c.role == crate::models::customer::CustomerRole::Both,
+                "vendor"   => c.role == crate::models::customer::CustomerRole::Vendor   || c.role == crate::models::customer::CustomerRole::Both,
+                "both"     => c.role == crate::models::customer::CustomerRole::Both,
+                _ => true
+            }
+        });
+    }
+    
     Ok(HttpResponse::Ok().json(customers))
 }
 

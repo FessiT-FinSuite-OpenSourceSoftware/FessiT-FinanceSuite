@@ -20,7 +20,7 @@ use handlers::{
     configure_cost_center_routes, configure_salary_routes, configure_general_expense_routes,
     configure_challan_routes, configure_category_routes, configure_product_routes,
     configure_estimate_routes, configure_ledger_routes, configure_account_routes,
-    configure_service_routes,
+    configure_service_routes, configure_report_routes,
 };
 use repository::{
     CustomerRepository, ExpenseRepository, InvoiceRepository, IncomingInvoiceRepository,
@@ -70,7 +70,6 @@ async fn main() -> std::io::Result<()> {
     let organisation_service = OrganisationService::new(organisation_repository.clone(), service_repository.clone(), user_service.clone());
 
     // 🔹 Invoices
-    // Invoices - repository only, service created after all repos
     let invoice_collection = db_client.get_invoice_collection();
     let invoice_repository = InvoiceRepository::new(invoice_collection);
     let expense_collection = db_client.get_expense_collection();
@@ -102,7 +101,7 @@ async fn main() -> std::io::Result<()> {
     let general_expense_repository = GeneralExpenseRepository::new(general_expense_collection);
     let general_expense_service = GeneralExpenseService::new(general_expense_repository.clone(), user_repository.clone());
 
-    // 🔹 Products (created before InvoiceService so it can be injected)
+    // 🔹 Products
     let product_collection = db_client.get_product_collection();
     let product_repository = ProductRepository::new(product_collection);
     let product_service = ProductService::new(product_repository.clone(), user_repository.clone());
@@ -116,7 +115,7 @@ async fn main() -> std::io::Result<()> {
     let ledger_counter_collection = db_client.get_ledger_counter_collection();
     let ledger_repository = LedgerRepository::new(db_client.client(), ledger_collection, ledger_counter_collection);
     ledger_repository.ensure_indexes().await.expect("❌ Failed to create ledger indexes");
-    
+
     let account_collection = db_client.get_account_collection();
     let account_repository = AccountRepository::new(db_client.client(), account_collection);
     account_repository.ensure_indexes().await.expect("❌ Failed to create account indexes");
@@ -148,7 +147,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .wrap(Logger::default())
-            // inject services
             .app_data(web::Data::new(customer_service.clone()))
             .app_data(web::Data::new(organisation_service.clone()))
             .app_data(web::Data::new(invoice_service.clone()))
@@ -161,7 +159,6 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(general_expense_service.clone()))
             .app_data(web::Data::new(challan_service.clone()))
             .app_data(web::Data::new(category_service.clone()))
-            // all APIs under /api/v1
             .app_data(web::Data::new(product_service.clone()))
             .app_data(web::Data::new(estimate_service.clone()))
             .app_data(web::Data::new(ledger_service.clone()))
@@ -169,8 +166,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(service_service.clone()))
             .service(
                 web::scope("/api/v1")
-                    .configure(configure_user_routes) // Public: login, refresh
-                    .configure(configure_organisation_public_routes) // Public: create org
+                    .configure(configure_user_routes)
+                    .configure(configure_organisation_public_routes)
                     .service(
                         web::scope("")
                             .wrap(JwtMiddleware)
@@ -191,6 +188,7 @@ async fn main() -> std::io::Result<()> {
                             .configure(configure_ledger_routes)
                             .configure(configure_account_routes)
                             .configure(configure_service_routes)
+                            .configure(configure_report_routes)
                     )
             )
     })

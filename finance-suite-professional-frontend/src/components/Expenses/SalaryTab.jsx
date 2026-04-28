@@ -7,7 +7,7 @@ import { StatCard, TabActionBar, FilterSelect, CreateButton, TableWrapper, Table
 
 const currentPeriod = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
 
-const EMPTY = { emp_name: "", emp_id: "", department: "", period: currentPeriod(), gross_salary: "", tds: "", reimbursement: "", status: "YetToBePaid", paid_on: "" };
+const EMPTY = { emp_name: "", emp_id: "", department: "", period: currentPeriod(), gross_salary: "", tds: "", reimbursement: "", status: "YetToBePaid", paid_on: "", cost_type: "indirect" };
 
 const statusColor = (s) => {
   switch (s) {
@@ -46,7 +46,7 @@ export default function SalaryTab() {
   useEffect(() => { dispatch(fetchSalaries()); }, [dispatch]);
 
   const openCreate = () => { setForm({ ...EMPTY, period: currentPeriod() }); setModal({ mode: "create" }); };
-  const openEdit = (row) => { setForm({ ...row }); setModal({ mode: "edit", id: getId(row) }); };
+  const openEdit = (row) => { setForm({ ...row, cost_type: row.cost_type || "indirect" }); setModal({ mode: "edit", id: getId(row) }); };
   const closeModal = () => setModal(null);
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
@@ -178,6 +178,12 @@ export default function SalaryTab() {
           ))}
           <FormField label="Period">
             <input type="month" name="period" value={form.period} onChange={handleChange} className={inputCls} />
+          </FormField>
+          <FormField label="Cost Type">
+            <select name="cost_type" value={form.cost_type || "indirect"} onChange={handleChange} className={inputCls}>
+              <option value="indirect">Indirect</option>
+              <option value="direct">Direct</option>
+            </select>
           </FormField>
           <FormField label="Status">
             <select name="status" value={form.status} onChange={handleChange} className={inputCls}>

@@ -1,6 +1,17 @@
 use mongodb::bson::{oid::ObjectId, DateTime};
 use serde::{Deserialize, Deserializer, Serialize};
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum CostType {
+    Direct,
+    Indirect,
+}
+
+impl Default for CostType {
+    fn default() -> Self { CostType::Indirect }
+}
+
 /// Deserialise a field that may be stored as either a number or a string (legacy docs).
 fn deserialize_f64_or_string<'de, D>(deserializer: D) -> Result<f64, D::Error>
 where
@@ -243,6 +254,9 @@ pub struct Expense {
     /// Organisation reference
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,
+
+    #[serde(default)]
+    pub cost_type: CostType,
 }
 
 impl Expense {
@@ -270,6 +284,7 @@ impl Expense {
             created_at: Some(now),
             updated_at: Some(now),
             organisation_id: None,
+            cost_type: CostType::Indirect,
         }
     }
     
@@ -461,6 +476,7 @@ impl From<CreateExpenseRequest> for Expense {
             created_at: Some(now),
             updated_at: Some(now),
             organisation_id: None,
+            cost_type: CostType::Indirect,
         };
         expense.calculate_total();
         expense

@@ -14,7 +14,7 @@ import { toast } from "react-toastify";
 
 const CATEGORIES = ["Supplies", "Meals", "Software", "Travel", "Utilities", "Other"];
 
-const empty = () => ({ title: "", category: "Supplies", date: "", amount: "", cgstPct: "", sgstPct: "", igstPct: "", paid_by: "", billed_to: "", status: "Pending", approved_date: "", document: "" });
+const empty = () => ({ title: "", category: "Supplies", date: "", amount: "", cgstPct: "", sgstPct: "", igstPct: "", paid_by: "", billed_to: "", status: "Pending", approved_date: "", document: "", cost_type: "indirect" });
 
 const formatDateForApi = (dateStr) => dateStr || "";
 
@@ -108,6 +108,7 @@ export default function OthersTab() {
       igstPct: amount > 0 ? ((row.total_igst || 0) / amount * 100).toFixed(2) : "",
       approved_date: row.approved_date || "",
       billed_to: row.billed_to || "",
+      cost_type: row.cost_type || "indirect",
     });
     setDocFile(null);
     setDocFileName(row.document || "");
@@ -146,6 +147,7 @@ export default function OthersTab() {
         billed_to: form.billed_to || null,
         approved_date: form.status === "Approved" ? formatDateForApi(form.approved_date) : null,
         document: storedFilename,
+        cost_type: form.cost_type || "indirect",
       };
       if (modal.mode === "create") dispatch(createGeneralExpense(payload));
       else dispatch(updateGeneralExpense(modal.id, payload));
@@ -168,6 +170,7 @@ export default function OthersTab() {
       amount: parseFloat(row.amount) || 0,
       status,
       approved_date: status === "Approved" ? formatDateForApi(approved_date) : null,
+      cost_type: row.cost_type || "indirect",
     }));
     setStatusPopup(null);
   };
@@ -410,6 +413,12 @@ export default function OthersTab() {
           </FormField>
           <FormField label="Date">
             <input type="date" name="date" value={form.date} onChange={handleChange} className={inputCls} />
+          </FormField>
+          <FormField label="Cost Type">
+            <select name="cost_type" value={form.cost_type || "indirect"} onChange={handleChange} className={inputCls}>
+              <option value="indirect">Indirect</option>
+              <option value="direct">Direct</option>
+            </select>
           </FormField>
           <FormField label="Amount (₹)">
             <input type="number" name="amount" value={form.amount} onChange={handleChange} className={inputCls} />

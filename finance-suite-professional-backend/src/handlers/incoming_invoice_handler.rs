@@ -107,6 +107,17 @@ fn parse_amount(s: &str) -> f64 {
     s.trim().chars().filter(|c| c.is_ascii_digit() || *c == '.').collect::<String>().parse::<f64>().unwrap_or(0.0)
 }
 
+fn parse_cost_type(value: Option<String>) -> crate::models::incoming_invoice::CostType {
+    match value
+        .unwrap_or_default()
+        .to_lowercase()
+        .as_str()
+    {
+        "direct" => crate::models::incoming_invoice::CostType::Direct,
+        _ => crate::models::incoming_invoice::CostType::Indirect,
+    }
+}
+
 /// PUT /api/v1/incoming-invoices/{id}
 #[put("/incoming-invoices/{id}")]
 pub async fn update_incoming_invoice(
@@ -153,6 +164,7 @@ pub async fn update_incoming_invoice(
                             &inv_id,
                             &inv.invoice_number,
                             &inv.vendor_name,
+                            inv.vendor_id.as_ref(),
                             amount,
                             currency,
                             &org_id,
@@ -286,6 +298,9 @@ pub async fn update_incoming_invoice_with_file(
         tds_total: fields.remove("tds_total").unwrap_or(existing.tds_total),
         organisation_id: existing.organisation_id,
         vendor_id: existing.vendor_id,
+        cost_type: parse_cost_type(
+            fields.remove("cost_type").or_else(|| fields.remove("costType"))
+        ),
     };
 
     match service.update(&id, req).await

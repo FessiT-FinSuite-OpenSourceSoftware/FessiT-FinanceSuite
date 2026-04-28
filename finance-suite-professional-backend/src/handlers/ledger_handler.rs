@@ -190,42 +190,88 @@ fn render_ledger_header(
     font: &IndirectFontRef,
     org_name: &str,
     org_email: &str,
+    org_phone: &str,
+    org_address: &str,
+    org_gstin: &str,
     from: &str,
     to: &str,
     party_name: Option<&str>,
 ) -> f32 {
-    let mut y = 280.0f32;
+    let mut y = 282.0f32;
 
+    // Company name — large bold
     set_text_color(layer, 0.12, 0.18, 0.32);
-    layer.use_text(org_name, 18.0, Mm(15.0), Mm(y), font_bold);
-    y -= 6.0;
-    set_text_color(layer, 0.35, 0.40, 0.48);
-    layer.use_text(org_email, 9.0, Mm(15.0), Mm(y), font);
-    y -= 6.0;
+    layer.use_text(org_name, 16.0, Mm(15.0), Mm(y), font_bold);
 
+    // Period label — top right, prominent
+    let period = format!("Period: {}", format_period(from, to));
     set_text_color(layer, 0.18, 0.52, 0.78);
-    layer.use_text(format_period(from, to), 11.0, Mm(15.0), Mm(y), font_bold);
+    layer.use_text(&period, 9.0, Mm(130.0), Mm(y), font_bold);
 
-    if let Some(name) = party_name {
-        y -= 5.0;
-        set_text_color(layer, 0.35, 0.40, 0.48);
-        layer.use_text(format!("Party: {}", name), 9.0, Mm(15.0), Mm(y), font);
+    y -= 5.5;
+
+    // Email
+    set_text_color(layer, 0.35, 0.40, 0.48);
+    if !org_email.is_empty() {
+        layer.use_text(org_email, 8.0, Mm(15.0), Mm(y), font);
     }
 
-    y -= 10.0;
+    // Phone — right of email
+    if !org_phone.is_empty() {
+        layer.use_text(format!("Ph: {}", org_phone), 8.0, Mm(130.0), Mm(y), font);
+    }
+    y -= 4.5;
+
+    // Address
+    if !org_address.is_empty() {
+        let addr_lines = wrap_text(org_address, 60);
+        for line in &addr_lines {
+            layer.use_text(line, 8.0, Mm(15.0), Mm(y), font);
+            y -= 4.0;
+        }
+    }
+
+    // GSTIN
+    if !org_gstin.is_empty() {
+        layer.use_text(format!("GSTIN: {}", org_gstin), 8.0, Mm(15.0), Mm(y), font);
+        y -= 4.0;
+    }
+
+    // Separator line
+    y -= 1.0;
+    set_text_color(layer, 0.72, 0.74, 0.78);
+    draw_line(layer, 15.0, 200.0, y);
+    y -= 4.0;
+
+    // Document title + party
+    set_text_color(layer, 0.12, 0.18, 0.32);
+    layer.use_text("LEDGER STATEMENT", 10.0, Mm(15.0), Mm(y), font_bold);
+    if let Some(name) = party_name {
+        set_text_color(layer, 0.35, 0.40, 0.48);
+        layer.use_text(format!("Party: {}", name), 9.0, Mm(90.0), Mm(y), font);
+    }
+    y -= 4.0;
+
+    // Second separator
+    set_text_color(layer, 0.72, 0.74, 0.78);
+    draw_line(layer, 15.0, 200.0, y);
+    y -= 6.0;
+
+    // Column headers
     set_text_color(layer, 0.10, 0.10, 0.10);
-    layer.use_text("Date", 8.5, Mm(15.0), Mm(y), font_bold);
-    set_text_color(layer, 0.18, 0.18, 0.18);
-    layer.use_text("Particularss", 8.5, Mm(35.0), Mm(y), font_bold);
-    layer.use_text("Vch No", 8.5, Mm(110.0), Mm(y), font_bold);
+    layer.use_text("Date",        8.5, Mm(15.0),  Mm(y), font_bold);
+    layer.use_text("Particulars", 8.5, Mm(35.0),  Mm(y), font_bold);
+    layer.use_text("Vch No",      8.5, Mm(105.0), Mm(y), font_bold);
     set_text_color(layer, 0.18, 0.52, 0.78);
-    layer.use_text("Debit", 8.5, Mm(150.0), Mm(y), font_bold);
+    layer.use_text("Debit",       8.5, Mm(135.0), Mm(y), font_bold);
     set_text_color(layer, 0.82, 0.28, 0.25);
-    layer.use_text("Credit", 8.5, Mm(176.0), Mm(y), font_bold);
+    layer.use_text("Credit",      8.5, Mm(158.0), Mm(y), font_bold);
+    set_text_color(layer, 0.10, 0.10, 0.10);
+    layer.use_text("Balance",     8.5, Mm(178.0), Mm(y), font_bold);
 
     y -= 4.0;
     set_text_color(layer, 0.72, 0.74, 0.78);
-    draw_line(layer, 15.0, 195.0, y);
+    draw_line(layer, 15.0, 200.0, y);
     y -= 6.0;
 
     y
@@ -240,6 +286,9 @@ fn ensure_page_space(
     font: &IndirectFontRef,
     org_name: &str,
     org_email: &str,
+    org_phone: &str,
+    org_address: &str,
+    org_gstin: &str,
     from: &str,
     to: &str,
     party_name: Option<&str>,
@@ -247,17 +296,11 @@ fn ensure_page_space(
     if *y >= 20.0 + min_space {
         return;
     }
-
     *layer = start_ledger_page(doc, "Ledger Statement");
     *y = render_ledger_header(
-        layer,
-        font_bold,
-        font,
-        org_name,
-        org_email,
-        from,
-        to,
-        party_name,
+        layer, font_bold, font,
+        org_name, org_email, org_phone, org_address, org_gstin,
+        from, to, party_name,
     );
 }
 
@@ -269,28 +312,45 @@ fn render_ledger_table_row(
     reference: &str,
     debit: &str,
     credit: &str,
+    balance: i64,
     y: f32,
 ) {
-    let desc_lines = wrap_text(description, 48);
+    let desc_lines = wrap_text(description, 40);
     let line_step = 4.5f32;
 
     set_text_color(layer, 0.12, 0.12, 0.12);
-    layer.use_text(date, 8.0, Mm(15.0), Mm(y), font);
+    layer.use_text(date,      8.0, Mm(15.0),  Mm(y), font);
     for (idx, line) in desc_lines.iter().enumerate() {
         let line_y = y - (idx as f32 * line_step);
         layer.use_text(line, 8.0, Mm(35.0), Mm(line_y), font);
     }
-    layer.use_text(reference, 8.0, Mm(110.0), Mm(y), font);
+    layer.use_text(reference, 8.0, Mm(105.0), Mm(y), font);
     set_text_color(layer, 0.18, 0.52, 0.78);
-    layer.use_text(debit, 8.0, Mm(150.0), Mm(y), font);
+    layer.use_text(debit,     8.0, Mm(135.0), Mm(y), font);
     set_text_color(layer, 0.82, 0.28, 0.25);
-    layer.use_text(credit, 8.0, Mm(176.0), Mm(y), font);
+    layer.use_text(credit,    8.0, Mm(158.0), Mm(y), font);
+
+    // Balance column — negative shown as -amount in red, positive in dark
+    let (bal_str, is_neg) = if balance < 0 {
+        (format!("-{}", format_paise(-balance)), true)
+    } else {
+        (format_paise(balance), false)
+    };
+    if is_neg {
+        set_text_color(layer, 0.82, 0.28, 0.25);
+    } else {
+        set_text_color(layer, 0.10, 0.10, 0.10);
+    }
+    layer.use_text(bal_str, 8.0, Mm(178.0), Mm(y), font);
 }
 
 fn generate_ledger_pdf(
     entries: &[LedgerEntry],
     org_name: &str,
     org_email: &str,
+    org_phone: &str,
+    org_address: &str,
+    org_gstin: &str,
     from: &str,
     to: &str,
     party_name: Option<&str>,
@@ -302,42 +362,34 @@ fn generate_ledger_pdf(
     let font = doc.add_builtin_font(BuiltinFont::Helvetica).unwrap();
     let mut layer = doc.get_page(page1).get_layer(layer1);
     let mut y = render_ledger_header(
-        &layer,
-        &font_bold,
-        &font,
-        org_name,
-        org_email,
-        from,
-        to,
-        party_name,
+        &layer, &font_bold, &font,
+        org_name, org_email, org_phone, org_address, org_gstin,
+        from, to, party_name,
     );
 
     if let Some(first) = entries.first() {
         let opening = first.balance - first.credit + first.debit;
-        let (val, drcr) = if opening >= 0 {
-            (format_paise(opening), "Dr")
+        let (val, is_neg) = if opening < 0 {
+            (format!("-{}", format_paise(-opening)), true)
         } else {
-            (format_paise(-opening), "Cr")
+            (format_paise(opening), false)
         };
 
         ensure_page_space(
-            &doc,
-            &mut layer,
-            &mut y,
-            8.0,
-            &font_bold,
-            &font,
-            org_name,
-            org_email,
-            from,
-            to,
-            party_name,
+            &doc, &mut layer, &mut y, 8.0,
+            &font_bold, &font,
+            org_name, org_email, org_phone, org_address, org_gstin,
+            from, to, party_name,
         );
 
         set_text_color(&layer, 0.35, 0.40, 0.48);
         layer.use_text("Opening Balance", 8.0, Mm(35.0), Mm(y), &font);
-        set_text_color(&layer, 0.18, 0.52, 0.78);
-        layer.use_text(format!("{} {}", val, drcr), 8.0, Mm(160.0), Mm(y), &font);
+        if is_neg {
+            set_text_color(&layer, 0.82, 0.28, 0.25);
+        } else {
+            set_text_color(&layer, 0.10, 0.10, 0.10);
+        }
+        layer.use_text(val, 8.0, Mm(178.0), Mm(y), &font);
         y -= 6.0;
     }
 
@@ -358,17 +410,10 @@ fn generate_ledger_pdf(
         let row_height = (desc_lines.len().max(1) as f32 * 4.5f32).max(6.0f32) + 1.0f32;
 
         ensure_page_space(
-            &doc,
-            &mut layer,
-            &mut y,
-            row_height,
-            &font_bold,
-            &font,
-            org_name,
-            org_email,
-            from,
-            to,
-            party_name,
+            &doc, &mut layer, &mut y, row_height,
+            &font_bold, &font,
+            org_name, org_email, org_phone, org_address, org_gstin,
+            from, to, party_name,
         );
 
         render_ledger_table_row(
@@ -379,6 +424,7 @@ fn generate_ledger_pdf(
             reference,
             &debit,
             &credit,
+            entry.balance,
             y,
         );
 
@@ -388,37 +434,30 @@ fn generate_ledger_pdf(
     if !entries.is_empty() {
         let closing_row_height = 10.0f32;
         ensure_page_space(
-            &doc,
-            &mut layer,
-            &mut y,
-            closing_row_height,
-            &font_bold,
-            &font,
-            org_name,
-            org_email,
-            from,
-            to,
-            party_name,
+            &doc, &mut layer, &mut y, closing_row_height,
+            &font_bold, &font,
+            org_name, org_email, org_phone, org_address, org_gstin,
+            from, to, party_name,
         );
 
         y -= 2.0;
-        draw_line(&layer, 15.0, 195.0, y as f32);
+        draw_line(&layer, 15.0, 200.0, y as f32);
         y -= 6.0;
 
         if let Some(last) = entries.last() {
-            let (val, drcr) = if last.balance >= 0 {
-                (format_paise(last.balance), "Dr")
+            let (val, is_neg) = if last.balance < 0 {
+                (format!("-{}", format_paise(-last.balance)), true)
             } else {
-                (format_paise(-last.balance), "Cr")
+                (format_paise(last.balance), false)
             };
-
-            layer.use_text(
-                format!("Closing Balance: {} {}", val, drcr),
-                10.5,
-                Mm(132.0),
-                Mm(y),
-                &font_bold,
-            );
+            set_text_color(&layer, 0.35, 0.40, 0.48);
+            layer.use_text("Closing Balance", 8.5, Mm(135.0), Mm(y), &font_bold);
+            if is_neg {
+                set_text_color(&layer, 0.82, 0.28, 0.25);
+            } else {
+                set_text_color(&layer, 0.10, 0.45, 0.20);
+            }
+            layer.use_text(val, 10.5, Mm(178.0), Mm(y), &font_bold);
         }
     }
 
@@ -463,10 +502,18 @@ pub async fn get_ledger_pdf(
         .and_then(|e| e.party_name_snapshot.as_deref())
         .filter(|_| party_id.is_some());
 
+    // Build address string from first address entry
+    let org_address = org.addresses.first()
+        .map(|a| a.value.clone())
+        .unwrap_or_default();
+
     let pdf_bytes = generate_ledger_pdf(
         &result.data,
         &org.company_name,
         &org.email,
+        &org.phone,
+        &org_address,
+        &org.gst_in,
         &from,
         &to,
         party_name,
