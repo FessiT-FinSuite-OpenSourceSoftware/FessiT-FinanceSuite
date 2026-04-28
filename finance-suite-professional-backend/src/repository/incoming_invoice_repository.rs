@@ -86,12 +86,8 @@ impl IncomingInvoiceRepository {
         Ok(result.deleted_count > 0)
     }
 
-    /// Get the current month's incoming invoice GST summary for an org.
-    pub async fn get_monthly_summary(&self, org_id: &ObjectId) -> Result<IncomingInvoiceMonthlySummary, MongoError> {
+    pub async fn get_monthly_summary(&self, org_id: &ObjectId, year: &str, month: &str) -> Result<IncomingInvoiceMonthlySummary, MongoError> {
         let invoices = self.get_by_org(org_id).await?;
-        let now = Utc::now();
-        let current_year  = now.format("%Y").to_string();
-        let current_month = now.format("%m").to_string();
 
         let mut invoice_count      = 0u32;
         let mut total_amount       = 0.0f64;
@@ -104,7 +100,7 @@ impl IncomingInvoiceRepository {
         for inv in &invoices {
             let date = inv.invoice_date.trim();
             if date.len() < 7 { continue; }
-            if &date[0..4] != current_year || &date[5..7] != current_month { continue; }
+            if &date[0..4] != year || &date[5..7] != month { continue; }
 
             let is_international = inv.invoice_type.trim().to_lowercase() == "international";
             let is_paid          = inv.status.trim().to_lowercase() == "paid";
@@ -127,7 +123,7 @@ impl IncomingInvoiceRepository {
         }
 
         Ok(IncomingInvoiceMonthlySummary {
-            month: format!("{}-{}", current_year, current_month),
+            month: format!("{}-{}", year, month),
             invoice_count,
             total_amount,
             total_cgst,
@@ -139,24 +135,19 @@ impl IncomingInvoiceRepository {
         })
     }
 
-    /// Get current month TDS summary — only Paid invoices with tds_applicable = true.
-    pub async fn get_monthly_tds_summary(&self, org_id: &ObjectId) -> Result<IncomingInvoiceTdsSummary, MongoError> {
+    pub async fn get_monthly_tds_summary(&self, org_id: &ObjectId, year: &str, month: &str) -> Result<IncomingInvoiceTdsSummary, MongoError> {
         let invoices = self.get_by_org(org_id).await?;
-        let now = Utc::now();
-        let current_year  = now.format("%Y").to_string();
-        let current_month = now.format("%m").to_string();
 
         let mut invoice_count      = 0u32;
         let mut total_tds_deducted = 0.0f64;
 
         for inv in &invoices {
-            // Only Paid invoices with TDS applicable
             if !inv.tds_applicable { continue; }
             if inv.status.trim().to_lowercase() != "paid" { continue; }
 
             let date = inv.invoice_date.trim();
             if date.len() < 7 { continue; }
-            if &date[0..4] != current_year || &date[5..7] != current_month { continue; }
+            if &date[0..4] != year || &date[5..7] != month { continue; }
 
             let tds = inv.tds_total.parse::<f64>().unwrap_or(0.0);
             invoice_count      += 1;
@@ -164,7 +155,7 @@ impl IncomingInvoiceRepository {
         }
 
         Ok(IncomingInvoiceTdsSummary {
-            month: format!("{}-{}", current_year, current_month),
+            month: format!("{}-{}", year, month),
             invoice_count,
             total_tds_deducted,
             tds_on_paid: total_tds_deducted,

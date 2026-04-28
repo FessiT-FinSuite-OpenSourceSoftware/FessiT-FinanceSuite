@@ -4,6 +4,7 @@ import { fetchGstSummary, gstSummarySelector } from "../../ReduxApi/gstSummary";
 import { fetchInvoiceData, invoiceSelector } from "../../ReduxApi/invoice";
 import { fetchIncomingInvoices, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
 import RecentGSTTransactions from "./RecentGSTTransactions";
+import PeriodSelector from "../../shared/PeriodSelector";
 
 const gstReturns = [
   {
@@ -115,11 +116,28 @@ export default function GSTCompliance() {
   const [activeTab, setActiveTab] = useState("transactions");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  const now = new Date();
+  const [selectedMonths, setSelectedMonths] = useState([{ year: now.getFullYear(), month: now.getMonth() + 1 }]);
+
+  const handlePeriodChange = (months) => {
+    setSelectedMonths(months);
+  };
+
   useEffect(() => {
-    dispatch(fetchGstSummary());
-    dispatch(fetchInvoiceData());
-    dispatch(fetchIncomingInvoices());
-  }, [dispatch]);
+    if (!selectedMonths.length) return;
+    dispatch(fetchGstSummary(selectedMonths));
+  }, [dispatch, selectedMonths]);
+
+  useEffect(() => {
+    if (!selectedMonths.length) return;
+    if (selectedMonths.length === 1) {
+      dispatch(fetchInvoiceData(selectedMonths[0].year, selectedMonths[0].month));
+      dispatch(fetchIncomingInvoices(selectedMonths[0].year, selectedMonths[0].month));
+    } else {
+      dispatch(fetchInvoiceData());
+      dispatch(fetchIncomingInvoices());
+    }
+  }, [dispatch, selectedMonths]);
 
   const outgoing = data?.outgoing_invoice_details || data?.outgoing_invoices || {};
   const incoming = data?.combined_expense_gst || data?.incoming_invoices || {};
@@ -128,8 +146,24 @@ export default function GSTCompliance() {
   const pendingReturnCount = typeof data?.pending_returns === "number" ? data.pending_returns : gstReturns.filter((r) => r.status === "pending").length;
 
   const recentTransactions = useMemo(() => {
+    // Build a Set of "YYYY-MM" strings for the selected months
+    const monthSet = new Set(selectedMonths.map(({ year, month }) =>
+      `${year}-${String(month).padStart(2, "0")}`
+    ));
+
+    function inSelectedMonths(dateStr) {
+      if (!dateStr) return false;
+      const raw = String(dateStr).trim();
+      // YYYY-MM-DD
+      if (/^\d{4}-\d{2}/.test(raw)) return monthSet.has(raw.slice(0, 7));
+      // DD-MM-YYYY
+      if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) return monthSet.has(`${raw.slice(6,10)}-${raw.slice(3,5)}`);
+      const d = new Date(raw);
+      if (!isNaN(d)) return monthSet.has(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+      return false;
+    }
     const outgoingTxns = (Array.isArray(invoiceData) ? invoiceData : [])
-      .filter((invoice) => (invoice.status || "").toLowerCase() === "paid")
+      .filter((invoice) => (invoice.status || "").toLowerCase() === "paid" && inSelectedMonths(invoice.invoice_date || invoice.date))
       .map((invoice) => {
         const itemTaxes = sumInvoiceTaxes(Array.isArray(invoice.items) ? invoice.items : []);
         // outgoing invoice stores totals as totalcgst/totalsgst/totaligst (no underscore)
@@ -156,7 +190,7 @@ export default function GSTCompliance() {
       });
 
     const incomingTxns = (Array.isArray(incomingInvoices) ? incomingInvoices : [])
-      .filter((invoice) => (invoice.status || "").toLowerCase() === "paid")
+      .filter((invoice) => (invoice.status || "").toLowerCase() === "paid" && inSelectedMonths(invoice.invoice_date || invoice.date))
       .map((invoice) => {
         const cgst = toNumber(invoice.total_cgst);
         const sgst = toNumber(invoice.total_sgst);
@@ -184,7 +218,7 @@ export default function GSTCompliance() {
     return [...outgoingTxns, ...incomingTxns]
       .filter((txn) => txn.date)
       .sort((a, b) => parseDateForSort(b.date) - parseDateForSort(a.date));
-  }, [invoiceData, incomingInvoices]);
+  }, [invoiceData, incomingInvoices, selectedMonths]);
 
   const filteredReturns = filterStatus === "all" ? gstReturns : gstReturns.filter((r) => r.status === filterStatus);
 
@@ -230,6 +264,7 @@ export default function GSTCompliance() {
             </button>
           </div> */}
         </div>
+        <PeriodSelector onChange={handlePeriodChange} />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-linear-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
             <h3 className="text-sm font-medium text-blue-700 mb-2">Total GST Collected</h3>
@@ -363,7 +398,7 @@ export default function GSTCompliance() {
         )}
 
         {activeTab === "transactions" && (
-          <RecentGSTTransactions transactions={recentTransactions} isLoading={isLoading} />
+          <RecentGSTTransactions transactions={recentTransactions} isLoading={isLoading} selectedMonths={selectedMonths} />
         )}
 
         {activeTab === "compliance" && (

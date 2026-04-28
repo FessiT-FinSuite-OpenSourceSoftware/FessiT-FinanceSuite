@@ -544,8 +544,8 @@ export default function CustomerList() {
       )}
       
       {statusModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-96 relative z-[10000]">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-96 relative z-10000">
             <h3 className="text-base font-semibold text-gray-800 mb-4">
               Update Customer Status
             </h3>

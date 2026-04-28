@@ -22,10 +22,14 @@ export const { setLoading, setSuccess, setFailure } = incomingInvoiceSlice.actio
 export const incomingInvoiceSelector = (state) => state.incomingInvoice
 export default incomingInvoiceSlice.reducer
 
-export const fetchIncomingInvoices = () => async (dispatch) => {
+export const fetchIncomingInvoices = (year, month) => async (dispatch) => {
   dispatch(setLoading())
   try {
-    const { data } = await axiosInstance.get('/incoming-invoices')
+    const params = new URLSearchParams()
+    if (year)  params.set('year',  year)
+    if (month) params.set('month', String(month).padStart(2, '0'))
+    const qs = params.toString() ? '?' + params.toString() : ''
+    const { data } = await axiosInstance.get(`/incoming-invoices${qs}`)
     dispatch(setSuccess(data))
   } catch (error) {
     dispatch(setFailure())

@@ -12,22 +12,26 @@ const formatDate = (value) => {
   return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
-const now = new Date();
-const THIS_MONTH = now.getMonth();
-const THIS_YEAR  = now.getFullYear();
+function buildMonthSet(selectedMonths) {
+  return new Set(
+    (Array.isArray(selectedMonths) ? selectedMonths : []).map(
+      ({ year, month }) => `${year}-${String(month).padStart(2, "0")}`
+    )
+  );
+}
 
-const isThisMonth = (value) => {
+function inMonthSet(value, monthSet) {
   if (!value) return false;
-  if (typeof value === "object" && value.$date) return isThisMonth(value.$date);
+  if (typeof value === "object" && value.$date) return inMonthSet(value.$date, monthSet);
   const raw = String(value).trim();
-  // period format "YYYY-MM"
-  if (/^\d{4}-\d{2}$/.test(raw)) {
-    const [y, m] = raw.split("-").map(Number);
-    return y === THIS_YEAR && m - 1 === THIS_MONTH;
-  }
+  // YYYY-MM or YYYY-MM-DD
+  if (/^\d{4}-\d{2}/.test(raw)) return monthSet.has(raw.slice(0, 7));
+  // DD-MM-YYYY
+  if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) return monthSet.has(`${raw.slice(6, 10)}-${raw.slice(3, 5)}`);
   const d = new Date(raw);
-  return !Number.isNaN(d.getTime()) && d.getMonth() === THIS_MONTH && d.getFullYear() === THIS_YEAR;
-};
+  if (!Number.isNaN(d.getTime())) return monthSet.has(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  return false;
+}
 
 const COLUMNS = [
   { label: "Date" },
@@ -41,19 +45,22 @@ const COLUMNS = [
   { label: "Status" },
 ];
 
-export default function TDSDeductions({ deductions = [], isLoading = false }) {
+export default function TDSDeductions({ deductions = [], isLoading = false, selectedMonths = [] }) {
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  useEffect(() => { setCurrentPage(1); }, [search, sourceFilter, statusFilter, pageSize]);
+  useEffect(() => { setCurrentPage(1); }, [search, sourceFilter, statusFilter, pageSize, selectedMonths]);
 
   const filtered = useMemo(() => {
+    const monthSet = buildMonthSet(selectedMonths);
     const q = search.trim().toLowerCase();
     return deductions.filter((d) => {
-      if (!isThisMonth(d.date)) return false;
+      // For salary rows match on period, for invoice rows match on date
+      const dateToCheck = d.source === "Salary" ? (d.period || d.date) : d.date;
+      if (monthSet.size > 0 && !inMonthSet(dateToCheck, monthSet)) return false;
       const matchSearch = !q ||
         (d.deductee || "").toLowerCase().includes(q) ||
         (d.pan || "").toLowerCase().includes(q) ||
@@ -62,7 +69,7 @@ export default function TDSDeductions({ deductions = [], isLoading = false }) {
       const matchStatus = statusFilter === "All" || d.status === statusFilter;
       return matchSearch && matchSource && matchStatus;
     });
-  }, [deductions, search, sourceFilter, statusFilter]);
+  }, [deductions, search, sourceFilter, statusFilter, selectedMonths]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);

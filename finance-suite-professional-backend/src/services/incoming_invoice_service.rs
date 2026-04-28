@@ -50,14 +50,18 @@ impl IncomingInvoiceService {
     pub async fn get_monthly_summary(
         &self,
         org_id: &mongodb::bson::oid::ObjectId,
+        year: &str,
+        month: &str,
     ) -> anyhow::Result<crate::repository::incoming_invoice_repository::IncomingInvoiceMonthlySummary> {
-        Ok(self.repo.get_monthly_summary(org_id).await?)
+        Ok(self.repo.get_monthly_summary(org_id, year, month).await?)
     }
 
     pub async fn get_monthly_tds_summary(
         &self,
         org_id: &mongodb::bson::oid::ObjectId,
+        year: &str,
+        month: &str,
     ) -> anyhow::Result<crate::repository::incoming_invoice_repository::IncomingInvoiceTdsSummary> {
-        Ok(self.repo.get_monthly_tds_summary(org_id).await?)
+        Ok(self.repo.get_monthly_tds_summary(org_id, year, month).await?)
     }
 }

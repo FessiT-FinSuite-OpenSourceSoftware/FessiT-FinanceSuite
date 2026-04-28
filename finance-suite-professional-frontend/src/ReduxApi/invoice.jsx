@@ -93,12 +93,15 @@ export const fetchNextInvoiceNumber = () => async (dispatch) => {
 }
 
 
-// Fetch All Invoices
-export const fetchInvoiceData = () => async (dispatch) => {
+// Fetch All Invoices (optionally filtered by year+month)
+export const fetchInvoiceData = (year, month) => async (dispatch) => {
   dispatch(getInvoice())
-
   try {
-    const { data } = await axiosInstance.get('/invoices')
+    const params = new URLSearchParams()
+    if (year)  params.set('year',  year)
+    if (month) params.set('month', String(month).padStart(2, '0'))
+    const qs = params.toString() ? '?' + params.toString() : ''
+    const { data } = await axiosInstance.get(`/invoices${qs}`)
     dispatch(getInvoiceSuccess(data))
   } catch (error) {
     console.error('Error fetching invoices:', error)

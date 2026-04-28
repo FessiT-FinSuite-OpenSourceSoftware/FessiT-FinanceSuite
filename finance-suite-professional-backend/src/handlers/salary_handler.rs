@@ -4,6 +4,7 @@ use actix_web::{
     HttpResponse, Responder, HttpRequest, HttpMessage,
 };
 use serde_json::json;
+use serde::Deserialize;
 
 use crate::{
     models::salary::{CreateSalaryRequest, UpdateSalaryRequest, SalaryStatus},
@@ -11,6 +12,12 @@ use crate::{
     utils::auth::Claims,
     utils::permissions::{check_permission, Module, PermissionAction, create_permission_error},
 };
+
+#[derive(Deserialize)]
+struct PeriodQuery {
+    year: Option<String>,
+    month: Option<String>,
+}
 
 /// POST /api/v1/salaries
 #[post("/salaries")]
@@ -37,6 +44,7 @@ pub async fn create_salary(
 #[get("/salaries")]
 pub async fn list_salaries(
     service: web::Data<SalaryService>,
+    query: web::Query<PeriodQuery>,
     http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     let claims = http_req.extensions().get::<Claims>().cloned()
@@ -48,8 +56,17 @@ pub async fn list_salaries(
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
-    let salaries = service.list(&org_id).await
+    let mut salaries = service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
+    if query.year.is_some() || query.month.is_some() {
+        let now = chrono::Utc::now();
+        let year  = query.year.clone().unwrap_or_else(|| now.format("%Y").to_string());
+        let month = query.month.clone().unwrap_or_else(|| now.format("%m").to_string());
+        salaries.retain(|s| {
+            let p = s.period.trim();
+            p.len() >= 7 && &p[0..4] == year.as_str() && &p[5..7] == month.as_str()
+        });
+    }
     Ok(HttpResponse::Ok().json(salaries))
 }
 

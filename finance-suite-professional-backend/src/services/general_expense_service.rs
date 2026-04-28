@@ -50,7 +50,9 @@ impl GeneralExpenseService {
     pub async fn get_monthly_gst_summary(
         &self,
         org_id: &mongodb::bson::oid::ObjectId,
+        year: &str,
+        month: &str,
     ) -> anyhow::Result<crate::repository::general_expense_repository::GeneralExpenseMonthlyGstSummary> {
-        Ok(self.repo.get_monthly_gst_summary(org_id).await?)
+        Ok(self.repo.get_monthly_gst_summary(org_id, year, month).await?)
     }
 }

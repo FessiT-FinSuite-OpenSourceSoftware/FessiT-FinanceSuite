@@ -93,12 +93,8 @@ impl GeneralExpenseRepository {
         Ok(result.deleted_count > 0)
     }
 
-    /// Get current month's GST summary for approved general expenses in an organisation
-    pub async fn get_monthly_gst_summary(&self, org_id: &ObjectId) -> Result<GeneralExpenseMonthlyGstSummary, MongoError> {
+    pub async fn get_monthly_gst_summary(&self, org_id: &ObjectId, year: &str, month: &str) -> Result<GeneralExpenseMonthlyGstSummary, MongoError> {
         let expenses = self.get_by_org(org_id).await?;
-        let now = Utc::now();
-        let current_year = now.format("%Y").to_string();
-        let current_month = now.format("%m").to_string();
 
         let mut expense_count = 0u32;
         let mut total_amount = 0.0f64;
@@ -127,18 +123,15 @@ impl GeneralExpenseRepository {
                 continue;
             }
 
-            // Support both YYYY-MM-DD and DD-MM-YYYY
-            let (year, month) = if date.chars().nth(4) == Some('-') {
-                // YYYY-MM-DD
+            let (item_year, item_month) = if date.chars().nth(4) == Some('-') {
                 (&date[0..4], &date[5..7])
             } else if date.chars().nth(2) == Some('-') {
-                // DD-MM-YYYY
                 (&date[6..10], &date[3..5])
             } else {
                 continue;
             };
 
-            if year != current_year || month != current_month {
+            if item_year != year || item_month != month {
                 continue;
             }
 
@@ -151,7 +144,7 @@ impl GeneralExpenseRepository {
         }
 
         Ok(GeneralExpenseMonthlyGstSummary {
-            month: format!("{}-{}", current_year, current_month),
+            month: format!("{}-{}", year, month),
             expense_count,
             total_amount,
             total_tax,

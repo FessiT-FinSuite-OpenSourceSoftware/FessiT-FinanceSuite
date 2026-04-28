@@ -17,11 +17,14 @@ const costCenterSlice = createSlice({
     setSuccess: (state, { payload }) => { state.isLoading = false; state.costCenters = payload },
     setOne: (state, { payload }) => { state.isLoading = false; state.currentCostCenter = payload },
     setFailure: (state) => { state.isLoading = false; state.isError = true },
+    clearCurrentCostCenter: (state) => { state.currentCostCenter = null },
+    setDeleteLoading: (state) => { state.isLoading = true; state.isError = false }, // Don't clear data on delete
   },
 })
 
-const { setLoading, setSuccess, setOne, setFailure } = costCenterSlice.actions
+const { setLoading, setSuccess, setOne, setFailure, clearCurrentCostCenter, setDeleteLoading } = costCenterSlice.actions
 export const costCenterSelector = (state) => state.costCenter
+export { clearCurrentCostCenter }
 export default costCenterSlice.reducer
 
 export const fetchCostCenters = () => async (dispatch) => {
@@ -36,6 +39,8 @@ export const fetchCostCenters = () => async (dispatch) => {
 }
 
 export const fetchOneCostCenter = (id) => async (dispatch) => {
+  // Clear current cost center first to prevent showing stale data
+  dispatch(clearCurrentCostCenter())
   dispatch(setLoading())
   try {
     const { data } = await axiosInstance.get(`/cost-centers/${id}`)
@@ -70,7 +75,7 @@ export const updateCostCenter = (id, payload) => async (dispatch) => {
 }
 
 export const deleteCostCenter = (id) => async (dispatch) => {
-  dispatch(setLoading())
+  // Don't clear the list data during delete - use setDeleteLoading instead
   try {
     await axiosInstance.delete(`/cost-centers/${id}`)
     toast.success('Cost center deleted successfully')

@@ -50,7 +50,9 @@ impl SalaryService {
     pub async fn get_monthly_tds_summary(
         &self,
         org_id: &mongodb::bson::oid::ObjectId,
+        year: &str,
+        month: &str,
     ) -> anyhow::Result<crate::repository::salary_repository::SalaryTdsSummary> {
-        Ok(self.repo.get_monthly_tds_summary(org_id).await?)
+        Ok(self.repo.get_monthly_tds_summary(org_id, year, month).await?)
     }
 }

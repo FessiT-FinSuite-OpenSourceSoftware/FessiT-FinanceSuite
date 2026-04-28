@@ -10,7 +10,8 @@ export default function TdsSummaryCard() {
   const { data, isLoading, isError } = useSelector(tdsSummarySelector);
 
   useEffect(() => {
-    dispatch(fetchTdsSummary());
+    const now = new Date();
+    dispatch(fetchTdsSummary([{ year: now.getFullYear(), month: now.getMonth() + 1 }]));
   }, [dispatch]);
 
   const inv  = data?.incoming_invoices;

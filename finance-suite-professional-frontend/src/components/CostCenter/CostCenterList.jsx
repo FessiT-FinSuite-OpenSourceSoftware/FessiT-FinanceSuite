@@ -12,6 +12,7 @@ export default function CostCenterList() {
   const { costCenters, isLoading } = useSelector(costCenterSelector)
   const { user } = useSelector(authSelector)
   const [search, setSearch] = useState('')
+  const [deleteModal, setDeleteModal] = useState(null) // { id, name }
 
   const hasWrite = canWrite(user, Module.Customers)
   const hasDelete = canDelete(user, Module.Customers)
@@ -29,8 +30,19 @@ export default function CostCenterList() {
   const latestProject = all[all.length - 1]
 
   const handleDelete = (id) => {
-    if (!window.confirm('Delete this cost center?')) return
     dispatch(deleteCostCenter(id))
+    setDeleteModal(null)
+  }
+
+  const openDeleteModal = (costCenter) => {
+    setDeleteModal({
+      id: getId(costCenter),
+      name: costCenter.costCenterNumber || 'This cost center'
+    })
+  }
+
+  const closeDeleteModal = () => {
+    setDeleteModal(null)
   }
 
   const getId = (cc) => cc._id?.$oid || cc._id || cc.id || ''
@@ -127,7 +139,7 @@ export default function CostCenterList() {
                           className={hasWrite ? 'text-gray-600 hover:text-green-600 cursor-pointer' : 'text-gray-300 cursor-not-allowed'}>
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => hasDelete && handleDelete(id)} disabled={!hasDelete}
+                        <button onClick={() => hasDelete && openDeleteModal(cc)} disabled={!hasDelete}
                           className={hasDelete ? 'text-gray-600 hover:text-red-600 cursor-pointer' : 'text-gray-300 cursor-not-allowed'}>
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -140,6 +152,41 @@ export default function CostCenterList() {
           </table>
         </div>
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-96 relative z-[10000]">
+            {
+              console.log('Delete Modal Data:', deleteModal)
+            }
+            <h3 className="text-base font-semibold text-gray-800 mb-4">
+              Confirm Delete
+            </h3>
+            
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete <span className="font-medium">{deleteModal.name}</span>?
+              <br />
+              {/* <span className="text-red-600 text-xs mt-2 block">This action cannot be undone.</span> */}
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={closeDeleteModal}
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteModal.id)}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

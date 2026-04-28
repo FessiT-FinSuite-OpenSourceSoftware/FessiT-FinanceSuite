@@ -22,10 +22,14 @@ export const { salaryRequest, salarySuccess, salaryFailure } = salarySlice.actio
 export const salarySelector = (state) => state.salary;
 export default salarySlice.reducer;
 
-export const fetchSalaries = () => async (dispatch) => {
+export const fetchSalaries = (year, month) => async (dispatch) => {
   dispatch(salaryRequest());
   try {
-    const { data } = await axiosInstance.get('/salaries');
+    const params = new URLSearchParams();
+    if (year)  params.set('year',  year);
+    if (month) params.set('month', String(month).padStart(2, '0'));
+    const qs = params.toString() ? '?' + params.toString() : '';
+    const { data } = await axiosInstance.get(`/salaries${qs}`);
     dispatch(salarySuccess(data));
   } catch (error) {
     toast.error(error?.response?.data?.message || 'Failed to fetch salaries');

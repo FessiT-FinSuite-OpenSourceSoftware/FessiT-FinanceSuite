@@ -6,6 +6,7 @@ use actix_web::{
     HttpResponse, Responder, HttpRequest, HttpMessage,
 };
 use futures::StreamExt;
+use serde::Deserialize;
 use serde_json::json;
 use std::io::Write;
 use uuid::Uuid;
@@ -18,6 +19,12 @@ use crate::{
     utils::auth::Claims,
     utils::permissions::{check_permission, Module, PermissionAction, create_permission_error},
 };
+
+#[derive(Deserialize)]
+struct PeriodQuery {
+    year: Option<String>,
+    month: Option<String>,
+}
 
 const UPLOAD_DIR: &str = "./uploads/incoming_invoices";
 
@@ -46,6 +53,7 @@ pub async fn create_incoming_invoice(
 #[get("/incoming-invoices")]
 pub async fn list_incoming_invoices(
     service: web::Data<IncomingInvoiceService>,
+    query: web::Query<PeriodQuery>,
     http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     let claims = http_req.extensions().get::<Claims>().cloned()
@@ -57,8 +65,17 @@ pub async fn list_incoming_invoices(
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
-    let invoices = service.list(&org_id).await
+    let mut invoices = service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
+    if query.year.is_some() || query.month.is_some() {
+        let now = chrono::Utc::now();
+        let year  = query.year.clone().unwrap_or_else(|| now.format("%Y").to_string());
+        let month = query.month.clone().unwrap_or_else(|| now.format("%m").to_string());
+        invoices.retain(|inv| {
+            let date = inv.invoice_date.trim();
+            date.len() >= 7 && &date[0..4] == year.as_str() && &date[5..7] == month.as_str()
+        });
+    }
     Ok(HttpResponse::Ok().json(invoices))
 }
 
@@ -371,11 +388,12 @@ pub async fn get_incoming_invoice_file(
 }
 
 /// GET /api/v1/incoming-invoices/tds-summary
-/// Returns combined TDS summary: incoming invoices (tds_applicable) + salaries for current month
+/// Returns combined TDS summary: incoming invoices (tds_applicable) + salaries for given month
 #[get("/incoming-invoices/tds-summary")]
 pub async fn get_tds_summary(
     service: web::Data<IncomingInvoiceService>,
     salary_service: web::Data<SalaryService>,
+    query: web::Query<PeriodQuery>,
     http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     let claims = http_req.extensions().get::<Claims>().cloned()
@@ -388,10 +406,14 @@ pub async fn get_tds_summary(
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
 
+    let now = chrono::Utc::now();
+    let year  = query.year.clone().unwrap_or_else(|| now.format("%Y").to_string());
+    let month = query.month.clone().unwrap_or_else(|| now.format("%m").to_string());
+
     let (invoice_tds, salary_tds) = tokio::try_join!(
-        async { service.get_monthly_tds_summary(&org_id).await
+        async { service.get_monthly_tds_summary(&org_id, &year, &month).await
             .map_err(actix_web::error::ErrorInternalServerError) },
-        async { salary_service.get_monthly_tds_summary(&org_id).await
+        async { salary_service.get_monthly_tds_summary(&org_id, &year, &month).await
             .map_err(actix_web::error::ErrorInternalServerError) },
     )?;
 

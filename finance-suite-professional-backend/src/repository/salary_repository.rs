@@ -17,9 +17,10 @@ pub struct SalaryRepository {
 
 fn doc_to_salary(raw: Document) -> Option<Salary> {
     let oid = raw.get_object_id("_id").ok();
-    let mut salary: Salary = from_document(raw).ok()?;
-    salary.id = oid;
-    Some(salary)
+    match from_document::<Salary>(raw) {
+        Ok(mut salary) => { salary.id = oid; Some(salary) }
+        Err(e) => { log::warn!("[Salary] deserialization failed for {:?}: {}", oid, e); None }
+    }
 }
 
 impl SalaryRepository {
@@ -85,32 +86,26 @@ impl SalaryRepository {
         Ok(result.deleted_count > 0)
     }
 
-    /// Get current month TDS summary from salaries — only Paid records with TDS > 0.
-    pub async fn get_monthly_tds_summary(&self, org_id: &ObjectId) -> Result<SalaryTdsSummary, MongoError> {
+    pub async fn get_monthly_tds_summary(&self, org_id: &ObjectId, year: &str, month: &str) -> Result<SalaryTdsSummary, MongoError> {
         let salaries = self.get_by_org(org_id).await?;
-        let now = chrono::Utc::now();
-        let current_year  = now.format("%Y").to_string();
-        let current_month = now.format("%m").to_string();
 
         let mut salary_count       = 0u32;
         let mut total_tds_deducted = 0.0f64;
 
         for sal in &salaries {
-            // Only Paid salaries with TDS > 0
             if sal.status != crate::models::salary::SalaryStatus::Paid { continue; }
             let tds = sal.tds.parse::<f64>().unwrap_or(0.0);
             if tds <= 0.0 { continue; }
-            // Filter by period (YYYY-MM)
             let period = sal.period.trim();
             if period.len() < 7 { continue; }
-            if &period[0..4] != current_year || &period[5..7] != current_month { continue; }
+            if &period[0..4] != year || &period[5..7] != month { continue; }
 
             salary_count       += 1;
             total_tds_deducted += tds;
         }
 
         Ok(SalaryTdsSummary {
-            month: format!("{}-{}", current_year, current_month),
+            month: format!("{}-{}", year, month),
             salary_count,
             total_tds_deducted,
             tds_on_paid: total_tds_deducted,

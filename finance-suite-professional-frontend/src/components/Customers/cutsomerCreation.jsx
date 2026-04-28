@@ -458,7 +458,7 @@ export default function CustomerCreation() {
                 value={customer.CustomerCode} 
                 onChange={handleChange} 
                 className={`border border-gray-300 ${selected?.iso ? "rounded-tr-md rounded-br-md" : "rounded-md"} px-3 py-2 w-full focus:ring-1 focus:ring-blue-500`}
-                placeholder="Enter customer code" 
+                placeholder="e.g. KMX" 
               />
             </div>
             {(inputErrors.CustomerCode || errors.CustomerCode) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.CustomerCode || errors.CustomerCode}</p>}

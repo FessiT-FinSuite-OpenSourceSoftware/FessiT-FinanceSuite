@@ -18,6 +18,19 @@ struct OrgEmailQuery {
     org_email: String,
 }
 
+#[derive(Deserialize)]
+struct PeriodQuery {
+    year: Option<String>,
+    month: Option<String>,
+}
+
+fn resolve_period(query: &PeriodQuery) -> (String, String) {
+    let now = chrono::Utc::now();
+    let year = query.year.clone().unwrap_or_else(|| now.format("%Y").to_string());
+    let month = query.month.clone().unwrap_or_else(|| now.format("%m").to_string());
+    (year, month)
+}
+
 async fn invoice_belongs_to_user_org(
     service: &web::Data<InvoiceService>,
     invoice: &Invoice,
@@ -205,6 +218,7 @@ pub async fn get_next_invoice_number(
 #[get("/invoices")]
 pub async fn list_invoices(
     service: web::Data<InvoiceService>,
+    query: web::Query<PeriodQuery>,
     http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     let claims = http_req.extensions().get::<Claims>().cloned()
@@ -217,7 +231,7 @@ pub async fn list_invoices(
     check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
-    let invoices = if let Some(org_id) = user.organisation_id {
+    let mut invoices = if let Some(org_id) = user.organisation_id {
         let org = service.get_organisation_by_id(&org_id.to_string()).await
             .map_err(actix_web::error::ErrorInternalServerError)?;
         service.get_invoices_by_org_or_email(&org_id, &org.email).await
@@ -225,6 +239,14 @@ pub async fn list_invoices(
     } else {
         Vec::new()
     };
+
+    if query.year.is_some() || query.month.is_some() {
+        let (year, month) = resolve_period(&query);
+        invoices.retain(|inv| {
+            let date = inv.invoice_date.trim();
+            date.len() >= 7 && &date[0..4] == year.as_str() && &date[5..7] == month.as_str()
+        });
+    }
 
     Ok(HttpResponse::Ok().json(invoices))
 }
@@ -383,6 +405,7 @@ pub async fn get_gst_summary(
     incoming_service: web::Data<IncomingInvoiceService>,
     expense_service: web::Data<ExpenseService>,
     general_expense_service: web::Data<GeneralExpenseService>,
+    query: web::Query<PeriodQuery>,
     http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     let claims = http_req.extensions().get::<Claims>().cloned()
@@ -395,13 +418,15 @@ pub async fn get_gst_summary(
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
 
-    let summary = service.get_monthly_gst_summary(&org_id).await
+    let (year, month) = resolve_period(&query);
+
+    let summary = service.get_monthly_gst_summary(&org_id, &year, &month).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    let incoming_summary = incoming_service.get_monthly_summary(&org_id).await
+    let incoming_summary = incoming_service.get_monthly_summary(&org_id, &year, &month).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    let expense_summary = expense_service.get_monthly_gst_summary(&org_id).await
+    let expense_summary = expense_service.get_monthly_gst_summary(&org_id, &year, &month).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    let general_expense_summary = general_expense_service.get_monthly_gst_summary(&org_id).await
+    let general_expense_summary = general_expense_service.get_monthly_gst_summary(&org_id, &year, &month).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
     let expense_count = expense_summary.expense_count + general_expense_summary.expense_count + incoming_summary.invoice_count;

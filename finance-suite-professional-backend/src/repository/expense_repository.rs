@@ -429,11 +429,8 @@ impl ExpenseRepository {
     }
 
     /// Get current month's GST summary for expenses in an organisation
-    pub async fn get_monthly_gst_summary(&self, org_id: &ObjectId) -> mongodb::error::Result<ExpenseMonthlyGstSummary> {
+    pub async fn get_monthly_gst_summary(&self, org_id: &ObjectId, year: &str, month: &str) -> mongodb::error::Result<ExpenseMonthlyGstSummary> {
         let expenses = self.get_expenses_by_organisation(org_id, None, None).await?;
-        let now = Utc::now();
-        let current_year = now.format("%Y").to_string();
-        let current_month = now.format("%m").to_string();
 
         let mut expense_count = 0u32;
         let mut total_amount = 0.0f64;
@@ -443,18 +440,6 @@ impl ExpenseRepository {
         let mut total_igst = 0.0f64;
 
         for expense in &expenses {
-            let created_at = match expense.created_at {
-                Some(dt) => dt,
-                None => continue,
-            };
-
-            let created_at = chrono::DateTime::<Utc>::from(created_at.to_system_time());
-            if created_at.format("%Y").to_string() != current_year
-                || created_at.format("%m").to_string() != current_month
-            {
-                continue;
-            }
-
             if expense.status != crate::models::expense::ExpenseStatus::Reimbursed {
                 continue;
             }
@@ -463,10 +448,26 @@ impl ExpenseRepository {
                 let billed_to_company = item
                     .billed_to
                     .as_deref()
-                    .map(|value| value.trim().eq_ignore_ascii_case("company"))
+                    .map(|v| v.trim().eq_ignore_ascii_case("company"))
                     .unwrap_or(false);
 
                 if !billed_to_company {
+                    continue;
+                }
+
+                // Use item-level expense_date instead of created_at
+                let date = item.expense_date.trim();
+                if date.len() < 7 { continue; }
+
+                let (item_year, item_month) = if date.chars().nth(4) == Some('-') {
+                    (&date[0..4], &date[5..7])
+                } else if date.chars().nth(2) == Some('-') {
+                    (&date[6..10], &date[3..5])
+                } else {
+                    continue;
+                };
+
+                if item_year != year || item_month != month {
                     continue;
                 }
 
@@ -480,7 +481,7 @@ impl ExpenseRepository {
         }
 
         Ok(ExpenseMonthlyGstSummary {
-            month: format!("{}-{}", current_year, current_month),
+            month: format!("{}-{}", year, month),
             expense_count,
             total_amount,
             total_tax,

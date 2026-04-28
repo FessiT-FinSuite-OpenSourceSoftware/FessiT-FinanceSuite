@@ -5,6 +5,7 @@ import { fetchSalaries, salarySelector } from "../../ReduxApi/salary";
 import { fetchIncomingInvoices, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
 import TDSDeductions from "./TDSDeductions";
 import ChallansTab from "./challans";
+import PeriodSelector from "../../shared/PeriodSelector";
 
 const initialTDSData = {
   totalTDSDeducted: 0,
@@ -119,18 +120,34 @@ const tdsDeductions = [
 
 export default function TDSCompliance() {
   const [activeTab, setActiveTab] = useState("deductions");
-  //previously we have Returns by default 
   const [filterStatus, setFilterStatus] = useState("all");
   const dispatch = useDispatch()
   const { data } = useSelector(tdsSummarySelector)
   const { salaryData } = useSelector(salarySelector)
   const { data: incomingInvoices } = useSelector(incomingInvoiceSelector)
 
+  const now = new Date();
+  const [selectedMonths, setSelectedMonths] = useState([{ year: now.getFullYear(), month: now.getMonth() + 1 }]);
+
+  const handlePeriodChange = (months) => {
+    setSelectedMonths(months);
+  };
+
   useEffect(() => {
-    dispatch(fetchTdsSummary())
-    dispatch(fetchSalaries())
-    dispatch(fetchIncomingInvoices())
-  }, [dispatch])
+    if (!selectedMonths.length) return;
+    dispatch(fetchTdsSummary(selectedMonths));
+  }, [dispatch, selectedMonths])
+
+  useEffect(() => {
+    if (!selectedMonths.length) return;
+    if (selectedMonths.length === 1) {
+      dispatch(fetchSalaries(selectedMonths[0].year, selectedMonths[0].month));
+      dispatch(fetchIncomingInvoices(selectedMonths[0].year, selectedMonths[0].month));
+    } else {
+      dispatch(fetchSalaries());
+      dispatch(fetchIncomingInvoices());
+    }
+  }, [dispatch, selectedMonths])
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -148,13 +165,36 @@ export default function TDSCompliance() {
   };
 
   const dynamicDeductions = useMemo(() => {
-    const salaryRows = (Array.isArray(salaryData) ? salaryData : []).map((s) => {
+    const monthSet = new Set(selectedMonths.map(({ year, month }) =>
+      `${year}-${String(month).padStart(2, "0")}`
+    ));
+
+    function inSelectedMonths(dateStr) {
+      if (!dateStr) return false;
+      const raw = String(dateStr).trim();
+      if (/^\d{4}-\d{2}/.test(raw)) return monthSet.has(raw.slice(0, 7));
+      if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) return monthSet.has(`${raw.slice(6,10)}-${raw.slice(3,5)}`);
+      // period field is YYYY-MM
+      if (/^\d{4}-\d{2}$/.test(raw)) return monthSet.has(raw);
+      const d = new Date(raw);
+      if (!isNaN(d)) return monthSet.has(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+      return false;
+    }
+
+    const salaryRows = (Array.isArray(salaryData) ? salaryData : [])
+      .filter((s) => {
+        const tds = parseFloat(s.tds || 0);
+        if (tds <= 0) return false;
+        return inSelectedMonths(s.period);
+      })
+      .map((s) => {
       const gross = parseFloat(s.gross_salary || 0);
       const tds = parseFloat(s.tds || 0);
       const rate = gross > 0 ? parseFloat(((tds / gross) * 100).toFixed(2)) : 0;
       return {
         id: `sal-${s._id?.$oid || s.emp_id}`,
         date: s.paid_on || (s.period ? `${s.period}-01` : null),
+        period: s.period,
         deductee: s.emp_name || "-",
         pan: s.pan || "-",
         section: "192",
@@ -168,7 +208,7 @@ export default function TDSCompliance() {
     });
 
     const invoiceRows = (Array.isArray(incomingInvoices) ? incomingInvoices : [])
-      .filter((inv) => inv.tds_applicable === true)
+      .filter((inv) => inv.tds_applicable === true && inSelectedMonths(inv.invoice_date || inv.paid_on))
       .map((inv) => {
         const gross = parseFloat(inv.subTotal || inv.sub_total || 0);
         const tds = parseFloat(inv.tds_total || inv.total_tds || 0);
@@ -193,7 +233,7 @@ export default function TDSCompliance() {
       const tb = b.date ? new Date(b.date).getTime() : 0;
       return tb - ta;
     });
-  }, [salaryData, incomingInvoices]);
+  }, [salaryData, incomingInvoices, selectedMonths]);
 
   const filteredReturns = filterStatus === "all"
     ? tdsReturns
@@ -253,11 +293,14 @@ export default function TDSCompliance() {
           </div> */}
         </div>
         {/* Dashboard Stats - Always Visible */}
+        <PeriodSelector onChange={handlePeriodChange} />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-linear-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
             <h3 className="text-sm font-medium text-blue-700 mb-2">Total TDS Deducted</h3>
             <p className="text-3xl font-bold text-blue-900">{formatCurrency(data?.combined?.total_tds_deducted)}</p>
-            <p className="text-xs text-blue-600 mt-1">This financial year</p>
+            <p className="text-xs text-blue-600 mt-1">
+              Invoices: {formatCurrency(data?.incoming_invoices?.total_tds_deducted)} · Salaries: {formatCurrency(data?.salaries?.total_tds_deducted)}
+            </p>
           </div>
 
           <div className="bg-linear-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
@@ -401,7 +444,7 @@ export default function TDSCompliance() {
         )}
 
         {activeTab === "deductions" && (
-          <TDSDeductions deductions={dynamicDeductions} />
+          <TDSDeductions deductions={dynamicDeductions} selectedMonths={selectedMonths} />
         )}
 
         {/* Challans Tab */}

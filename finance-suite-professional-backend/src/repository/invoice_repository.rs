@@ -130,13 +130,8 @@ impl InvoiceRepository {
     }
 
     /// Get GST summary for invoices generated in the current calendar month for an org
-    pub async fn get_monthly_gst_summary(&self, org_id: &ObjectId, company_email: &str) -> Result<MontlyGstSummary, MongoError> {
-        // Same fetch as list_invoices: match by organisationId OR company_email
+    pub async fn get_monthly_gst_summary(&self, org_id: &ObjectId, company_email: &str, year: &str, month: &str) -> Result<MontlyGstSummary, MongoError> {
         let invoices = self.get_invoices_by_org_or_email(org_id, company_email).await?;
-
-        let now = chrono::Utc::now();
-        let current_year  = now.format("%Y").to_string();
-        let current_month = now.format("%m").to_string();
 
         let mut total_cgst         = 0.0f64;
         let mut total_sgst         = 0.0f64;
@@ -149,7 +144,7 @@ impl InvoiceRepository {
         for inv in &invoices {
             let date = inv.invoice_date.trim();
             if date.len() < 7 { continue; }
-            if &date[0..4] != current_year || &date[5..7] != current_month { continue; }
+            if &date[0..4] != year || &date[5..7] != month { continue; }
 
             let is_paid = inv.status == crate::models::invoice::InvoiceStatus::Paid;
             if !is_paid {
@@ -236,7 +231,7 @@ impl InvoiceRepository {
             invoice_count, total_cgst, total_sgst, total_igst_inr, total_gst_collected, paid_amount, paid_invoice_count);
 
         Ok(MontlyGstSummary {
-            month: format!("{}-{}", current_year, current_month),
+            month: format!("{}-{}", year, month),
             invoice_count,
             total_cgst,
             total_sgst,

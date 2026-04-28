@@ -22,7 +22,8 @@ export default function GstSummaryCard() {
   const { data, isLoading, isError } = useSelector(gstSummarySelector);
 
   useEffect(() => {
-    dispatch(fetchGstSummary());
+    const now = new Date();
+    dispatch(fetchGstSummary([{ year: now.getFullYear(), month: now.getMonth() + 1 }]));
   }, [dispatch]);
 
   const inv  = data?.outgoing_invoices;

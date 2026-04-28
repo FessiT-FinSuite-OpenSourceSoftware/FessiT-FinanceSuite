@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { fetchOneCostCenter, updateCostCenter, costCenterSelector } from '../../ReduxApi/costCenter'
+import { fetchOneCostCenter, updateCostCenter, costCenterSelector, clearCurrentCostCenter } from '../../ReduxApi/costCenter'
 
 export default function EditCostCenter() {
   const dispatch = useDispatch()
@@ -11,7 +11,13 @@ export default function EditCostCenter() {
   const { currentCostCenter } = useSelector(costCenterSelector)
   const [form, setForm] = useState({ projectName: '', status: '', description: '' })
 
-  useEffect(() => { dispatch(fetchOneCostCenter(id)) }, [dispatch, id])
+  useEffect(() => { 
+    dispatch(fetchOneCostCenter(id)) 
+    // Cleanup function to clear current cost center when component unmounts or ID changes
+    return () => {
+      dispatch(clearCurrentCostCenter())
+    }
+  }, [dispatch, id])
 
   useEffect(() => {
     if (currentCostCenter) {

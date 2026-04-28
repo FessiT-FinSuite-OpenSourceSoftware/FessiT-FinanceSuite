@@ -189,10 +189,12 @@ impl InvoiceService {
     pub async fn get_monthly_gst_summary(
         &self,
         org_id: &mongodb::bson::oid::ObjectId,
+        year: &str,
+        month: &str,
     ) -> anyhow::Result<crate::repository::invoice_repository::MontlyGstSummary> {
         let org = self.org_repo.get_organisation_by_id(&org_id.to_string()).await
             .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))?;
-        Ok(self.repo.get_monthly_gst_summary(org_id, &org.email).await?)
+        Ok(self.repo.get_monthly_gst_summary(org_id, &org.email, year, month).await?)
     }
 }
 

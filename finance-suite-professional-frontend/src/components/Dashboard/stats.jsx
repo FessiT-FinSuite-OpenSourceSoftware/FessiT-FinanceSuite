@@ -33,9 +33,11 @@ export default function Stats() {
   const orgCurrency = currentOrganisation?.currency || "INR";
 
   useEffect(() => {
+    const now = new Date();
+    const currentMonth = [{ year: now.getFullYear(), month: now.getMonth() + 1 }];
     dispatch(fetchInvoiceData());
-    dispatch(fetchGstSummary());
-    dispatch(fetchTdsSummary());
+    dispatch(fetchGstSummary(currentMonth));
+    dispatch(fetchTdsSummary(currentMonth));
     dispatch(fetchEstimates());
     const email = localStorage.getItem("email");
     if (email) dispatch(fetchOrganisationByEmail(email));

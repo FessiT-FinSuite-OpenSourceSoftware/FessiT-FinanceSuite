@@ -19,21 +19,24 @@ const formatDate = (value) => {
   });
 };
 
-const now = new Date();
-const THIS_MONTH = now.getMonth();
-const THIS_YEAR  = now.getFullYear();
+function buildMonthSet(selectedMonths) {
+  return new Set(
+    (Array.isArray(selectedMonths) ? selectedMonths : []).map(
+      ({ year, month }) => `${year}-${String(month).padStart(2, "0")}`
+    )
+  );
+}
 
-const isThisMonth = (value) => {
+function inMonthSet(value, monthSet) {
   if (!value) return false;
-  if (typeof value === "object" && value.$date) return isThisMonth(value.$date);
+  if (typeof value === "object" && value.$date) return inMonthSet(value.$date, monthSet);
   const raw = String(value).trim();
-  if (/^\d{4}-\d{2}$/.test(raw)) {
-    const [y, m] = raw.split("-").map(Number);
-    return y === THIS_YEAR && m - 1 === THIS_MONTH;
-  }
+  if (/^\d{4}-\d{2}/.test(raw)) return monthSet.has(raw.slice(0, 7));
+  if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) return monthSet.has(`${raw.slice(6, 10)}-${raw.slice(3, 5)}`);
   const d = new Date(raw);
-  return !Number.isNaN(d.getTime()) && d.getMonth() === THIS_MONTH && d.getFullYear() === THIS_YEAR;
-};
+  if (!Number.isNaN(d.getTime())) return monthSet.has(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  return false;
+}
 
 const COLUMNS = [
   { label: "Date" },
@@ -47,20 +50,19 @@ const COLUMNS = [
   { label: "Total GST", right: true },
 ];
 
-export default function RecentGSTTransactions({ transactions = [], isLoading = false }) {
+export default function RecentGSTTransactions({ transactions = [], isLoading = false, selectedMonths = [] }) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, typeFilter, pageSize]);
+  useEffect(() => { setCurrentPage(1); }, [search, typeFilter, pageSize, selectedMonths]);
 
   const filteredTransactions = useMemo(() => {
+    const monthSet = buildMonthSet(selectedMonths);
     const query = search.trim().toLowerCase();
     return (Array.isArray(transactions) ? transactions : []).filter((txn) => {
-      if (!isThisMonth(txn.date)) return false;
+      if (monthSet.size > 0 && !inMonthSet(txn.date, monthSet)) return false;
       const matchSearch =
         !query ||
         (txn.invoiceNo || "").toLowerCase().includes(query) ||
@@ -69,7 +71,7 @@ export default function RecentGSTTransactions({ transactions = [], isLoading = f
       const matchType = typeFilter === "All" || txn.type === typeFilter;
       return matchSearch && matchType;
     });
-  }, [transactions, search, typeFilter]);
+  }, [transactions, search, typeFilter, selectedMonths]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
   const paginatedTransactions = filteredTransactions.slice((currentPage - 1) * pageSize, currentPage * pageSize);
