@@ -16,6 +16,7 @@ import {
   EmptyRow,
   RowActions,
   Pagination,
+  TruncatedCell,
 } from "../../shared/ui";
 import { toast } from "react-toastify";
 
@@ -320,6 +321,7 @@ export default function InvoiceList() {
             { label: "Due Date", hidden: true },
             { label: "Amount" },
             { label: "Status" },
+            { label: "Payment Info", hidden: true },
             { label: "Actions", right: true },
           ]}
         />
@@ -336,32 +338,41 @@ export default function InvoiceList() {
               return (
                 <tr key={id} className="hover:bg-gray-50 transition-colors">
                   <td
-                    className="px-6 py-4 whitespace-nowrap text-blue-600 font-medium cursor-pointer"
+                    className="px-4 py-2 whitespace-nowrap text-blue-600 font-medium cursor-pointer"
                     onClick={() => nav(`/invoices/editInvoice/${id}`)}
                   >
                     {invoice.invoice_number || "-"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{customerName || "-"}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <TruncatedCell text={customerName || "-"} />
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeBadgeClass(invoiceType)}`}>
                       {getTypeLabel(invoiceType)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">{invoiceDate}</td>
-                  <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">{dueDate}</td>
-                  <td className="px-6 py-4 whitespace-nowrap font-semibold">
+                  <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">{invoiceDate}</td>
+                  <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">{dueDate}</td>
+                  <td className="px-4 py-2 whitespace-nowrap font-semibold">
                     {getCurrencySymbol(invoice.currency_type)} {formatNumber(invoice.total || 0, invoice.currency_type)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-2 whitespace-nowrap">
                     <span
                       onClick={() => !locked && openStatusModal(invoice)}
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status || "New")} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"
-                        }`}
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status || "New")} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
                     >
                       {invoice.status || "New"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-4 py-2 text-sm text-gray-700 hidden lg:table-cell">
+                    {(invoice.status || "New") === "Paid" ? (
+                      <div className="flex flex-col gap-0.5">
+                        {invoice.payment_type && <span className="font-medium text-gray-800">{invoice.payment_type}</span>}
+                        {invoice.payment_reference && <span className="text-xs text-indigo-600 font-mono">{invoice.payment_reference}</span>}
+                      </div>
+                    ) : "—"}
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap text-right">
                     <RowActions
                       onEdit={() => hasWrite && nav(`/invoices/editInvoice/${id}`)}
                       onDelete={() => hasDelete && handleDelete(id)}

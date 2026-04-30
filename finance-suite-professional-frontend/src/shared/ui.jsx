@@ -82,7 +82,7 @@ export function TableHead({ columns }) {
         {columns.map((col) => (
           <th
             key={col.label}
-            className={`px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider${col.right ? " text-right" : " text-left"}${col.hidden ? " hidden lg:table-cell" : ""}`}
+            className={`px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider${col.right ? " text-right" : " text-left"}${col.hidden ? " hidden lg:table-cell" : ""}`}
           >
             {col.label}
           </th>
@@ -164,25 +164,89 @@ export function FormField({ label, children, colSpan = false }) {
   );
 }
 
+// ── Truncated cell text ──────────────────────────────────────────────────────
+export function TruncatedCell({ text, maxWidth = "max-w-[180px]", className = "" }) {
+  return (
+    <span
+      className={`block truncate ${maxWidth} ${className}`}
+      title={text || ""}
+    >
+      {text || "-"}
+    </span>
+  );
+}
+
 // ── Shared input class ────────────────────────────────────────────────────────
 export const inputCls = "border border-gray-300 rounded px-3 py-2 w-full text-sm";
 
 // ── Pagination Bar ────────────────────────────────────────────────────────────
 export function Pagination({ currentPage, totalPages, pageSize, totalCount, onPageChange, onPageSizeChange }) {
   const start = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const end = Math.min(currentPage * pageSize, totalCount);
+  const end   = Math.min(currentPage * pageSize, totalCount);
+
+  // Build page numbers with ellipsis for large page counts
+  const getPages = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages = [];
+    if (currentPage <= 4) {
+      pages.push(1, 2, 3, 4, 5, "...", totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+    }
+    return pages;
+  };
+
   return (
-    <div className="flex items-center justify-between mt-4 px-1">
+    <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3 mt-0 rounded-b-lg">
       <div className="flex items-center gap-2 text-sm text-gray-600">
         <span>Rows per page:</span>
-        <select className="border border-gray-300 rounded px-2 py-1 text-sm" value={pageSize} onChange={(e) => onPageSizeChange(Number(e.target.value))}>
-          {[10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+        <select
+          className="border border-gray-300 rounded px-2 py-1 text-sm bg-white"
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+        >
+          {[5, 10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
-      </div>
-      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <span className="text-gray-400">|</span>
         <span>{totalCount === 0 ? "0" : `${start}–${end}`} of {totalCount}</span>
-        <button onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40">‹</button>
-        <button onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages || totalPages === 0} className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40">›</button>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-1 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Prev
+        </button>
+
+        {getPages().map((page, idx) =>
+          page === "..." ? (
+            <span key={`ellipsis-${idx}`} className="px-2 py-1 text-sm text-gray-400">…</span>
+          ) : (
+            <button
+              key={page}
+              onClick={() => onPageChange(page)}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                currentPage === page
+                  ? "bg-blue-600 text-white"
+                  : "border border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              {page}
+            </button>
+          )
+        )}
+
+        <button
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages || totalPages === 0}
+          className="px-3 py-1 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
       </div>
     </div>
   );

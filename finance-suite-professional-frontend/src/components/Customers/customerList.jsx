@@ -6,8 +6,15 @@ import { fetchCustomerData, customerSelector, deleteCustomer, updateCustomerData
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
 import { toast } from "react-toastify";
+import { Pagination } from "../../shared/ui";
 
 const emptyProject = { projectName: "", projectOwner: "", description: "" };
+
+const LABELS = {
+  projectName: "Project Name *",
+  projectOwner: "Project Owner *",
+  description: "Description",
+};
 
 function ProjectModal({ customerName, onSave, onClose }) {
   const [form, setForm] = useState({ ...emptyProject });
@@ -28,15 +35,15 @@ function ProjectModal({ customerName, onSave, onClose }) {
         <p className="text-xs text-gray-500 mb-4">for <span className="font-medium capitalize">{customerName}</span></p>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Project Name *</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{LABELS.projectName}</label>
             <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter project name" value={form.projectName} onChange={e => setForm(p => ({ ...p, projectName: e.target.value }))} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Project Owner *</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{LABELS.projectOwner}</label>
             <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter project owner" value={form.projectOwner} onChange={e => setForm(p => ({ ...p, projectOwner: e.target.value }))} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{LABELS.description}</label>
             <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter description" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
           </div>
         </div>
@@ -162,8 +169,8 @@ export default function CustomerList() {
     const matchesStatus = statusFilter === "All" || item.isActive === statusFilter;
     const matchesRole = roleFilter === "All" ||
       (roleFilter === "Customer" && (item.role === "Customer" || item.role === "Both" || (!item.role && !item.is_vendor_too))) ||
-      (roleFilter === "Vendor"   && (item.role === "Vendor"   || item.role === "Both" || (!item.role && item.is_vendor_too))) ||
-      (roleFilter === "Both"     && item.role === "Both");
+      (roleFilter === "Vendor" && (item.role === "Vendor" || item.role === "Both" || (!item.role && item.is_vendor_too))) ||
+      (roleFilter === "Both" && item.role === "Both");
     return matchesSearch && matchesStatus && matchesRole;
   });
 
@@ -207,7 +214,7 @@ export default function CustomerList() {
   const openStatusModal = (customer) => {
     const currentStatus = customer.isActive || "New";
     if (!hasWrite) return;
-    
+
     setSelectedStatus(currentStatus);
     setStatusModal({
       id: customer._id?.$oid,
@@ -333,233 +340,126 @@ export default function CustomerList() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-2">
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Total</p>
-            <p className="text-2xl font-bold text-gray-900">{customersData.length}</p>
+        <div className="grid grid-cols-5 gap-3 mb-4">
+          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p className="text-xs text-gray-500 mb-0.5">Total</p>
+            <p className="text-xl font-bold text-gray-900">{customersData.length}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Customers</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {customersData.filter((i) => i.role === "Customer" || (!i.role && !i.is_vendor_too)).length}
-            </p>
+          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p className="text-xs text-gray-500 mb-0.5">Customers</p>
+            <p className="text-xl font-bold text-blue-600">{customersData.filter((i) => i.role === "Customer" || (!i.role && !i.is_vendor_too)).length}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Vendors</p>
-            <p className="text-2xl font-bold text-purple-600">
-              {customersData.filter((i) => i.role === "Vendor").length}
-            </p>
+          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p className="text-xs text-gray-500 mb-0.5">Vendors</p>
+            <p className="text-xl font-bold text-purple-600">{customersData.filter((i) => i.role === "Vendor").length}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Both</p>
-            <p className="text-2xl font-bold text-green-600">
-              {customersData.filter((i) => i.role === "Both" || (!i.role && i.is_vendor_too)).length}
-            </p>
+          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p className="text-xs text-gray-500 mb-0.5">Both</p>
+            <p className="text-xl font-bold text-green-600">{customersData.filter((i) => i.role === "Both" || (!i.role && i.is_vendor_too)).length}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">Active</p>
-            <p className="text-2xl font-bold text-green-600">
-              {customersData.filter((i) => i.isActive === "Active").length}
-            </p>
+          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p className="text-xs text-gray-500 mb-0.5">Active</p>
+            <p className="text-xl font-bold text-green-600">{customersData.filter((i) => i.isActive === "Active").length}</p>
           </div>
         </div>
 
         {/* Customer Table */}
-        <div className="bg-white rounded-lg shadow-sm">
-          <div className="overflow-visible">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200 ">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Company
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
-                    GSTIN
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Projects
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {currentCustomer?.length > 0 ? (
-                  currentCustomer?.map((item) => (
-
-                    <tr
-                      key={item?._id?.$oid}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td
-                        className="px-6 py-4 capitalize whitespace-nowrap text-blue-600 font-medium cursor-pointer"
-                        onClick={() => onView(item?._id?.$oid)}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">GSTIN</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Business Type</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Projects</th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {currentCustomer?.length > 0 ? (
+                currentCustomer?.map((item) => (
+                  <tr key={item?._id?.$oid} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-2 text-sm text-blue-600 font-medium cursor-pointer capitalize max-w-[160px]" onClick={() => onView(item?._id?.$oid)}>
+                      <span className="block truncate" title={item?.customerName}>{item?.customerName}</span>
+                    </td>
+                    <td className="px-4 py-2 text-sm text-gray-700 capitalize max-w-[160px]">
+                      <span className="block truncate" title={item?.companyName}>{item?.companyName}</span>
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">{item?.gstIN || "—"}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                        (item?.role === "Customer" || (!item?.role && !item?.is_vendor_too)) ? "bg-blue-100 text-blue-700" :
+                        item?.role === "Vendor" ? "bg-purple-100 text-purple-700" :
+                        "bg-green-100 text-green-700"
+                      }`}>
+                        {item?.role || (item?.is_vendor_too ? "Both" : "Customer")}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span
+                        onClick={() => hasWrite && openStatusModal(item)}
+                        className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${getStatusColor(item?.isActive)} ${hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
                       >
-                        {item?.customerName}
-                      </td>
-                      <td className="px-6 py-4 capitalize whitespace-nowrap">
-                        {item?.companyName}
-                      </td>
-                      <td className="px-6 py-4 capitalize whitespace-nowrap hidden md:table-cell">
-                        {item?.gstIN}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          (item?.role === "Customer" || (!item?.role && !item?.is_vendor_too)) ? "bg-blue-100 text-blue-800" :
-                          item?.role === "Vendor" ? "bg-purple-100 text-purple-800" :
-                          "bg-green-100 text-green-800"
-                        }`}>
-                          {item?.role || (item?.is_vendor_too ? "Both" : "Customer")}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          onClick={() => hasWrite && openStatusModal(item)}
-                          className={`inline-flex px-2 py-1 capitalize text-xs font-semibold rounded-full ${getStatusColor(
-                            item?.isActive
-                          )} ${hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
+                        {item?.isActive || "New"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-500">
+                      {item?.projects?.length > 0 ? item.projects.length : "—"}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => setProjectModal({ id: item?._id?.$oid, customerName: item?.customerName, projects: item?.projects || [] })} className="text-gray-400 hover:text-blue-600 transition-colors" title="Add Project">
+                          <FolderPlus className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => hasWrite && onEdit(item?._id?.$oid)}
+                          disabled={!hasWrite}
+                          className={`transition-colors ${hasWrite ? "text-gray-400 hover:text-green-600 cursor-pointer" : "text-gray-200 cursor-not-allowed"}`}
+                          title={!hasWrite ? "No write permission" : "Edit"}
                         >
-                          {item?.isActive || "New"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
-                        <div className="flex justify-center items-center w-full">
-                          {item?.projects?.length > 0 ? item.projects.length : "No Project"}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-3 ">
-
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <div className="relative">
                           <button
-                            onClick={() => setProjectModal({ id: item?._id?.$oid, customerName: item?.customerName, projects: item?.projects || [] })}
-                            className="text-gray-600 hover:text-blue-600 transition-colors cursor-pointer"
-                            title="Add Project"
+                            onClick={(e) => hasDelete && onShowAction(item?._id?.$oid, e)}
+                            disabled={!hasDelete}
+                            className={`transition-colors ${hasDelete ? "text-gray-400 hover:text-red-600 cursor-pointer" : "text-gray-200 cursor-not-allowed"}`}
+                            title={!hasDelete ? "No delete permission" : "Delete"}
                           >
-                            <FolderPlus className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                          <div>
-                            <button
-                              onClick={() => hasWrite && onEdit(item?._id?.$oid)}
-                              disabled={!hasWrite}
-                              className={`transition-colors ${hasWrite
-                                ? "cursor-pointer text-gray-600 hover:text-green-600"
-                                : "cursor-not-allowed text-gray-300"
-                                }`}
-                              title={!hasWrite ? "No write permission" : "Edit"}
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <div className="relative">
-                            <button
-                              onClick={(e) => hasDelete && onShowAction(item?._id?.$oid, e)}
-                              disabled={!hasDelete}
-                              className={`transition-colors ${hasDelete
-                                ? "cursor-pointer text-gray-600 hover:text-red-600"
-                                : "cursor-not-allowed text-gray-300"
-                                }`}
-                              title={!hasDelete ? "No delete permission" : "Delete"}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                            {showAction === item?._id?.$oid && (
-                              <div className="absolute right-5 top-1/2 -translate-y-1/2 bg-white shadow-xl border border-gray-200 rounded-lg p-5 pb-8">
-                                <div className="text-center ">
-                                  <div className="">
-                                    <p className="text-gray-800 font-sm">
-                                      Are you sure you want to delete <span className="font-bold capitalize">{item?.customerName}</span> ?
-                                    </p>
-                                  </div>
-                                  <div className="flex justify-end gap-3 mt-4">
-                                    <button
-                                      onClick={() => setShowAction(null)}
-                                      className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        handleDelete(item._id?.$oid)
-                                      }
-                                      className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-600 text-white transition shadow-sm"
-                                    >
-                                      Confirm
-                                    </button>
-                                  </div>
-                                </div>
+                          {showAction === item?._id?.$oid && (
+                            <div className="absolute right-6 top-1/2 -translate-y-1/2 bg-white shadow-xl border border-gray-200 rounded-lg p-4 z-10 w-56">
+                              <p className="text-sm text-gray-700 mb-3">Delete <span className="font-semibold capitalize">{item?.customerName}</span>?</p>
+                              <div className="flex justify-end gap-2">
+                                <button onClick={() => setShowAction(null)} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Cancel</button>
+                                <button onClick={() => handleDelete(item._id?.$oid)} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 text-white">Confirm</button>
                               </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="8"
-                      className="px-6 py-12 text-center text-gray-500"
-                    >
-                      No customers found
+                      </div>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="px-4 py-10 text-center text-sm text-gray-400">No customers found</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-        {filteredCustomers?.length > 0 && (
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center ">
-            <p className="text-sm text-gray-600">
-              Showing {startIndex + 1} to{" "}
-              {Math.min(endIndex, filteredCustomers?.length)} of{" "}
-              {filteredCustomers?.length} results
-            </p>
-            <div>
-              <select
-                onChange={onPageItemSet}
-                // value={page?page:""}
-                className="bg-gray-200 text-sm px-2 py-2 rounded-sm w-44"
-              >
-                <option value={10}>All</option>
-                <option value={1}>One</option>
-                <option value={2}>Two</option>
-                <option value={3}>Three</option>
-
-
-
-
-              </select>
-            </div>
-            <div className="flex gap-1">
-              {[...Array(totalPages)].map((_, index) => (
-                <button
-                  key={index + 1}
-                  onClick={() => setCurrentPage(index + 1)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === index + 1
-                    ? "bg-blue-600 text-white"
-                    : "border border-gray-300 text-gray-700 hover:bg-gray-100"
-                    }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={itemsPerPage}
+          totalCount={filteredCustomers.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(n) => { setPage(n); setCurrentPage(1); }}
+        />
       </div>
       {projectModal && (
         <ProjectModal
@@ -568,14 +468,14 @@ export default function CustomerList() {
           onClose={() => setProjectModal(null)}
         />
       )}
-      
+
       {statusModal && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-96 relative z-10000">
             <h3 className="text-base font-semibold text-gray-800 mb-4">
               Update Customer Status
             </h3>
-            
+
             <p className="text-sm text-gray-600 mb-4">
               Update status for <span className="font-medium capitalize">{statusModal.customerName}</span>
             </p>
@@ -606,11 +506,10 @@ export default function CustomerList() {
               <button
                 onClick={handleStatusUpdate}
                 disabled={!selectedStatus}
-                className={`px-4 py-2 text-sm rounded-lg ${
-                  selectedStatus 
-                    ? "bg-blue-600 text-white hover:bg-blue-700" 
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
+                className={`px-4 py-2 text-sm rounded-lg ${selectedStatus
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
               >
                 Update
               </button>

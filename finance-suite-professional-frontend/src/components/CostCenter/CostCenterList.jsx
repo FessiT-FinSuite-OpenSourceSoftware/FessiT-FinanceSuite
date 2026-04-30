@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, Search } from 'lucide-react'
 import { fetchCostCenters, deleteCostCenter, costCenterSelector } from '../../ReduxApi/costCenter'
 import { authSelector } from '../../ReduxApi/auth'
 import { canWrite, canDelete, Module } from '../../utils/permissions'
+import { Pagination } from '../../shared/ui'
 
 export default function CostCenterList() {
   const dispatch = useDispatch()
@@ -12,7 +13,9 @@ export default function CostCenterList() {
   const { costCenters, isLoading } = useSelector(costCenterSelector)
   const { user } = useSelector(authSelector)
   const [search, setSearch] = useState('')
-  const [deleteModal, setDeleteModal] = useState(null) // { id, name }
+  const [deleteModal, setDeleteModal] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const hasWrite = canWrite(user, Module.Customers)
   const hasDelete = canDelete(user, Module.Customers)
@@ -28,6 +31,9 @@ export default function CostCenterList() {
   const activeCount = all.filter((cc) => (cc.status || 'Active') === 'Active').length
   const closedCount = all.filter((cc) => cc.status === 'Closed').length
   const latestProject = all[all.length - 1]
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   const handleDelete = (id) => {
     dispatch(deleteCostCenter(id))
@@ -107,7 +113,7 @@ export default function CostCenterList() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 {['Cost Center No', 'Project Name', 'Status', 'Description', 'Actions'].map((h) => (
-                  <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
+                  <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -116,24 +122,24 @@ export default function CostCenterList() {
                 <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500">Loading...</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan="5" className="px-6 py-12 text-center text-gray-500">No cost centers found.</td></tr>
-              ) : filtered.map((cc) => {
+              ) : paginated.map((cc) => {
                 const id = getId(cc)
                 return (
                   <tr key={id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-blue-600 cursor-pointer whitespace-nowrap"
+                    <td className="px-4 py-2 font-medium text-blue-600 cursor-pointer whitespace-nowrap"
                       onClick={() => nav(`/cost-centers/edit/${id}`)}>
                       {cc.costCenterNumber}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{cc.projectName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">{cc.projectName}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         cc.status === 'Active' ? 'bg-green-100 text-green-800' :
                         cc.status === 'Closed' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>{cc.status || 'Active'}</span>
                     </td>
-                    <td className="px-6 py-4 text-gray-600 max-w-xs truncate">{cc.description}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2 text-gray-600 max-w-xs truncate">{cc.description}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <button onClick={() => hasWrite && nav(`/cost-centers/edit/${id}`)} disabled={!hasWrite}
                           className={hasWrite ? 'text-gray-600 hover:text-green-600 cursor-pointer' : 'text-gray-300 cursor-not-allowed'}>
@@ -152,7 +158,16 @@ export default function CostCenterList() {
           </table>
         </div>
       </div>
-      
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalCount={filtered.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }}
+      />
+
       {/* Delete Confirmation Modal */}
       {deleteModal && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">

@@ -16,6 +16,7 @@ import { authSelector } from "../../ReduxApi/auth";
 import { canRead, canWrite, canDelete, Module } from "../../utils/permissions";
 import { KeyUri } from "../../shared/key";
 import { RowActions } from "../../shared/ui";
+import { Pagination } from "../../shared/ui";
 
 const fmt = (value) => Number(value || 0).toLocaleString("en-IN");
 const textValue = (value, fallback = "") =>
@@ -905,60 +906,14 @@ export default function Products() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3 text-sm text-slate-600">
-          <span>Rows per page</span>
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setCurrentPage(1);
-            }}
-            className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
-          >
-            {[5, 10, 25, 50].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          <span>
-            {filteredProducts.length === 0 ? "0" : `${startDisplay}-${endDisplay}`} of {filteredProducts.length}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Prev
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              type="button"
-              onClick={() => goToPage(page)}
-              className={`rounded-lg px-3 py-2 text-sm font-medium ${currentPage === page
-                ? "bg-blue-600 text-white"
-                : "border border-slate-300 text-slate-700 hover:bg-slate-50"
-                }`}
-            >
-              {page}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalCount={filteredProducts.length}
+        onPageChange={goToPage}
+        onPageSizeChange={(n) => { setPageSize(Number(n)); setCurrentPage(1); }}
+      />
     </div>
   );
 }

@@ -54,7 +54,6 @@ export const fetchLedger = (params = {}) => async (dispatch) => {
   dispatch(ledgerRequest());
   try {
     const { data } = await axiosInstance.get(ENDPOINT, { params });
-    console.log("the data i am received is ", data)
     dispatch(ledgerSuccess(data));
   } catch (error) {
     dispatch(ledgerFailure());

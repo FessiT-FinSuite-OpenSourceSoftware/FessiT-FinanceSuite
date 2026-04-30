@@ -28,7 +28,6 @@ struct PeriodQuery {
 
 const UPLOAD_DIR: &str = "./uploads/incoming_invoices";
 
-/// POST /api/v1/incoming-invoices
 #[post("/incoming-invoices")]
 pub async fn create_incoming_invoice(
     service: web::Data<IncomingInvoiceService>,
@@ -49,7 +48,6 @@ pub async fn create_incoming_invoice(
     Ok(HttpResponse::Created().json(invoice))
 }
 
-/// GET /api/v1/incoming-invoices
 #[get("/incoming-invoices")]
 pub async fn list_incoming_invoices(
     service: web::Data<IncomingInvoiceService>,
@@ -79,7 +77,6 @@ pub async fn list_incoming_invoices(
     Ok(HttpResponse::Ok().json(invoices))
 }
 
-/// GET /api/v1/incoming-invoices/{id}
 #[get("/incoming-invoices/{id}")]
 pub async fn get_incoming_invoice(
     service: web::Data<IncomingInvoiceService>,
@@ -108,17 +105,12 @@ fn parse_amount(s: &str) -> f64 {
 }
 
 fn parse_cost_type(value: Option<String>) -> crate::models::incoming_invoice::CostType {
-    match value
-        .unwrap_or_default()
-        .to_lowercase()
-        .as_str()
-    {
+    match value.unwrap_or_default().to_lowercase().as_str() {
         "direct" => crate::models::incoming_invoice::CostType::Direct,
         _ => crate::models::incoming_invoice::CostType::Indirect,
     }
 }
 
-/// PUT /api/v1/incoming-invoices/{id}
 #[put("/incoming-invoices/{id}")]
 pub async fn update_incoming_invoice(
     service: web::Data<IncomingInvoiceService>,
@@ -160,6 +152,23 @@ pub async fn update_incoming_invoice(
                     if let Ok(inv_id) = mongodb::bson::oid::ObjectId::parse_str(&id) {
                         let amount = parse_amount(&inv.total);
                         let currency = if inv.currency_type.is_empty() { "INR" } else { &inv.currency_type };
+                        let payment_date = inv.paid_date.as_deref()
+                            .or(Some(inv.invoice_date.as_str()))
+                            .and_then(|s| {
+                                let s = s.trim();
+                                if s.is_empty() { return None; }
+                                if let Ok(dt) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+                                    let ms = dt.and_hms_opt(0, 0, 0).map(|ndt| ndt.and_utc().timestamp_millis()).unwrap_or(0);
+                                    return Some(mongodb::bson::DateTime::from_millis(ms));
+                                }
+                                if let Ok(dt) = chrono::NaiveDate::parse_from_str(s, "%d-%m-%Y") {
+                                    let ms = dt.and_hms_opt(0, 0, 0).map(|ndt| ndt.and_utc().timestamp_millis()).unwrap_or(0);
+                                    return Some(mongodb::bson::DateTime::from_millis(ms));
+                                }
+                                None
+                            })
+                            .unwrap_or_else(mongodb::bson::DateTime::now);
+
                         if let Err(e) = ledger_service.record_incoming_invoice_payment(
                             &inv_id,
                             &inv.invoice_number,
@@ -168,8 +177,10 @@ pub async fn update_incoming_invoice(
                             amount,
                             currency,
                             &org_id,
-                            mongodb::bson::DateTime::now(),
+                            payment_date,
                             user.id.as_ref(),
+                            Some(inv.payment_type.as_str()).filter(|s| !s.is_empty()),
+                            Some(inv.payment_reference.as_str()).filter(|s| !s.is_empty()),
                         ).await {
                             log::error!("Ledger entry failed for incoming invoice {}: {}", id, e);
                         }
@@ -182,9 +193,6 @@ pub async fn update_incoming_invoice(
     }
 }
 
-/// PUT /api/v1/incoming-invoice-files/{id}
-/// Accepts multipart/form-data with all invoice fields + optional "invoice_file".
-/// If a new file is provided, the old file is deleted from disk and replaced.
 #[put("/incoming-invoice-files/{id}")]
 pub async fn update_incoming_invoice_with_file(
     service: web::Data<IncomingInvoiceService>,
@@ -209,7 +217,6 @@ pub async fn update_incoming_invoice_with_file(
         })));
     }
 
-    // Collect all multipart fields
     let mut fields: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     let mut new_filename: Option<String> = None;
 
@@ -223,7 +230,6 @@ pub async fn update_incoming_invoice_with_file(
             (cd.get_name().unwrap_or("").to_string(), cd.get_filename().map(|s| s.to_string()))
         };
         if field_name == "invoice_file" && original_name.is_some() {
-            // Save new file
             let original = original_name.unwrap();
             let ext = std::path::Path::new(&original).extension().and_then(|e| e.to_str()).unwrap_or("").to_string();
             let stored = if ext.is_empty() { format!("{}.bin", Uuid::new_v4()) } else { format!("{}.{}", Uuid::new_v4(), ext) };
@@ -238,7 +244,6 @@ pub async fn update_incoming_invoice_with_file(
             }
             new_filename = Some(stored);
         } else {
-            // Collect text field
             let mut bytes = Vec::new();
             while let Some(chunk) = field.next().await {
                 let data = chunk.map_err(actix_web::error::ErrorInternalServerError)?;
@@ -249,7 +254,6 @@ pub async fn update_incoming_invoice_with_file(
         }
     }
 
-    // Delete old file if a new one was uploaded
     if let Some(ref new_name) = new_filename {
         let old_file = existing.invoice_file.trim().to_string();
         if !old_file.is_empty() {
@@ -261,7 +265,6 @@ pub async fn update_incoming_invoice_with_file(
         fields.insert("invoice_file".to_string(), new_name.clone());
     }
 
-    // Build UpdateIncomingInvoiceRequest from collected fields
     use crate::models::incoming_invoice::IncomingInvoiceItem;
     let items: Vec<IncomingInvoiceItem> = fields.get("items")
         .and_then(|s| serde_json::from_str(s).ok())
@@ -296,11 +299,11 @@ pub async fn update_incoming_invoice_with_file(
         },
         tds_applicable: fields.remove("tds_applicable").map(|v| v == "true" || v == "1").unwrap_or(existing.tds_applicable),
         tds_total: fields.remove("tds_total").unwrap_or(existing.tds_total),
+        payment_type: fields.remove("payment_type").unwrap_or(existing.payment_type),
+        payment_reference: fields.remove("payment_reference").unwrap_or(existing.payment_reference),
         organisation_id: existing.organisation_id,
         vendor_id: existing.vendor_id,
-        cost_type: parse_cost_type(
-            fields.remove("cost_type").or_else(|| fields.remove("costType"))
-        ),
+        cost_type: parse_cost_type(fields.remove("cost_type").or_else(|| fields.remove("costType"))),
     };
 
     match service.update(&id, req).await
@@ -311,7 +314,6 @@ pub async fn update_incoming_invoice_with_file(
     }
 }
 
-/// DELETE /api/v1/incoming-invoices/{id}
 #[delete("/incoming-invoices/{id}")]
 pub async fn delete_incoming_invoice(
     service: web::Data<IncomingInvoiceService>,
@@ -334,8 +336,6 @@ pub async fn delete_incoming_invoice(
     }
 }
 
-/// POST /api/v1/incoming-invoice-files
-/// Accepts multipart/form-data with field "file", saves it, returns { filename }
 #[post("/incoming-invoice-files")]
 pub async fn upload_incoming_invoice_file(mut payload: Multipart) -> actix_web::Result<impl Responder> {
     use std::fs;
@@ -365,28 +365,21 @@ pub async fn upload_incoming_invoice_file(mut payload: Multipart) -> actix_web::
     Err(actix_web::error::ErrorBadRequest("No file field found"))
 }
 
-/// GET /api/v1/incoming-invoice-files/{filename}
-/// Serves the stored invoice file — only accessible to authenticated users in the same org
-/// that owns an invoice referencing this file.
 #[get("/incoming-invoice-files/{filename}")]
 pub async fn get_incoming_invoice_file(
     path: Path<String>,
     service: web::Data<IncomingInvoiceService>,
     http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
-    // 1. Verify JWT
     let claims = http_req.extensions().get::<Claims>().cloned()
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
-    // 2. Load user
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    // 3. Must have read permission on Expenses module
     check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
-    // 4. Verify the file belongs to an invoice in the user's org
     let filename = path.into_inner();
     let invoices = service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
@@ -394,7 +387,6 @@ pub async fn get_incoming_invoice_file(
     if !owned {
         return Err(actix_web::error::ErrorForbidden("Access denied"));
     }
-    // 5. Serve the file
     let filepath = std::path::Path::new(UPLOAD_DIR).join(&filename);
     if !filepath.exists() {
         return Err(actix_web::error::ErrorNotFound("File not found"));
@@ -402,8 +394,6 @@ pub async fn get_incoming_invoice_file(
     Ok(NamedFile::open(filepath).map_err(actix_web::error::ErrorInternalServerError)?)
 }
 
-/// GET /api/v1/incoming-invoices/tds-summary
-/// Returns combined TDS summary: incoming invoices (tds_applicable) + salaries for given month
 #[get("/incoming-invoices/tds-summary")]
 pub async fn get_tds_summary(
     service: web::Data<IncomingInvoiceService>,

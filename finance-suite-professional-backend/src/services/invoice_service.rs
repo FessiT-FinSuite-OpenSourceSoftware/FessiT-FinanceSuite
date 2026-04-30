@@ -66,15 +66,7 @@ impl InvoiceService {
             .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))?;
         let next_sequence = self.org_repo.get_next_invoice_sequence_by_id(org_id).await
             .map_err(|e| anyhow::anyhow!("Failed to get next sequence: {}", e))?;
-        
-        let invoice_number = format!(
-            "{}-{}-{:03}",
-            org.invoice_prefix,
-            org.starting_invoice_no,
-            next_sequence
-        );
-        
-        Ok(invoice_number)
+        Ok(format!("{}-{}-{:03}", org.invoice_prefix, org.starting_invoice_no, next_sequence))
     }
 
     pub async fn peek_next_invoice_number(&self, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<String> {
@@ -82,39 +74,33 @@ impl InvoiceService {
             .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))?;
         let next_sequence = self.org_repo.peek_next_invoice_sequence_by_id(org_id).await
             .map_err(|e| anyhow::anyhow!("Failed to peek next sequence: {}", e))?;
-        
-        let invoice_number = format!(
-            "{}-{}-{:03}",
-            org.invoice_prefix,
-            org.starting_invoice_no,
-            next_sequence
-        );
-        
-        Ok(invoice_number)
+        Ok(format!("{}-{}-{:03}", org.invoice_prefix, org.starting_invoice_no, next_sequence))
     }
 
     pub async fn create_invoice(&self, mut invoice: Invoice, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Invoice> {
         log::info!("Creating invoice for org_id: {}", org_id);
-        
-        // Set organisation_id on invoice
+
         invoice.organisation_id = Some(*org_id);
         self.validate_service_type(org_id, invoice.service_type_id.as_ref()).await?;
-        
-        match self.generate_invoice_number(org_id).await {
-            Ok(invoice_number) => {
-                log::info!("Generated invoice number: {}", invoice_number);
-                invoice.invoice_number = invoice_number;
+
+        let provided = invoice.invoice_number.trim().to_string();
+        if provided.is_empty() {
+            invoice.invoice_number = self.generate_invoice_number(org_id).await
+                .map_err(|e| { log::error!("Failed to generate invoice number: {}", e); e })?;
+            log::info!("Generated invoice number: {}", invoice.invoice_number);
+        } else {
+            // If the provided number matches what we would generate, consume the sequence
+            let peeked = self.peek_next_invoice_number(org_id).await.unwrap_or_default();
+            if provided == peeked {
+                let _ = self.org_repo.get_next_invoice_sequence_by_id(org_id).await;
             }
-            Err(e) => {
-                log::error!("Failed to generate invoice number: {}", e);
-                return Err(e);
-            }
+            invoice.invoice_number = provided;
+            log::info!("Using provided invoice number: {}", invoice.invoice_number);
         }
-        
+
         let created = self.repo.create_invoice(invoice).await?;
         log::info!("Invoice created successfully with ID: {:?}", created.id);
 
-        // Increment sold_stocks for each item that has a product_id
         for item in &created.items {
             if let Some(pid) = &item.product_id {
                 let qty = item.hours.parse::<f64>().unwrap_or(0.0);
@@ -130,18 +116,15 @@ impl InvoiceService {
     }
 
     pub async fn get_all_invoices(&self) -> anyhow::Result<Vec<Invoice>> {
-        let invoices = self.repo.get_all_invoices().await?;
-        Ok(invoices)
+        Ok(self.repo.get_all_invoices().await?)
     }
 
     pub async fn get_invoices_by_organisation(&self, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Vec<Invoice>> {
-        let invoices = self.repo.get_invoices_by_organisation(org_id).await?;
-        Ok(invoices)
+        Ok(self.repo.get_invoices_by_organisation(org_id).await?)
     }
 
     pub async fn get_invoices_by_company_email(&self, company_email: &str) -> anyhow::Result<Vec<Invoice>> {
-        let invoices = self.repo.get_invoices_by_company_email(company_email).await?;
-        Ok(invoices)
+        Ok(self.repo.get_invoices_by_company_email(company_email).await?)
     }
 
     pub async fn get_invoices_by_customer(&self, customer_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Vec<Invoice>> {
@@ -149,13 +132,11 @@ impl InvoiceService {
     }
 
     pub async fn get_invoices_by_org_or_email(&self, org_id: &mongodb::bson::oid::ObjectId, company_email: &str) -> anyhow::Result<Vec<Invoice>> {
-        let invoices = self.repo.get_invoices_by_org_or_email(org_id, company_email).await?;
-        Ok(invoices)
+        Ok(self.repo.get_invoices_by_org_or_email(org_id, company_email).await?)
     }
 
     pub async fn get_invoice_by_id(&self, id: &str) -> anyhow::Result<Option<Invoice>> {
-        let invoice = self.repo.get_invoice_by_id(id).await?;
-        Ok(invoice)
+        Ok(self.repo.get_invoice_by_id(id).await?)
     }
 
     pub async fn update_invoice(
@@ -166,24 +147,20 @@ impl InvoiceService {
         if let Some(org_id) = invoice.organisation_id.as_ref() {
             self.validate_service_type(org_id, invoice.service_type_id.as_ref()).await?;
         }
-        let updated = self.repo.update_invoice(id, invoice).await?;
-        Ok(updated)
+        Ok(self.repo.update_invoice(id, invoice).await?)
     }
 
     pub async fn delete_invoice(&self, id: &str) -> anyhow::Result<bool> {
-        let deleted = self.repo.delete_invoice(id).await?;
-        Ok(deleted)
+        Ok(self.repo.delete_invoice(id).await?)
     }
 
     pub async fn get_user_permissions(&self, user_id: &str) -> anyhow::Result<Option<crate::models::users::User>> {
-        let user = self.user_repo.get_user_by_id(user_id).await?;
-        Ok(user)
+        Ok(self.user_repo.get_user_by_id(user_id).await?)
     }
 
     pub async fn get_organisation_by_id(&self, org_id: &str) -> anyhow::Result<crate::models::organisation::Organisation> {
-        let org = self.org_repo.get_organisation_by_id(org_id).await
-            .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))?;
-        Ok(org)
+        self.org_repo.get_organisation_by_id(org_id).await
+            .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))
     }
 
     pub async fn get_monthly_gst_summary(

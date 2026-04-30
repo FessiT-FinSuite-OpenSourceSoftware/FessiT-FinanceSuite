@@ -8,6 +8,7 @@ use crate::{
     models::ledger::LedgerEntry,
     services::ledger_service::LedgerService,
     services::organisation_service::OrganisationService,
+    repository::customer_repository::CustomerRepository,
     utils::auth::Claims,
     utils::permissions::{check_permission, create_permission_error, Module, PermissionAction},
 };
@@ -70,6 +71,14 @@ pub async fn get_ledger(
 
 fn format_paise(paise: i64) -> String {
     format!("{:.2}", paise as f64 / 100.0)
+}
+
+struct PartyInfo {
+    name: String,
+    email: String,
+    phone: String,
+    address: String,
+    gstin: String,
 }
 
 fn draw_line(layer: &PdfLayerReference, x1: f32, x2: f32, y: f32) {
@@ -195,62 +204,77 @@ fn render_ledger_header(
     org_gstin: &str,
     from: &str,
     to: &str,
-    party_name: Option<&str>,
+    party: Option<&PartyInfo>,
 ) -> f32 {
     let mut y = 282.0f32;
 
-    // Company name — large bold
+    // Row 1: Org name alone
     set_text_color(layer, 0.12, 0.18, 0.32);
-    layer.use_text(org_name, 16.0, Mm(15.0), Mm(y), font_bold);
+    layer.use_text(org_name, 14.0, Mm(15.0), Mm(y), font_bold);
+    y -= 6.0;
 
-    // Period label — top right, prominent
-    let period = format!("Period: {}", format_period(from, to));
-    set_text_color(layer, 0.18, 0.52, 0.78);
-    layer.use_text(&period, 9.0, Mm(130.0), Mm(y), font_bold);
-
-    y -= 5.5;
-
-    // Email
+    // Row 2: Email (left) | Period (right) — same y
     set_text_color(layer, 0.35, 0.40, 0.48);
     if !org_email.is_empty() {
-        layer.use_text(org_email, 8.0, Mm(15.0), Mm(y), font);
+        layer.use_text(&format!("Email: {}", org_email), 8.0, Mm(15.0), Mm(y), font);
     }
+    set_text_color(layer, 0.18, 0.52, 0.78);
+    layer.use_text(&format!("Period: {}", format_period(from, to)), 9.0, Mm(130.0), Mm(y), font_bold);
+    y -= 4.5;
 
-    // Phone — right of email
+    // Row 3: Phone (left)
+    set_text_color(layer, 0.35, 0.40, 0.48);
     if !org_phone.is_empty() {
-        layer.use_text(format!("Ph: {}", org_phone), 8.0, Mm(130.0), Mm(y), font);
+        layer.use_text(&format!("Ph: {}", org_phone), 8.0, Mm(15.0), Mm(y), font);
     }
     y -= 4.5;
 
-    // Address
+    // Row 4: Address (left) | GSTIN (right) — same y
     if !org_address.is_empty() {
-        let addr_lines = wrap_text(org_address, 60);
-        for line in &addr_lines {
-            layer.use_text(line, 8.0, Mm(15.0), Mm(y), font);
-            y -= 4.0;
-        }
+        layer.use_text(&format!("Address: {}", &org_address.chars().take(55).collect::<String>()), 8.0, Mm(15.0), Mm(y), font);
     }
-
-    // GSTIN
     if !org_gstin.is_empty() {
-        layer.use_text(format!("GSTIN: {}", org_gstin), 8.0, Mm(15.0), Mm(y), font);
-        y -= 4.0;
+        layer.use_text(&format!("GSTIN: {}", org_gstin), 8.0, Mm(130.0), Mm(y), font);
     }
+    y -= 5.0;
 
-    // Separator line
-    y -= 1.0;
+    // Separator
     set_text_color(layer, 0.72, 0.74, 0.78);
     draw_line(layer, 15.0, 200.0, y);
-    y -= 4.0;
+    y -= 4.5;
 
-    // Document title + party
+    // Document title
     set_text_color(layer, 0.12, 0.18, 0.32);
     layer.use_text("LEDGER STATEMENT", 10.0, Mm(15.0), Mm(y), font_bold);
-    if let Some(name) = party_name {
+    y -= 4.5;
+
+    // Party details block (only when filtered by party)
+    if let Some(p) = party {
+        set_text_color(layer, 0.72, 0.74, 0.78);
+        draw_line(layer, 15.0, 200.0, y);
+        y -= 5.0;
+
+        set_text_color(layer, 0.12, 0.18, 0.32);
+        layer.use_text(&p.name, 10.0, Mm(15.0), Mm(y), font_bold);
+        y -= 5.0;
+
         set_text_color(layer, 0.35, 0.40, 0.48);
-        layer.use_text(format!("Party: {}", name), 9.0, Mm(90.0), Mm(y), font);
+        if !p.email.is_empty() {
+            layer.use_text(&format!("Email: {}", p.email), 8.0, Mm(15.0), Mm(y), font);
+        }
+        if !p.phone.is_empty() {
+            layer.use_text(&format!("Ph: {}", p.phone), 8.0, Mm(130.0), Mm(y), font);
+        }
+        y -= 4.5;
+
+        if !p.address.is_empty() {
+            layer.use_text(&format!("Address: {}", &p.address.chars().take(55).collect::<String>()), 8.0, Mm(15.0), Mm(y), font);
+        }
+        if !p.gstin.is_empty() {
+            layer.use_text(&format!("GSTIN: {}", p.gstin), 8.0, Mm(130.0), Mm(y), font);
+        }
+        y -= 5.0;
     }
-    y -= 4.0;
 
     // Second separator
     set_text_color(layer, 0.72, 0.74, 0.78);
@@ -291,7 +315,7 @@ fn ensure_page_space(
     org_gstin: &str,
     from: &str,
     to: &str,
-    party_name: Option<&str>,
+    party: Option<&PartyInfo>,
 ) {
     if *y >= 20.0 + min_space {
         return;
@@ -300,7 +324,7 @@ fn ensure_page_space(
     *y = render_ledger_header(
         layer, font_bold, font,
         org_name, org_email, org_phone, org_address, org_gstin,
-        from, to, party_name,
+        from, to, party,
     );
 }
 
@@ -353,7 +377,7 @@ fn generate_ledger_pdf(
     org_gstin: &str,
     from: &str,
     to: &str,
-    party_name: Option<&str>,
+    party: Option<&PartyInfo>,
 ) -> Vec<u8> {
     let (doc, page1, layer1) =
         PdfDocument::new("Ledger Statement", Mm(210.0), Mm(297.0), "Layer 1");
@@ -364,7 +388,7 @@ fn generate_ledger_pdf(
     let mut y = render_ledger_header(
         &layer, &font_bold, &font,
         org_name, org_email, org_phone, org_address, org_gstin,
-        from, to, party_name,
+        from, to, party,
     );
 
     if let Some(first) = entries.first() {
@@ -379,7 +403,7 @@ fn generate_ledger_pdf(
             &doc, &mut layer, &mut y, 8.0,
             &font_bold, &font,
             org_name, org_email, org_phone, org_address, org_gstin,
-            from, to, party_name,
+            from, to, party,
         );
 
         set_text_color(&layer, 0.35, 0.40, 0.48);
@@ -413,7 +437,7 @@ fn generate_ledger_pdf(
             &doc, &mut layer, &mut y, row_height,
             &font_bold, &font,
             org_name, org_email, org_phone, org_address, org_gstin,
-            from, to, party_name,
+            from, to, party,
         );
 
         render_ledger_table_row(
@@ -437,7 +461,7 @@ fn generate_ledger_pdf(
             &doc, &mut layer, &mut y, closing_row_height,
             &font_bold, &font,
             org_name, org_email, org_phone, org_address, org_gstin,
-            from, to, party_name,
+            from, to, party,
         );
 
         y -= 2.0;
@@ -471,6 +495,7 @@ fn generate_ledger_pdf(
 pub async fn get_ledger_pdf(
     service: web::Data<LedgerService>,
     org_service: web::Data<OrganisationService>,
+    customer_repo: web::Data<CustomerRepository>,
     query: web::Query<LedgerQuery>,
     http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
@@ -498,14 +523,19 @@ pub async fn get_ledger_pdf(
     let org = org_service.get_organisation_by_id(&org_id.to_string()).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
-    let party_name = result.data.first()
-        .and_then(|e| e.party_name_snapshot.as_deref())
-        .filter(|_| party_id.is_some());
+    let org_address = org.addresses.first().map(|a| a.value.clone()).unwrap_or_default();
 
-    // Build address string from first address entry
-    let org_address = org.addresses.first()
-        .map(|a| a.value.clone())
-        .unwrap_or_default();
+    let party_info: Option<PartyInfo> = if let Some(pid) = party_id {
+        if let Ok(Some(c)) = customer_repo.find_by_id(&pid.to_hex()).await {
+            Some(PartyInfo {
+                name: if !c.company_name.is_empty() { c.company_name } else { c.customer_name },
+                email: c.email,
+                phone: c.phone,
+                address: c.addresses.first().map(|a| a.value.clone()).unwrap_or_default(),
+                gstin: c.gst_in,
+            })
+        } else { None }
+    } else { None };
 
     let pdf_bytes = generate_ledger_pdf(
         &result.data,
@@ -516,7 +546,7 @@ pub async fn get_ledger_pdf(
         &org.gst_in,
         &from,
         &to,
-        party_name,
+        party_info.as_ref(),
     );
 
     Ok(HttpResponse::Ok()
@@ -525,7 +555,43 @@ pub async fn get_ledger_pdf(
         .body(pdf_bytes))
 }
 
+/// POST /api/v1/ledger/recalculate
+/// Admin-only: recalculates and patches balance on all ledger entries for the org.
+/// Safe to run on production — only writes entries where balance is wrong.
+#[actix_web::post("/ledger/recalculate")]
+pub async fn recalculate_ledger_balances(
+    service: web::Data<LedgerService>,
+    http_req: HttpRequest,
+) -> actix_web::Result<impl Responder> {
+    let claims = http_req.extensions().get::<Claims>().cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
+    let user = service.get_user_by_id(&claims.sub).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    // Admin only
+    if !user.is_admin {
+        return Ok(HttpResponse::Forbidden().json(serde_json::json!({
+            "message": "Admin access required"
+        })));
+    }
+
+    let org_id = user.organisation_id
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
+
+    let (entries_fixed, parties_fixed) = service
+        .recalculate_balances(&org_id)
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "message": "Ledger balances recalculated successfully",
+        "entries_fixed": entries_fixed,
+        "parties_fixed": parties_fixed
+    })))
+}
+
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_ledger)
-        .service(get_ledger_pdf);
+        .service(get_ledger_pdf)
+        .service(recalculate_ledger_balances);
 }

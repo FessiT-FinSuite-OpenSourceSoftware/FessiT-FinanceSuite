@@ -8,6 +8,15 @@ import { canWrite, canDelete, Module } from "../../utils/permissions";
 import { getCurrencySymbol } from "../../utils/formatNumber";
 import { TabActionBar, FilterSelect, StatCard, TableWrapper, TableHead, EmptyRow, RowActions, Pagination } from "../../shared/ui";
 
+const formatDate = (value) => {
+  if (!value) return "-";
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
+  } catch { return "-"; }
+};
+
 const getStatusColor = (status) => {
   switch (status) {
     case "Approved":  return "bg-green-100 text-green-800";
@@ -101,15 +110,15 @@ export default function PurchaseOrderList() {
             const id = po._id?.$oid || po.id;
             return (
               <tr key={id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-blue-600 font-medium cursor-pointer" onClick={() => nav(`/purchases/editPurchaseOrder/${id}`)}>{po.po_number}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-600">{po.vendor_name}</td>
-                <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell text-gray-600">{po.po_date}</td>
-                <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell text-gray-600">{po.po_dueDate}</td>
-                <td className="px-6 py-4 whitespace-nowrap font-semibold">{getCurrencySymbol(po.currency_type)} {Number(po.total || 0).toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-2 whitespace-nowrap text-blue-600 font-medium cursor-pointer" onClick={() => nav(`/purchases/editPurchaseOrder/${id}`)}>{po.po_number}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-gray-600">{po.vendor_name}</td>
+                <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell text-gray-600">{formatDate(po.po_date)}</td>
+                <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell text-gray-600">{formatDate(po.po_dueDate)}</td>
+                <td className="px-4 py-2 whitespace-nowrap font-semibold">{getCurrencySymbol(po.currency_type)} {Number(po.total || 0).toLocaleString()}</td>
+                <td className="px-4 py-2 whitespace-nowrap">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(po.status)}`}>{po.status}</span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
+                <td className="px-4 py-2 whitespace-nowrap text-right">
                   <RowActions
                     onEdit={() => hasWrite && nav(`/purchases/editPurchaseOrder/${id}`)}
                     onDelete={() => hasDelete && handleDelete(id)}

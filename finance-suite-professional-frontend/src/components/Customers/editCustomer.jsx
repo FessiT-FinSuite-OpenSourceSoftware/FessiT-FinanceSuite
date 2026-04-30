@@ -280,10 +280,10 @@ export default function EditCustomer() {
       return;
     }
 
-    // Combine ISO code with customer code for backend
     const customerDataForBackend = {
       ...customer,
-      CustomerCode: selected?.iso ? selected.iso + customer.CustomerCode : customer.CustomerCode
+      CustomerCode: selected?.iso ? selected.iso + customer.CustomerCode : customer.CustomerCode,
+      is_vendor_too: customer.role === "Vendor" || customer.role === "Both",
     };
 
     // ✅ valid form, dispatch update
@@ -370,6 +370,11 @@ export default function EditCustomer() {
   const removeProject = (index) => {
     setCustomer((prev) => ({ ...prev, projects: prev.projects.filter((_, i) => i !== index) }));
   };
+  const roleOptions = [
+    { label: "Customer", value: "Customer" },
+    { label: "Vendor", value: "Vendor" },
+    { label: "Customer & Vendor", value: "Both" },
+  ];
 
   return (
     <div className="relative">
@@ -510,7 +515,7 @@ export default function EditCustomer() {
           {/* GSTIN */}
           <div className="relative">
             <label className="block text-gray-700 font-medium mb-1">
-              GSTIN *
+              GSTIN
             </label>
             <input
               type="text"
@@ -635,8 +640,8 @@ export default function EditCustomer() {
           </div>
 
           {/* Role */}
-          <div className="flex flex-col gap-1 pt-2">
-            <label className="block text-gray-700 font-medium mb-1">Role *</label>
+          {/* <div className="flex flex-col gap-1 pt-2">
+            <label className="block text-gray-700 font-medium mb-1">Customer/Vendor ?</label>
             <div className="flex gap-4">
               {["Customer", "Vendor", "Both"].map((r) => (
                 <label key={r} className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
@@ -649,6 +654,32 @@ export default function EditCustomer() {
                     className="w-4 h-4 accent-blue-600"
                   />
                   <span className="font-medium">{r}</span>
+                </label>
+              ))}
+            </div>
+          </div> */}
+          <div className="flex flex-col gap-1 pt-2">
+            <label className="block text-gray-700 font-medium mb-1">
+              Customer/Vendor ?
+            </label>
+
+            <div className="flex gap-4">
+              {roleOptions.map((r) => (
+                <label
+                  key={r.value}
+                  className="flex items-center gap-2 text-sm cursor-pointer text-gray-700"
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value={r.value}
+                    checked={customer.role === r.value}
+                    onChange={(e) =>
+                      setCustomer((prev) => ({ ...prev, role: e.target.value }))
+                    }
+                    className="w-4 h-4 accent-blue-600"
+                  />
+                  <span className="font-medium">{r.label}</span>
                 </label>
               ))}
             </div>

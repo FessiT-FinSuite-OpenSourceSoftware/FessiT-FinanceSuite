@@ -107,10 +107,10 @@ export default function RecentGSTTransactions({ transactions = [], isLoading = f
           ) : paginatedTransactions.length > 0 ? (
             paginatedTransactions.map((txn) => (
               <tr key={txn.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatDate(txn.date)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{txn.invoiceNo || "-"}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{txn.party || "-"}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{formatDate(txn.date)}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-800">{txn.invoiceNo || "-"}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{txn.party || "-"}</td>
+                <td className="px-4 py-2 whitespace-nowrap">
                   <span
                     className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       txn.type === "Outwards"
@@ -121,19 +121,19 @@ export default function RecentGSTTransactions({ transactions = [], isLoading = f
                     {txn.type || "-"}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-700">
+                <td className="px-4 py-2 whitespace-nowrap text-right text-sm text-gray-700">
                   {formatMoney(txn.taxable)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-700">
+                <td className="px-4 py-2 whitespace-nowrap text-right text-sm text-gray-700">
                   {txn.cgst > 0 ? formatMoney(txn.cgst) : "-"}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-700">
+                <td className="px-4 py-2 whitespace-nowrap text-right text-sm text-gray-700">
                   {txn.sgst > 0 ? formatMoney(txn.sgst) : "-"}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-700">
+                <td className="px-4 py-2 whitespace-nowrap text-right text-sm text-gray-700">
                   {txn.igst > 0 ? formatMoney(txn.igst) : "-"}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-800">
+                <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-semibold text-gray-800">
                   {formatMoney(txn.total)}
                 </td>
               </tr>

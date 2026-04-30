@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import { useLocation, useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
 import { authSelector, logoutUser, clearAuth } from "../../ReduxApi/auth";
@@ -24,7 +25,36 @@ import {
   LogOut,
   BookOpen,
   ReceiptText,
+  BarChart2,
 } from "lucide-react";
+
+function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+
+  useEffect(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    }
+  }, [triggerRef]);
+
+  return ReactDOM.createPortal(
+    <div
+      ref={menuRef}
+      style={{ top: pos.top, right: pos.right }}
+      className="fixed bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-[9999] overflow-hidden"
+    >
+      <button
+        onClick={onLogout}
+        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+      >
+        <LogOut size={16} />
+        Logout
+      </button>
+    </div>,
+    document.body
+  );
+}
 
 export default function SideBar({ component }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -78,6 +108,7 @@ export default function SideBar({ component }) {
     { id: "invoices", label: "Sales", icon: FileText, module: Module.Invoice },
     { id: "estimates", label: "Quotations", icon: ReceiptText, module: Module.Invoice },
     { id: "ledger", label: "Ledger", icon: BookOpen, module: Module.Invoice },
+    { id: "profit-loss", label: "P&L Statement", icon: BarChart2, module: Module.Invoice },
     { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
     { id: "expenses", label: "Expenses", icon: Receipt, module: Module.Expenses },
     { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: Module.Invoice },
@@ -177,14 +208,14 @@ export default function SideBar({ component }) {
     <div className="flex h-screen overflow-hidden w-screen bg-gray-50">
       {/* Sidebar */}
       <div
-        className={`${sidebarOpen ? "w-64 " : "w-24"
+        className={`${sidebarOpen ? "w-52" : "w-16"
           } transition-all duration-300 bg-white border-r border-gray-200 flex h-screen flex-col`}
       >
         <div className="shrink-0 p-4 border-b border-gray-200 h-22 flex justify-between items-center">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* Logo Icon - Always visible */}
             <div className="relative shrink-0">
-              <svg width="48" height="48" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <svg width="36" height="36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 {/* Circular background */}
                 <circle cx="50" cy="50" r="48" fill="#1e40af" opacity="0.1" />
 
@@ -209,14 +240,14 @@ export default function SideBar({ component }) {
             {/* Text content - only visible when sidebar is open */}
             <div
               className={`min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${
-                sidebarOpen ? "max-w-[180px] opacity-100 translate-x-0" : "max-w-0 opacity-0 -translate-x-2"
+                sidebarOpen ? "max-w-[150px] opacity-100 translate-x-0" : "max-w-0 opacity-0 -translate-x-2"
               }`}
             >
-              <div className="min-w-[180px]">
-                <h1 className="text-base font-bold text-indigo-600 leading-tight whitespace-nowrap">
+              <div className="min-w-[150px]">
+                <h1 className="text-sm font-bold text-indigo-600 leading-tight whitespace-nowrap">
                   Financial Suite
                 </h1>
-                <p className="text-[11px] text-gray-500 mt-0.5 whitespace-nowrap">by FessiT Solutions</p>
+                <p className="text-[10px] text-gray-500 mt-0.5 whitespace-nowrap">by FessiT Solutions</p>
 
                 {/* Made in India indicator */}
                 <div className="flex items-center gap-1.5 mt-1.5 whitespace-nowrap">
@@ -262,11 +293,11 @@ export default function SideBar({ component }) {
                 className={`w-full flex items-center rounded-lg transition-colors ${(item.id === "dashboard" && location.pathname === "/") || location.pathname.includes(`/${item.id}`)
                     ? "bg-indigo-50 text-indigo-600 font-medium"
                     : "text-gray-600 hover:bg-gray-100"
-                  } sider-button ${sidebarOpen ? "px-4 py-3 space-x-3 justify-start" : "py-4 justify-center"}`}
+                  } sider-button ${sidebarOpen ? "px-3 py-2 space-x-2 justify-start" : "py-2.5 justify-center"}`}
                 title={item.label}
               >
-                <Icon size={20} className={`${sidebarOpen ? "shrink-0" : "mx-auto"} transition-transform duration-200`} />
-                <span className={`${sidebarOpen ? "block" : "hidden"}`}>
+                <Icon size={16} className={`${sidebarOpen ? "shrink-0" : "mx-auto"} transition-transform duration-200`} />
+                <span className={`text-sm ${sidebarOpen ? "block" : "hidden"}`}>
                   {item.label}
                 </span>
               </button>
@@ -297,6 +328,7 @@ export default function SideBar({ component }) {
                     )}
                     {location.pathname.includes("/estimates") && <p>Estimates</p>}
                     {location.pathname.includes("/ledger") && <p>Ledger</p>}
+                    {location.pathname.includes("/profit-loss") && <p>P&L Statement</p>}
                     {location.pathname.includes("/invoices") && <p>Invoices</p>}
                     {location.pathname.includes("/purchases") && (
                       <p>Purchases</p>
@@ -352,20 +384,7 @@ export default function SideBar({ component }) {
                       {getUserInitials(getDisplayName())}
                     </div>
                   </div>
-                  {showUserMenu && (
-                    <div
-                      ref={userMenuRef}
-                      className="absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-50 overflow-hidden"
-                    >
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        <LogOut size={16} />
-                        Logout
-                      </button>
-                    </div>
-                  )}
+                  {showUserMenu && <UserMenuPortal triggerRef={userMenuTriggerRef} menuRef={userMenuRef} onLogout={handleLogout} />}
                 </div>
               </div>
             </div>

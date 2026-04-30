@@ -109,19 +109,19 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
           ) : paginated.length > 0 ? (
             paginated.map((ded) => (
               <tr key={ded.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatDate(ded.date)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{ded.deductee}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">{ded.pan}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{ded.section}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{formatDate(ded.date)}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-800">{ded.deductee}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700 font-mono">{ded.pan}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{ded.section}</td>
+                <td className="px-4 py-2 whitespace-nowrap">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${ded.source === "Salary" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}`}>
                     {ded.source}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-700">{formatMoney(ded.amount)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-700">{ded.tdsRate}%</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-800">{formatMoney(ded.tdsAmount)}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-2 whitespace-nowrap text-right text-sm text-gray-700">{formatMoney(ded.amount)}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-right text-sm text-gray-700">{ded.tdsRate}%</td>
+                <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-semibold text-gray-800">{formatMoney(ded.tdsAmount)}</td>
+                <td className="px-4 py-2 whitespace-nowrap">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${ded.status === "deposited" ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}`}>
                     {ded.status}
                   </span>

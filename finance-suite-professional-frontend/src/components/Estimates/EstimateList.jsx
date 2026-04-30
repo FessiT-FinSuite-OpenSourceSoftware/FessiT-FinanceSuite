@@ -44,6 +44,15 @@ const statusColor = (s) => {
 const fmt = (n) =>
   `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const formatDate = (value) => {
+  if (!value) return "-";
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
+  } catch { return "-"; }
+};
+
 // Handles both { $oid: "..." } and plain string _id
 const getId = (row) =>
   row?._id?.$oid || (typeof row?._id === "string" ? row._id : "") ||
@@ -168,16 +177,16 @@ export default function EstimateList() {
             const locked = (row.status || "").toLowerCase() === "converted";
             return (
               <tr key={id || row.estimateNumber} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-blue-600 cursor-pointer" onClick={() => hasWrite && nav(`/estimates/edit/${id}`)}>
+                <td className="px-4 py-2 whitespace-nowrap font-medium text-blue-600 cursor-pointer" onClick={() => hasWrite && nav(`/estimates/edit/${id}`)}>
                   {row.estimateNumber || "-"}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                  {row.customerName || "-"}
+                <td className="px-4 py-2 text-gray-600 max-w-[160px]">
+                  <span className="block truncate" title={row.customerName || "-"}>{row.customerName || "-"}</span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-600">{row.issueDate || "-"}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-600">{row.expiryDate || "-"}</td>
-                <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900">{fmt(row.total)}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-2 whitespace-nowrap text-gray-600">{formatDate(row.issueDate)}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-gray-600">{formatDate(row.expiryDate)}</td>
+                <td className="px-4 py-2 whitespace-nowrap font-semibold text-gray-900">{fmt(row.total)}</td>
+                <td className="px-4 py-2 whitespace-nowrap">
                   <span
                     onClick={() => !locked && hasWrite && setStatusPopup({ id, status: (row.status || "draft").toLowerCase() })}
                     className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(row.status)} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
@@ -185,7 +194,7 @@ export default function EstimateList() {
                     {cap(row.status)}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
+                <td className="px-4 py-2 whitespace-nowrap text-right">
                   <RowActions
                     onEdit={() => hasWrite && nav(`/estimates/edit/${id}`)}
                     onDelete={() => hasDelete && handleDelete(id)}

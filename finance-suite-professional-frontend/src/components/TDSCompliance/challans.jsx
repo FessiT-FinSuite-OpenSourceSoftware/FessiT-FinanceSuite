@@ -336,12 +336,12 @@ export default function ChallansTab() {
               const filename = getFilename(row);
               return (
                 <tr key={id || challanNo} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{challanNo}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-600">{row.section || "-"}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-600">{formatDate(row.payment_date)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-600">{formatDate(row.date_of_challan)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900">{formatAmount(row.amount_paid)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{challanNo}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-gray-600">{row.section || "-"}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-gray-600">{formatDate(row.payment_date)}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-gray-600">{formatDate(row.date_of_challan)}</td>
+                  <td className="px-4 py-2 whitespace-nowrap font-semibold text-gray-900">{formatAmount(row.amount_paid)}</td>
+                  <td className="px-4 py-2 whitespace-nowrap">
                     {filename ? (
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -363,7 +363,7 @@ export default function ChallansTab() {
                       <span className="text-gray-400 text-xs flex justify-end">-</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-4 py-2 whitespace-nowrap text-right">
                     <RowActions onEdit={() => openEdit(row)} onDelete={() => handleDelete(id)} />
                   </td>
                 </tr>

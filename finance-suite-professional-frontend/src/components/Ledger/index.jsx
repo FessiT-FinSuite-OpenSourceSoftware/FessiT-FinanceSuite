@@ -2,27 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { ledgerSelector, fetchLedger } from "../../ReduxApi/ledger";
 import { fetchCustomerData, customerSelector } from "../../ReduxApi/customer";
+import { authSelector } from "../../ReduxApi/auth";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
-import {
-  StatCard,
-  TabActionBar,
-  FilterSelect,
-  TableWrapper,
-  TableHead,
-  EmptyRow,
-  Pagination,
-} from "../../shared/ui";
-
-const ENTRY_TYPES = [
-  "opening_balance",
-  "invoice",
-  "payment",
-  "credit_note",
-  "debit_note",
-  "adjustment",
-  "reversal",
-];
+import { TableWrapper, TableHead, EmptyRow, Pagination } from "../../shared/ui";
+import { Download, RefreshCw, Filter, X } from "lucide-react";
 
 const entryTypeColor = (type) => {
   switch (type) {
@@ -39,7 +23,6 @@ const entryTypeColor = (type) => {
 
 const cap = (s) => (s || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-// Backend stores amounts in paise (smallest unit) — divide by 100 for display
 const fmtAmount = (paise) => {
   if (paise == null) return "-";
   const val = Number(paise) / 100;
@@ -50,7 +33,6 @@ const fmtAmount = (paise) => {
 
 const fmtDate = (val) => {
   if (!val) return "-";
-  // MongoDB DateTime comes as { $date: { $numberLong: "..." } } or ISO string
   const raw = val?.$date?.$numberLong ? new Date(Number(val.$date.$numberLong)) : new Date(val);
   return isNaN(raw.getTime()) ? "-" : raw.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
@@ -61,33 +43,46 @@ export default function LedgerPage() {
   const dispatch = useDispatch();
   const { entries, isLoading, total, totalAmount } = useSelector(ledgerSelector);
   const { customersData } = useSelector(customerSelector);
+  const { user } = useSelector(authSelector);
+  const isAdmin = user?.is_admin === true;
 
-  const [partyId, setPartyId]       = useState("");
-  const [fromDate, setFromDate]     = useState("");
-  const [toDate, setToDate]         = useState("");
-  const [entryType, setEntryType]   = useState("All");
+  const [partyId, setPartyId]     = useState("");
+  const [fromDate, setFromDate]   = useState("");
+  const [toDate, setToDate]       = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize]     = useState(10);
-  const [resetKey, setResetKey]     = useState(0);
-
-  // PDF modal state
-  const [pdfModal, setPdfModal]         = useState(false);
-  const [pdfFrom, setPdfFrom]           = useState("");
-  const [pdfTo, setPdfTo]               = useState("");
-  const [pdfPartyId, setPdfPartyId]     = useState("");
+  const [pageSize, setPageSize]   = useState(10);
   const [pdfLoading, setPdfLoading]     = useState(false);
+  const [recalcLoading, setRecalcLoading] = useState(false);
+  const [confirmRecalc, setConfirmRecalc] = useState(false);
+
+  const customers = Array.isArray(customersData) ? customersData : [];
+  const selectedParty = customers.find((c) => getId(c) === partyId);
+  const hasFilters = partyId || fromDate || toDate;
+
+  const clearFilters = () => { setPartyId(""); setFromDate(""); setToDate(""); };
+
+  useEffect(() => { dispatch(fetchCustomerData({ limit: 200 })); }, [dispatch]);
+
+  useEffect(() => { setCurrentPage(1); }, [partyId, fromDate, toDate, pageSize]);
+
+  useEffect(() => {
+    const params = { page: currentPage, limit: pageSize };
+    if (partyId)   params.party_id = partyId;
+    if (fromDate)  params.from = fromDate;
+    if (toDate)    params.to = toDate;
+    dispatch(fetchLedger(params));
+  }, [dispatch, partyId, fromDate, toDate, pageSize, currentPage]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
     try {
       const params = {};
-      if (pdfFrom)    params.from     = new Date(pdfFrom).toISOString();
-      if (pdfTo)      params.to       = new Date(pdfTo).toISOString();
-      if (pdfPartyId) params.party_id = pdfPartyId;
-      const response = await axiosInstance.get("/ledger/pdf", {
-        params,
-        responseType: "blob",
-      });
+      if (fromDate) params.from = new Date(fromDate).toISOString();
+      if (toDate)   params.to   = new Date(toDate).toISOString();
+      if (partyId)  params.party_id = partyId;
+      const response = await axiosInstance.get("/ledger/pdf", { params, responseType: "blob" });
       const url  = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href  = url;
@@ -96,10 +91,6 @@ export default function LedgerPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setPdfModal(false);
-      setPdfFrom("");
-      setPdfTo("");
-      setPdfPartyId("");
       toast.success("Ledger PDF downloaded successfully");
     } catch {
       toast.error("Failed to download PDF");
@@ -108,161 +99,223 @@ export default function LedgerPage() {
     }
   };
 
-  useEffect(() => { dispatch(fetchCustomerData()); }, [dispatch]);
-  console.log("the ledger data we have ", totalAmount)
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-    setResetKey((k) => k + 1);
-  }, [partyId, fromDate, toDate, entryType, pageSize]);
-
-  // Fetch on page change or filter reset
-  useEffect(() => {
-    const params = { page: currentPage, limit: pageSize };
-    if (partyId)           params.party_id = partyId;
-    if (fromDate)          params.from     = fromDate;
-    if (toDate)            params.to       = toDate;
-    dispatch(fetchLedger(params));
-  }, [dispatch, resetKey, currentPage]);
-
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  // Client-side entry type filter (backend doesn't support it yet)
-  const filtered = entryType === "All"
-    ? entries
-    : entries.filter((e) => e.entryType === entryType);
+  const handleRecalculate = async () => {
+    setConfirmRecalc(false);
+    setRecalcLoading(true);
+    try {
+      const { data } = await axiosInstance.post("/ledger/recalculate");
+      toast.success(`Balances fixed — ${data.entries_fixed} entries corrected, ${data.parties_fixed} counters reset`);
+      const params = { page: currentPage, limit: pageSize };
+      if (partyId)  params.party_id = partyId;
+      if (fromDate) params.from = fromDate;
+      if (toDate)   params.to = toDate;
+      dispatch(fetchLedger(params));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to recalculate balances");
+    } finally {
+      setRecalcLoading(false);
+    }
+  };
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
-      <TabActionBar
-        searchValue=""
-        onSearchChange={() => {}}
-        searchPlaceholder="Ledger — use filters to search"
-      >
-        {/* Party filter */}
-        <FilterSelect value={partyId} onChange={setPartyId}>
-          <option value="">All Parties</option>
-          {(Array.isArray(customersData) ? customersData : []).map((c) => (
-            <option key={getId(c)} value={getId(c)}>
-              {c.companyName || c.customerName}
-            </option>
-          ))}
-        </FilterSelect>
+    <div className="max-w-7xl w-full space-y-4">
 
-        {/* Entry type filter */}
-        {/* <FilterSelect value={entryType} onChange={setEntryType}>
-          <option value="All">All Types</option>
-          {ENTRY_TYPES.map((t) => (
-            <option key={t} value={t}>{cap(t)}</option>
-          ))}
-        </FilterSelect> */}
+      {/* Filter Card */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        <div className="flex flex-wrap items-end gap-3">
 
-        {/* Date range */}
-        <input
-          type="date"
-          value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          title="From date"
-        />
-        <input
-          type="date"
-          value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          title="To date"
-        />
+          {/* Party */}
+          <div className="flex flex-col gap-1 min-w-[180px]">
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Party</label>
+            <select
+              value={partyId}
+              onChange={(e) => setPartyId(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+            >
+              <option value="">All Parties</option>
+              {customers.map((c) => (
+                <option key={getId(c)} value={getId(c)}>
+                  {c.companyName || c.customerName}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* Download PDF button */}
-        <button
-          onClick={() => setPdfModal(true)}
-          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          Download PDF
-        </button>
-      </TabActionBar>
+          {/* From */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">From</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <StatCard label="Total Entries" value={total} />
-        <StatCard
-          label="Total Balance"
-          value={fmtAmount(totalAmount * 100)}
-          valueClass={totalAmount < 0 ? "text-red-600" : "text-indigo-700"}
-        />
-        {/* <StatCard
-          label="Debits (Page)"
-          value={fmtAmount(filtered.reduce((s, e) => s + (Number(e.debit) || 0), 0))}
-          valueClass="text-red-600"
-        /> */}
-        {/* <StatCard
-          label="Credits (Page)"
-          value={fmtAmount(filtered.reduce((s, e) => s + (Number(e.credit) || 0), 0))}
-          valueClass="text-green-600"
-        /> */}
+          {/* To */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">To</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+
+          {/* Clear filters */}
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              Clear
+            </button>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={pdfLoading}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-60"
+            >
+              <Download className="w-4 h-4" />
+              {pdfLoading ? "Generating..." : "Download PDF"}
+            </button>
+
+            {isAdmin && (
+              <button
+                onClick={() => setConfirmRecalc(true)}
+                disabled={recalcLoading}
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-60"
+                title="Recalculate and fix ledger balances"
+              >
+                <RefreshCw className="w-4 h-4" />
+                {recalcLoading ? "Fixing..." : "Fix Balances"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Active filter chips */}
+        {hasFilters && (
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
+            {selectedParty && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-full border border-indigo-200">
+                <Filter className="w-3 h-3" />
+                {selectedParty.companyName || selectedParty.customerName}
+                <button onClick={() => setPartyId("")} className="ml-0.5 hover:text-indigo-900"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {fromDate && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
+                From: {fromDate}
+                <button onClick={() => setFromDate("")} className="ml-0.5 hover:text-blue-900"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+            {toDate && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
+                To: {toDate}
+                <button onClick={() => setToDate("")} className="ml-0.5 hover:text-blue-900"><X className="w-3 h-3" /></button>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Total Entries</p>
+          <p className="text-2xl font-bold text-gray-900">{total}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Net Balance</p>
+          <p className={`text-2xl font-bold ${totalAmount < 0 ? "text-red-600" : "text-indigo-700"}`}>
+            {fmtAmount(totalAmount * 100)}
+          </p>
+        </div>
+        {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Total Debits</p>
+          <p className="text-2xl font-bold text-red-600">
+            {fmtAmount(entries.reduce((s, e) => s + (Number(e.debit) || 0), 0))}
+          </p>
+        </div> */}
+        {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Total Credits</p>
+          <p className="text-2xl font-bold text-green-600">
+            {fmtAmount(entries.reduce((s, e) => s + (Number(e.credit) || 0), 0))}
+          </p>
+        </div> */}
+      </div>
+
+      {/* Table */}
       <TableWrapper>
         <TableHead
           columns={[
             { label: "Date" },
             { label: "Party" },
-            { label: "Type" },
+            // { label: "Type" },
             { label: "Reference" },
             { label: "Description" },
+            { label: "Payment Info" },
             { label: "Debit", right: true },
             { label: "Credit", right: true },
             { label: "Balance", right: true },
-            { label: "Status" },
+            
           ]}
         />
-        <tbody className="divide-y divide-gray-200">
+        <tbody className="divide-y divide-gray-100">
           {isLoading ? (
             <EmptyRow colSpan={9} message="Loading ledger..." />
-          ) : filtered.length === 0 ? (
-            <EmptyRow colSpan={9} />
-          ) : filtered.map((entry, idx) => {
+          ) : entries.length === 0 ? (
+            <EmptyRow colSpan={9} message="No ledger entries found." />
+          ) : entries.map((entry, idx) => {
             const isReversed = entry.isReversed === true;
             return (
-              <tr key={entry._id?.$oid || idx} className={`hover:bg-gray-50 transition-colors ${isReversed ? "opacity-50" : ""}`}>
-                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-600">
+              <tr
+                key={entry._id?.$oid || idx}
+                className={`hover:bg-gray-50 transition-colors ${isReversed ? "opacity-40" : ""}`}
+              >
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                   {fmtDate(entry.date)}
                 </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-700 font-medium">
+                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-800">
                   {entry.partyNameSnapshot || "-"}
                 </td>
-                <td className="px-6 py-3 whitespace-nowrap">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${entryTypeColor(entry.entryType)}`}>
-                    {cap(entry.entryType)}
-                  </span>
-                </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm text-blue-600">
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-indigo-600 font-medium">
                   {entry.referenceNumber || "-"}
                 </td>
-                <td className="px-6 py-3 text-sm text-gray-500 max-w-[200px] truncate">
+                <td className="px-4 py-2 text-sm text-gray-500 max-w-[200px] truncate" title={entry.description || ""}>
                   {entry.description || "-"}
                 </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-medium text-red-600">
-                  {entry.debit > 0 ? fmtAmount(entry.debit) : "-"}
-                </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm text-right font-medium text-green-600">
-                  {entry.credit > 0 ? fmtAmount(entry.credit) : "-"}
-                </td>
-                <td className={`px-6 py-3 whitespace-nowrap text-sm text-right font-bold ${
-                  entry.balance < 0 ? "text-red-600" : "text-gray-900"
-                }`}>
-                  {fmtAmount(entry.balance)}
-                </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm">
+                <td className="px-4 py-2 text-sm">
                   {isReversed ? (
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600">Reversed</span>
+                  ) : entry.paymentType || entry.paymentReference ? (
+                    <div className="flex flex-col gap-0.5">
+                      {entry.paymentType && <span className="font-medium text-gray-800">{entry.paymentType}</span>}
+                      {entry.paymentReference && <span className="text-xs text-indigo-600 font-mono">{entry.paymentReference}</span>}
+                    </div>
                   ) : entry.status ? (
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">{cap(entry.status)}</span>
-                  ) : "-"}
+                  ) : <span className="text-gray-300">—</span>}
                 </td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-red-600">
+                  {entry.debit > 0 ? fmtAmount(entry.debit) : <span className="text-gray-300">—</span>}
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-green-600">
+                  {entry.credit > 0 ? fmtAmount(entry.credit) : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={`px-4 py-2 whitespace-nowrap text-sm text-right font-bold ${entry.balance < 0 ? "text-red-600" : "text-gray-900"}`}>
+                  {fmtAmount(entry.balance)}
+                </td>
+                
               </tr>
             );
           })}
@@ -278,64 +331,20 @@ export default function LedgerPage() {
         onPageSizeChange={(n) => setPageSize(n)}
       />
 
-      {/* PDF Download Modal */}
-      {pdfModal && (
+      {/* Recalculate confirmation modal */}
+      {confirmRecalc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Download Ledger PDF</h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-                <input
-                  type="date"
-                  value={pdfFrom}
-                  onChange={(e) => setPdfFrom(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-                <input
-                  type="date"
-                  value={pdfTo}
-                  onChange={(e) => setPdfTo(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Party (optional)</label>
-                <select
-                  value={pdfPartyId}
-                  onChange={(e) => setPdfPartyId(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">All Parties</option>
-                  {(Array.isArray(customersData) ? customersData : []).map((c) => (
-                    <option key={getId(c)} value={getId(c)}>
-                      {c.companyName || c.customerName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setPdfModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDownloadPdf}
-                disabled={pdfLoading}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-60"
-              >
-                {pdfLoading ? "Generating..." : "Download PDF"}
-              </button>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+            <h3 className="text-base font-semibold text-gray-800 mb-2">Fix Ledger Balances</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              This will recalculate the running balance on all ledger entries and reset party counters to match.
+            </p>
+            <p className="text-sm text-orange-600 font-medium mb-4">
+              No data will be deleted. Only incorrect balance values will be patched.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmRecalc(false)} className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={handleRecalculate} className="px-4 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600">Yes, Fix Balances</button>
             </div>
           </div>
         </div>

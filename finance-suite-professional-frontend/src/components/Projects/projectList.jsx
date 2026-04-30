@@ -6,6 +6,7 @@ import { fetchAllProjects, addProject, updateProject, deleteProject, projectSele
 import { fetchCustomerData, customerSelector } from '../../ReduxApi/customer'
 import { authSelector } from '../../ReduxApi/auth'
 import { canWrite, canDelete, Module } from '../../utils/permissions'
+import { Pagination } from '../../shared/ui'
 
 const emptyForm = { projectName: '', projectOwner: '', owner_email: '', description: '' }
 
@@ -209,13 +210,12 @@ export default function ProjectList() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sl No</th>
-
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Project Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Owner</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Owner Email</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sl No</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Project Name</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Owner</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Owner Email</th>
+                  <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -230,14 +230,14 @@ export default function ProjectList() {
                       className="hover:bg-gray-50 transition-colors cursor-pointer"
                       onClick={() => setExpandedRow(prev => prev === i ? null : i)}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{i+1}</td>
-                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900 flex items-center gap-2">
+                      <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{i+1}</td>
+                      <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900 flex items-center gap-2">
                         {proj.projectName}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600 capitalize">{proj.customerName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-600 hidden md:table-cell">{proj.projectOwner}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-gray-500 hidden lg:table-cell">{proj.owner_email || '—'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-600 capitalize">{proj.customerName}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-600 hidden md:table-cell">{proj.projectOwner}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-500 hidden lg:table-cell">{proj.owner_email || '—'}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-3">
                           <button
                             onClick={(e) => { e.stopPropagation(); hasWrite && setModal({ mode: 'edit', customerId: proj.customerId, index: proj.projectIndex, project: proj }) }}
@@ -289,33 +289,14 @@ export default function ProjectList() {
           </div>
         </div>
 
-        {/* Pagination */}
-        {filtered.length > 0 && (
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
-            <p className="text-sm text-gray-600">
-              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filtered.length)} of {filtered.length} results
-            </p>
-            <div>
-              <select onChange={e => setPage(e.target.value)} className="bg-gray-200 text-sm px-2 py-2 rounded-sm w-44">
-                <option value={10}>All</option>
-                <option value={1}>One</option>
-                <option value={2}>Two</option>
-                <option value={3}>Three</option>
-              </select>
-            </div>
-            <div className="flex gap-1">
-              {[...Array(totalPages)].map((_, index) => (
-                <button
-                  key={index + 1}
-                  onClick={() => setCurrentPage(index + 1)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === index + 1 ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-100'}`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={itemsPerPage}
+          totalCount={filtered.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(n) => { setPage(n); setCurrentPage(1); }}
+        />
       </div>
 
       {modal && (

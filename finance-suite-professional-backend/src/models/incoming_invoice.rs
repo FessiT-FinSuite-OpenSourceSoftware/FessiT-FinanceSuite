@@ -107,8 +107,14 @@ pub struct IncomingInvoice {
     #[serde(default)]
     pub tds_applicable: bool,
 
-     #[serde(default)]
+    #[serde(default)]
     pub tds_total: String,
+
+    #[serde(default)]
+    pub payment_type: String,
+
+    #[serde(default)]
+    pub payment_reference: String,
 
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,

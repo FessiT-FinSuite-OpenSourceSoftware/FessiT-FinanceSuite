@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Plus } from "lucide-react";
 import { fetchSalaries, createSalary, updateSalary, deleteSalary, salarySelector } from "../../ReduxApi/salary";
 import { authSelector } from "../../ReduxApi/auth";
-import { StatCard, TabActionBar, FilterSelect, CreateButton, TableWrapper, TableHead, EmptyRow, StatusBadge, RowActions, Modal, FormField, inputCls } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, CreateButton, TableWrapper, TableHead, EmptyRow, StatusBadge, RowActions, Modal, FormField, inputCls, Pagination } from "../../shared/ui";
 
 const currentPeriod = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
 
@@ -23,6 +23,15 @@ const getId = (row) => row?._id?.$oid || row?.id || "";
 
 const fmt = (val) => Number(val || 0).toLocaleString("en-IN");
 
+const formatDate = (value) => {
+  if (!value) return "-";
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
+  } catch { return "-"; }
+};
+
 const COLUMNS = [
   { label: "Emp ID" },{ label: "Employee" },
   { label: "Period" },
@@ -41,7 +50,7 @@ export default function SalaryTab() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [statusPopup, setStatusPopup] = useState(null); // { id, status, paid_on }
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
 
   useEffect(() => { dispatch(fetchSalaries()); }, [dispatch]);
 
@@ -123,44 +132,33 @@ export default function SalaryTab() {
             <EmptyRow colSpan={10} />
           ) : paginated.map((r) => (
             <tr key={getId(r)} className="hover:bg-gray-50 transition-colors">
-               <td className="px-6 py-4 whitespace-nowrap text-gray-600">{r.emp_id}</td>
-              <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{r.emp_name}</td>
+               <td className="px-4 py-2 whitespace-nowrap text-gray-600">{r.emp_id}</td>
+              <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{r.emp_name}</td>
              
-              {/* <td className="px-6 py-4 whitespace-nowrap text-gray-600">{r.department}</td> */}
-              <td className="px-6 py-4 whitespace-nowrap text-gray-600">{r.period ? new Date(r.period + "-01").toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : "-"}</td>
-              {/* <td className="px-6 py-4 whitespace-nowrap text-gray-600">₹ {fmt(r.gross_salary)}</td> */}
-              {/* <td className="px-6 py-4 whitespace-nowrap text-red-600 font-medium">₹ {fmt(r.tds)}</td> */}
-              {/* <td className="px-6 py-4 whitespace-nowrap text-gray-600">₹ {fmt(r.reimbursement)}</td> */}
-              <td className="px-6 py-4 whitespace-nowrap font-semibold">₹ {fmt(r.net_salary)}</td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 py-2 whitespace-nowrap text-gray-600">{r.period ? new Date(r.period + "-01").toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : "-"}</td>
+              <td className="px-4 py-2 whitespace-nowrap font-semibold">₹ {fmt(r.net_salary)}</td>
+              <td className="px-4 py-2 whitespace-nowrap">
                 {(() => { const locked = r.status === "Paid" && !isAdmin; return (
                   <span onClick={() => !locked && setStatusPopup({ id: getId(r), status: r.status, paid_on: r.paid_on || "" })} className={`px-2 py-1 rounded-full text-xs font-medium transition-opacity ${statusColor(r.status)} ${!locked ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}>
                     <StatusBadge status={r.status} colorFn={statusColor} />
                   </span>
                 ); })()}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-gray-600">{r.paid_on || "-"}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-right"><RowActions onEdit={() => openEdit(r)} onDelete={() => handleDelete(getId(r))} /></td>
+              <td className="px-4 py-2 whitespace-nowrap text-gray-600">{r.paid_on ? formatDate(r.paid_on) : "-"}</td>
+              <td className="px-4 py-2 whitespace-nowrap text-right"><RowActions onEdit={() => openEdit(r)} onDelete={() => handleDelete(getId(r))} /></td>
             </tr>
           ))}
         </tbody>
       </TableWrapper>
 
-      {filtered.length > 0 && (
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center mt-0 rounded-b-lg">
-          <p className="text-sm text-gray-600">Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filtered.length)} of {filtered.length} results</p>
-          <select onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="bg-gray-200 text-sm px-2 py-2 rounded-sm">
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-          </select>
-          <div className="flex gap-1">
-            {[...Array(totalPages)].map((_, i) => (
-              <button key={i + 1} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === i + 1 ? "bg-blue-600 text-white" : "border border-gray-300 text-gray-700 hover:bg-gray-100"}`}>{i + 1}</button>
-            ))}
-          </div>
-        </div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalCount={filtered.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }}
+      />
 
       {modal && (
         <Modal title={modal.mode === "create" ? "Add Salary Entry" : "Edit Salary Record"} onClose={closeModal} onSave={handleSave}>

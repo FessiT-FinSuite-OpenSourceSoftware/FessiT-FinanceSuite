@@ -25,6 +25,10 @@ export const injectStore = (store) => {
 
 export const toastError = (error) => {
   if (_isLoggingOut || error?._isAuthError) return;
+  if (!navigator.onLine || error?.code === 'ERR_NETWORK') {
+    toast.error('No internet connection. Please check your network.');
+    return;
+  }
   const msg =
     error?.response?.data?.message ||
     (error?.response?.statusText ? `Failed: ${error.response.statusText}` : null) ||
@@ -88,6 +92,10 @@ const processQueue = (error, token = null) => {
 
 axiosInstance.interceptors.request.use(
   (config) => {
+    if (!navigator.onLine) {
+      toast.error('No internet connection. Please check your network.');
+      return Promise.reject(Object.assign(new Error('No internet connection'), { code: 'ERR_NETWORK' }));
+    }
     const token = localStorage.getItem("token");
 
     // Proactive check before every request

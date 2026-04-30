@@ -148,6 +148,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .wrap(Logger::default())
             .app_data(web::Data::new(customer_service.clone()))
+            .app_data(web::Data::new(customer_repository.clone()))
             .app_data(web::Data::new(organisation_service.clone()))
             .app_data(web::Data::new(invoice_service.clone()))
             .app_data(web::Data::new(expense_service.clone()))

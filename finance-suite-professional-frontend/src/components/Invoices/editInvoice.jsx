@@ -282,7 +282,7 @@ export default function EditInvoice() {
     const { name, value } = e.target;
 
     // Prevent changes to disabled fields
-    const disabledFields = ['company_name', 'gstIN', 'company_address', 'company_email', 'invoice_number'];
+    const disabledFields = ['company_name', 'gstIN', 'company_address', 'company_email'];
     if (disabledFields.includes(name)) {
       return;
     }
@@ -482,14 +482,14 @@ export default function EditInvoice() {
       newErrors.invoice_number = "Invoice number is required";
     if (!invoiceData?.invoice_date?.trim())
       newErrors.invoice_date = "Invoice date is required";
-    if (!invoiceData?.invoice_dueDate?.trim())
-      newErrors.invoice_dueDate = "Invoice due date is required";
-    if (!invoiceData?.po_number?.trim())
-      newErrors.po_number = "P.O. No is required";
-    if (!invoiceData?.po_date?.trim())
-      newErrors.po_date = "P.O. Date is required";
-    if (!invoiceData?.place_of_supply?.trim())
-      newErrors.place_of_supply = "Place of supply is required";
+    // if (!invoiceData?.invoice_dueDate?.trim())
+    //   newErrors.invoice_dueDate = "Invoice due date is required";
+    // if (!invoiceData?.po_number?.trim())
+    //   newErrors.po_number = "P.O. No is required";
+    // if (!invoiceData?.po_date?.trim())
+    //   newErrors.po_date = "P.O. Date is required";
+    // if (!invoiceData?.place_of_supply?.trim())
+    //   newErrors.place_of_supply = "Place of supply is required";
     if (!invoiceData?.billcustomer_name?.trim())
       newErrors.billcustomer_name = "Customer name is required";
     if (!invoiceData?.billcustomer_address?.trim())
@@ -819,12 +819,10 @@ export default function EditInvoice() {
                   <input
                     type="text"
                     placeholder="Enter invoice number"
-                    className="border border-gray-300 rounded px-3 
-                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
+                    className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
                     value={invoiceData.invoice_number}
                     name="invoice_number"
                     onChange={handleChange}
-                    disabled
                   />
                   {inputErrors?.invoice_number && (
                     <p className="absolute text-[13px]  text-[#f10404]">
@@ -1442,6 +1440,21 @@ export default function EditInvoice() {
                       );
                     }
                   })()}
+
+                  <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
+                    <span>Total Tax</span>
+                    <input
+                      type="text"
+                      className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-semibold text-orange-600"
+                      value={formatNumber(
+                        (parseFloat(invoiceData.totalcgst) || 0) +
+                        (parseFloat(invoiceData.totalsgst) || 0) +
+                        (parseFloat(invoiceData.totaligst) || 0),
+                        invoiceData.currency_type
+                      )}
+                      disabled
+                    />
+                  </div>
 
                   <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
                     <span>Total</span>

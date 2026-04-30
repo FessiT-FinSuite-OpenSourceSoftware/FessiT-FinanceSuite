@@ -271,7 +271,7 @@ export default function TDSCompliance() {
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`px-5 py-2 text-sm font-medium transition-colors ${activeTab === t.key
+                className={`px-5 py-2 text-md font-medium transition-colors ${activeTab === t.key
                     ? "border-b-2 border-blue-600 text-blue-600"
                     : "text-gray-500 hover:text-gray-700"
                   }`}

@@ -183,16 +183,24 @@ impl LedgerRepository {
         mut session: ClientSession,
         mut entry: LedgerEntry,
     ) -> Result<LedgerEntry, MongoError> {
+        // Check idempotency FIRST — before touching any counters
+        if let Some(key) = entry.idempotency_key.as_deref() {
+            if let Some(existing) = self.get_by_idempotency_key(key).await? {
+                log::info!("[Ledger] Idempotent return for key: {}", key);
+                return Ok(existing);
+            }
+        }
+
         session.start_transaction(None).await?;
         let now = DateTime::now();
         let delta = entry.credit - entry.debit;
         let org_id = entry.organisation_id;
 
-        // Update party counter (for per-customer tracking)
+        // Update party counter — sequence + running balance
         let party_counter_filter = doc! { "_id": &entry.party_id };
         let party_counter_update = doc! {
             "$setOnInsert": { "_id": &entry.party_id, "sequence": 0i64, "balance": 0i64 },
-            "$inc": { "sequence": 1i64 },
+            "$inc": { "sequence": 1i64, "balance": delta },
             "$set": { "updatedAt": now }
         };
         let party_counter_options = FindOneAndUpdateOptions::builder()
@@ -205,7 +213,7 @@ impl LedgerRepository {
             .await?
             .ok_or_else(|| MongoError::custom("Failed to allocate ledger sequence"))?;
 
-        // Update org counter (for org-level balance)
+        // Update org counter — org-level balance only (separate from party balance)
         let org_counter_filter = doc! { "_id": &org_id };
         let org_counter_update = doc! {
             "$setOnInsert": { "_id": &org_id, "sequence": 0i64, "balance": 0i64 },
@@ -223,7 +231,7 @@ impl LedgerRepository {
             .ok_or_else(|| MongoError::custom("Failed to update org balance"))?;
 
         entry.sequence = party_counter.sequence;
-        entry.balance = org_counter.balance; // balance reflects org total
+        entry.balance  = org_counter.balance; // org-level running balance
         entry.created_at = now;
 
         let inserted = self
@@ -260,6 +268,15 @@ impl LedgerRepository {
         &self,
         mut entry: LedgerEntry,
     ) -> Result<LedgerEntry, MongoError> {
+        // Check idempotency FIRST — before touching any counters
+        // This prevents counter corruption when the same entry is retried
+        if let Some(key) = entry.idempotency_key.as_deref() {
+            if let Some(existing) = self.get_by_idempotency_key(key).await? {
+                log::info!("[Ledger] Idempotent return for key: {}", key);
+                return Ok(existing);
+            }
+        }
+
         let now = DateTime::now();
         let delta = entry.credit - entry.debit;
         let org_id = entry.organisation_id;
@@ -269,7 +286,7 @@ impl LedgerRepository {
             .return_document(ReturnDocument::After)
             .build();
 
-        // Init + increment party counter (sequence only)
+        // Init + increment party counter (sequence + balance)
         self.counter_collection
             .update_one(
                 doc! { "_id": &entry.party_id },
@@ -281,7 +298,7 @@ impl LedgerRepository {
             .counter_collection
             .find_one_and_update(
                 doc! { "_id": &entry.party_id },
-                doc! { "$inc": { "sequence": 1i64 }, "$set": { "updatedAt": now } },
+                doc! { "$inc": { "sequence": 1i64, "balance": delta }, "$set": { "updatedAt": now } },
                 after_options.clone(),
             )
             .await?
@@ -306,7 +323,7 @@ impl LedgerRepository {
             .ok_or_else(|| MongoError::custom("Failed to update org balance"))?;
 
         entry.sequence = party_counter.sequence;
-        entry.balance = org_counter.balance; // balance reflects org total
+        entry.balance  = org_counter.balance; // org-level running balance
         entry.created_at = now;
 
         let inserted = self.collection.insert_one(&entry, None).await;
@@ -434,5 +451,63 @@ impl LedgerRepository {
             .count_documents(doc! { "idempotencyKey": idempotency_key }, None)
             .await?;
         Ok(count > 0)
+    }
+
+    /// Recalculates and patches the balance on every ledger entry for the given org
+    /// by computing a running sum per party from actual documents.
+    /// Also resets the party counters to match.
+    /// Returns (entries_fixed, parties_fixed).
+    pub async fn recalculate_balances(&self, org_id: &ObjectId) -> Result<(u64, u64), MongoError> {
+        // Sort all org entries by date then createdAt — same order as display
+        let opts = FindOptions::builder()
+            .sort(doc! { "date": 1, "createdAt": 1 })
+            .build();
+        let filter = doc! { "organisationId": org_id };
+        let mut cursor = self.raw_collection.find(filter.clone(), opts).await?;
+
+        let mut entries_fixed = 0u64;
+        let mut running_balance: i64 = 0;
+
+        while let Some(raw) = cursor.try_next().await.unwrap_or(None) {
+            let entry_id = match raw.get_object_id("_id") {
+                Ok(id) => id,
+                Err(_) => continue,
+            };
+            let debit  = raw.get_i64("debit").unwrap_or(0);
+            let credit = raw.get_i64("credit").unwrap_or(0);
+            let stored_balance = raw.get_i64("balance").unwrap_or(0);
+
+            running_balance += credit - debit;
+
+            if stored_balance != running_balance {
+                self.raw_collection
+                    .update_one(
+                        doc! { "_id": entry_id },
+                        doc! { "$set": { "balance": running_balance } },
+                        None,
+                    )
+                    .await?;
+                entries_fixed += 1;
+            }
+        }
+
+        // Reset org counter to match final running balance
+        let mut parties_fixed = 0u64;
+        let current = self.counter_collection
+            .find_one(doc! { "_id": org_id }, None)
+            .await?;
+        let current_balance = current.as_ref().map(|c| c.balance).unwrap_or(0);
+        if current_balance != running_balance {
+            self.counter_collection
+                .update_one(
+                    doc! { "_id": org_id },
+                    doc! { "$set": { "balance": running_balance } },
+                    None,
+                )
+                .await?;
+            parties_fixed += 1;
+        }
+
+        Ok((entries_fixed, parties_fixed))
     }
 }

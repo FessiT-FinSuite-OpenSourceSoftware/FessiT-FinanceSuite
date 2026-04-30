@@ -90,7 +90,7 @@ export default function ExpenseList() {
   const [searchTerm,    setSearchTerm]    = useState("");
   const [projectFilter, setProjectFilter] = useState("All");
   const [currentPage,   setCurrentPage]   = useState(1);
-  const [pageSize,      setPageSize]      = useState(10);
+  const [pageSize,      setPageSize]      = useState(5);
   const [projects,      setProjects]      = useState([]);
   const [statusPopup,   setStatusPopup]   = useState(null);
 
@@ -142,7 +142,7 @@ export default function ExpenseList() {
       <div className="flex border-b border-gray-200 mb-6">
         {TABS.map((t) => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
-            className={`px-5 py-2 text-sm font-medium transition-colors ${activeTab === t.key ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
+            className={`px-5 py-2 text-md font-medium transition-colors ${activeTab === t.key ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
             {t.label}
           </button>
         ))}
@@ -183,11 +183,11 @@ export default function ExpenseList() {
                 const locked = (expense.status || "").toUpperCase() === "REIMBURSED" && !isAdmin;
                 return (
                   <tr key={id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-blue-600 font-medium cursor-pointer" onClick={() => nav(`/expenses/editExpense/${id}`)}>{expense.expense_title || "-"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">{expense.project_cost_center || "-"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">{formatDate(firstItem?.expense_date || expense.created_at)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap font-semibold">{firstItem?.currency || "INR"} {Number(expense.total_amount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
-                    <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                    <td className="px-4 py-2 whitespace-nowrap text-blue-600 font-medium cursor-pointer" onClick={() => nav(`/expenses/editExpense/${id}`)}>{expense.expense_title || "-"}</td>
+                    <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">{expense.project_cost_center || "-"}</td>
+                    <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">{formatDate(firstItem?.expense_date || expense.created_at)}</td>
+                    <td className="px-4 py-2 whitespace-nowrap font-semibold">{firstItem?.currency || "INR"} {Number(expense.total_amount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">
                       <span
                         onClick={() => !locked && hasWrite && setStatusPopup({ id, status: expense.status || "DRAFT", reimbursedAt: toInputDate(expense.reimbursed_at) })}
                         className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(expense.status)} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
@@ -195,7 +195,7 @@ export default function ExpenseList() {
                         {expense.status || "DRAFT"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="px-4 py-2 whitespace-nowrap text-right">
                       <RowActions
                         onEdit={() => hasWrite && nav(`/expenses/editExpense/${id}`)}
                         onDelete={() => hasDelete && handleDelete(id)}

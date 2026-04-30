@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 import { fetchGeneralExpenses, createGeneralExpense, updateGeneralExpense, deleteGeneralExpense, uploadGeneralExpenseFile, generalExpenseSelector } from "../../ReduxApi/generalExpense";
 import { authSelector } from "../../ReduxApi/auth";
-import { StatCard, TabActionBar, FilterSelect, CreateButton, TableWrapper, TableHead, EmptyRow, RowActions, Modal, FormField, inputCls } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, CreateButton, TableWrapper, TableHead, EmptyRow, RowActions, Modal, FormField, inputCls, Pagination } from "../../shared/ui";
 import axiosInstance from "../../utils/axiosInstance";
 import { KeyUri } from "../../shared/key";
 import { toast } from "react-toastify";
@@ -17,6 +17,15 @@ const CATEGORIES = ["Supplies", "Meals", "Software", "Travel", "Utilities", "Oth
 const empty = () => ({ title: "", category: "Supplies", date: "", amount: "", cgstPct: "", sgstPct: "", igstPct: "", paid_by: "", billed_to: "", status: "Pending", approved_date: "", document: "", cost_type: "indirect" });
 
 const formatDateForApi = (dateStr) => dateStr || "";
+
+const formatDate = (value) => {
+  if (!value) return "-";
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
+  } catch { return "-"; }
+};
 
 
 
@@ -52,7 +61,7 @@ export default function OthersTab() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewMime, setPreviewMime] = useState("");
   const [showPreview, setShowPreview] = useState(false);
@@ -253,15 +262,12 @@ export default function OthersTab() {
                 const locked = r.status === "Approved" && !isAdmin;
                 return (
                   <tr key={id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{r.title}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">{r.category}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">{r.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap font-semibold">₹ {(parseFloat(r.amount) || 0).toLocaleString("en-IN")}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">₹ {(parseFloat(r.tax_amount) || 0).toLocaleString("en-IN")}</td>
-                    {/* <td className="px-6 py-4 whitespace-nowrap font-semibold text-blue-700">₹ {(parseFloat(r.subTotal) || 0).toLocaleString("en-IN")}</td> */}
-                    {/* <td className="px-6 py-4 whitespace-nowrap text-gray-600">{r.paid_by}</td> */}
-                    {/* <td className="px-6 py-4 whitespace-nowrap text-gray-600">{r.billed_to || "—"}</td> */}
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{r.title}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-600">{r.category}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-600">{formatDate(r.date)}</td>
+                    <td className="px-4 py-2 whitespace-nowrap font-semibold">₹ {(parseFloat(r.amount) || 0).toLocaleString("en-IN")}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-600">₹ {(parseFloat(r.tax_amount) || 0).toLocaleString("en-IN")}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {(() => {
                         const locked = r.status === "Approved" && !isAdmin;
                         return (
@@ -274,8 +280,8 @@ export default function OthersTab() {
                         );
                       })()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">{r.approved_date || "—"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-600">{r.approved_date ? formatDate(r.approved_date) : "—"}</td>
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {r.document ? (
                         <div className="flex items-center justify-end gap-2">
                           <button
@@ -297,7 +303,7 @@ export default function OthersTab() {
                         <span className="text-gray-400 text-xs flex justify-end">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="px-4 py-2 whitespace-nowrap text-right">
                       <RowActions
                         onEdit={() => !locked && openEdit(r)}
                         onDelete={() => handleDelete(id)}
@@ -310,24 +316,14 @@ export default function OthersTab() {
         </tbody>
       </TableWrapper>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between mt-4 px-1">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <span>Rows per page:</span>
-          <select
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
-            value={pageSize}
-            onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-          >
-            {[10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <span>{filtered.length === 0 ? "0" : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filtered.length)}`} of {filtered.length}</span>
-          <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40">‹</button>
-          <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-2 py-1 rounded border border-gray-300 disabled:opacity-40">›</button>
-        </div>
-      </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalCount={filtered.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }}
+      />
 
       {statusPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

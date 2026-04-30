@@ -32,6 +32,7 @@ const Users = lazy(() => import("./components/User"));
 const Items = lazy(() => import("./components/Items"));
 const Estimates = lazy(() => import("./components/Estimates"));
 const Ledger    = lazy(() => import("./components/Ledger"));
+const ProfitLoss = lazy(() => import("./components/ProfitLoss"));
 const EditUser = lazy(() => import("./components/User/EditUser"));
 const AddUser = lazy(() => import("./components/User/UserCreation"));
 const ExpensesList = lazy(() => import("./components/Expenses/expenseList"));
@@ -186,6 +187,7 @@ export default function App() {
               <Route path="/items" element={<ProtectedRoute user={user} module={Module.Products}><Items /></ProtectedRoute>} />
               <Route path="/estimates" element={<ProtectedRoute user={user} module={Module.Invoice}><Estimates /></ProtectedRoute>} />
               <Route path="/ledger" element={<ProtectedRoute user={user} module={Module.Invoice}><Ledger /></ProtectedRoute>} />
+              <Route path="/profit-loss" element={<ProtectedRoute user={user} module={Module.Invoice}><ProfitLoss /></ProtectedRoute>} />
               <Route path="/estimates/create" element={<ProtectedRoute user={user} module={Module.Invoice}><AddEstimate /></ProtectedRoute>} />
               <Route path="/estimates/edit/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditEstimate /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute user={user} module={Module.Users}><Users /></ProtectedRoute>} />

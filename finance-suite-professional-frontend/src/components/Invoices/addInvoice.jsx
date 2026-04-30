@@ -448,7 +448,7 @@ export default function AddInvoice() {
     const { name, value } = e.target;
 
     // Prevent editing of auto-populated fields
-    const autoPopulatedFields = ['company_name', 'gstIN', 'company_address', 'company_phone', 'company_email', 'invoice_number'];
+    const autoPopulatedFields = ['company_name', 'gstIN', 'company_address', 'company_phone', 'company_email'];
     if (autoPopulatedFields.includes(name)) {
       return; // Don't allow changes to these fields
     }
@@ -931,11 +931,10 @@ export default function AddInvoice() {
               <input
                 type="text"
                 placeholder="Enter invoice number"
-                className="border border-gray-300 rounded px-3 py-2  bg-gray-50 cursor-not-allowed w-full text-sm text-gray-700 placeholder:text-gray-400"
+                className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
                 value={invoiceData.invoice_number}
                 name="invoice_number"
                 onChange={handleChange}
-                disabled
               />
               {inputErrors?.invoice_number && (
                 <p className="absolute text-[13px] text-[#f10404]">
@@ -1706,6 +1705,21 @@ export default function AddInvoice() {
               })()}
 
               <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
+                    <span>Total Tax</span>
+                    <input
+                      type="text"
+                      className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-semibold text-orange-600"
+                      value={formatNumber(
+                        (parseFloat(invoiceData.totalcgst) || 0) +
+                        (parseFloat(invoiceData.totalsgst) || 0) +
+                        (parseFloat(invoiceData.totaligst) || 0),
+                        invoiceData.currency_type
+                      )}
+                      disabled
+                    />
+                  </div>
+
+                  <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
                 <span>Total</span>
                 <input
                   type="text"

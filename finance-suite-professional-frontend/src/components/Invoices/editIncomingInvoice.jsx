@@ -322,6 +322,26 @@ export default function EditIncomingInvoice() {
                 <option value="Overdue">Overdue</option>
               </select>
             </div>
+            {form.status === "Paid" && (
+              <>
+                <div className="relative">
+                  <label className={labelCls}>Payment Type</label>
+                  <select className={inputCls} value={form.payment_type || ""} onChange={(e) => setField("payment_type", e.target.value)}>
+                    <option value="">Select</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Card">Card</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="relative">
+                  <label className={labelCls}>Payment Reference</label>
+                  <input className={inputCls} value={form.payment_reference || ""} onChange={(e) => setField("payment_reference", e.target.value)} placeholder="UTR / Cheque No / Ref No" />
+                </div>
+              </>
+            )}
           </div>
         </div>
 

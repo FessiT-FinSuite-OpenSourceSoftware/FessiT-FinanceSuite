@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, IndianRupee } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import { updateIncomingInvoice, deleteIncomingInvoice, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
-import { StatCard, TabActionBar, FilterSelect, TableWrapper, TableHead, EmptyRow, StatusBadge, RowActions } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, TableWrapper, EmptyRow, StatusBadge, RowActions, Pagination } from "../../shared/ui";
 
 const getIncomingId = (inv) => {
   if (typeof inv.id === "string") return inv.id;
@@ -32,13 +33,14 @@ const statusColor = (s) => {
   return "bg-yellow-100 text-yellow-800";
 };
 
-const COLUMNS = [
-  { label: "Invoice No" }, { label: "Company" },
-  { label: "Date", hidden: true }, { label: "Due Date", hidden: true },
-  { label: "Amount" }, { label: "TDS" }, { label: "Status" }, { label: "Actions", right: true },
-];
-
-const ITEMS_PER_PAGE = 10;
+const formatDate = (value) => {
+  if (!value) return "-";
+  try {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
+  } catch { return "-"; }
+};
 
 export default function IncomingInvoicesTab() {
   const nav = useNavigate();
@@ -54,13 +56,15 @@ export default function IncomingInvoicesTab() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
-  const [statusPopup, setStatusPopup] = useState(null); // { id, status, paidDate }
+  const [statusPopup, setStatusPopup] = useState(null);
+  const [paymentDetail, setPaymentDetail] = useState(null); // bill object
 
   const handleStatusSave = () => {
-    if (statusPopup.status === "Paid" && !statusPopup.paidDate) {
-      toast.error("Please select a paid date");
-      return;
+    if (statusPopup.status === "Paid") {
+      if (!statusPopup.paidDate) { toast.error("Please select a paid date"); return; }
+      if (!statusPopup.paymentType) { toast.error("Payment type is required"); return; }
     }
     const bill = invoices.find((b) => getIncomingId(b) === statusPopup.id);
     if (!bill) return;
@@ -68,6 +72,8 @@ export default function IncomingInvoicesTab() {
       ...bill,
       status: statusPopup.status,
       paid_date: statusPopup.status === "Paid" ? statusPopup.paidDate : bill.paid_date,
+      payment_type: statusPopup.status === "Paid" ? statusPopup.paymentType : bill.payment_type,
+      payment_reference: statusPopup.status === "Paid" ? statusPopup.paymentReference : bill.payment_reference,
     }));
     setStatusPopup(null);
   };
@@ -80,9 +86,9 @@ export default function IncomingInvoicesTab() {
     return matchSearch && matchStatus;
   });
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
-  const start = (page - 1) * ITEMS_PER_PAGE;
-  const current = filtered.slice(start, start + ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const start = (page - 1) * pageSize;
+  const current = filtered.slice(start, start + pageSize);
   const totalAmount = invoices.reduce((s, b) => s + Number(b.total || 0), 0);
   const totalTds = invoices.filter(b => b.tds_applicable).reduce((s, b) => s + Number(b.tds_total || 0), 0);
 
@@ -127,7 +133,19 @@ export default function IncomingInvoicesTab() {
       </div>
 
       <TableWrapper>
-        <TableHead columns={COLUMNS} />
+        <thead className="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Invoice No</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Invoice Date</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Due Date</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount (INR)</th>
+            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">TDS (INR)</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Paid Date</th>
+            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
         <tbody className="divide-y divide-gray-200">
           {isLoading ? (
             <EmptyRow colSpan={8} message="Loading..." />
@@ -137,28 +155,42 @@ export default function IncomingInvoicesTab() {
             const bid = getIncomingId(bill);
             return (
               <tr key={bid || bill.invoice_number} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap font-medium text-blue-600 cursor-pointer" onClick={() => bid && nav(`/expenses/editIncomingInvoice/${bid}`)}>{bill.invoice_number}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{bill.vendor_name}</td>
-                <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">{bill.invoice_date}</td>
-                <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">{bill.due_date}</td>
-                <td className="px-6 py-4 whitespace-nowrap font-semibold">{bill.currency_type} {Number(bill.total || 0).toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-red-600 text-sm">
-                  {bill.tds_applicable ? `${bill.currency_type} ${Number(bill.tds_total || 0).toLocaleString()}` : "—"}
+                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-blue-600 cursor-pointer" onClick={() => bid && nav(`/expenses/editIncomingInvoice/${bid}`)}>{bill.invoice_number}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{bill.vendor_name}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-600 hidden lg:table-cell">{formatDate(bill.invoice_date)}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-600 hidden lg:table-cell">{formatDate(bill.due_date)}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm font-semibold text-gray-800 text-center">{(bill.total)}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-red-600 text-center">
+                  {bill.tds_applicable ? ` ${Number(bill.tds_total || 0).toLocaleString()}` : "—"}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-2 whitespace-nowrap">
                   {(() => { const locked = bill.status === "Paid" && !isAdmin; return (
-                    <span onClick={() => !locked && hasWrite && setStatusPopup({ id: bid, status: bill.status || "Unpaid", paidDate: bill.paid_date || "" })} className={`${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}>
+                    <span onClick={() => !locked && hasWrite && setStatusPopup({ id: bid, status: bill.status || "Unpaid", paidDate: bill.paid_date || "", paymentType: bill.payment_type || "", paymentReference: bill.payment_reference || "" })} className={`${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}>
                       <StatusBadge status={bill.status === "Unpaid" ? "Not Yet Paid" : (bill.status || "Not Yet Paid")} colorFn={statusColor} />
                     </span>
                   ); })()}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <RowActions
-                    onEdit={() => bid && nav(`/expenses/editIncomingInvoice/${bid}`)}
-                    onDelete={() => bid && handleDelete(bid)}
-                    canEdit={hasWrite}
-                    canDelete={hasDelete}
-                  />
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                  {bill.status === "Paid" && bill.paid_date ? formatDate(bill.paid_date) : "—"}
+                </td>
+                <td className="px-4 py-2 whitespace-nowrap text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {bill.status === "Paid" && (
+                      <button
+                        onClick={() => setPaymentDetail(bill)}
+                        title="Payment Details"
+                        className="text hover:text-green-800 transition-colors"
+                      >
+                        <IndianRupee className="w-4 h-4" />
+                      </button>
+                    )}
+                    <RowActions
+                      onEdit={() => bid && nav(`/expenses/editIncomingInvoice/${bid}`)}
+                      onDelete={() => bid && handleDelete(bid)}
+                      canEdit={hasWrite}
+                      canDelete={hasDelete}
+                    />
+                  </div>
                 </td>
               </tr>
             );
@@ -180,17 +212,41 @@ export default function IncomingInvoicesTab() {
               <option value="Overdue">Overdue</option>
             </select>
             {statusPopup.status === "Paid" && (
-              <div className="mt-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Paid Date *</label>
-                <input
-                  type="date"
-                  value={statusPopup.paidDate || ""}
-                  readOnly={!!statusPopup.paidDate && statusPopup.status === "Paid"}
-                  onChange={(e) => setStatusPopup((p) => ({ ...p, paidDate: e.target.value }))}
-                  className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    statusPopup.paidDate ? "bg-gray-50 text-gray-600" : ""
-                  }`}
-                />
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Paid Date *</label>
+                  <input
+                    type="date"
+                    value={statusPopup.paidDate || ""}
+                    onChange={(e) => setStatusPopup((p) => ({ ...p, paidDate: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Payment Type *</label>
+                  <select
+                    value={statusPopup.paymentType || ""}
+                    onChange={(e) => setStatusPopup((p) => ({ ...p, paymentType: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select payment type</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="NEFT/RTGS">NEFT/RTGS</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Payment Reference</label>
+                  <input
+                    type="text"
+                    placeholder="UTR / Cheque no. / Transaction ID"
+                    value={statusPopup.paymentReference || ""}
+                    onChange={(e) => setStatusPopup((p) => ({ ...p, paymentReference: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             )}
             <div className="flex justify-end gap-2 mt-5">
@@ -201,16 +257,67 @@ export default function IncomingInvoicesTab() {
         </div>
       )}
 
-      {filtered.length > 0 && (
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between items-center mt-0 rounded-b-lg">
-          <p className="text-sm text-gray-600">Showing {start + 1} to {Math.min(start + ITEMS_PER_PAGE, filtered.length)} of {filtered.length} results</p>
-          <div className="flex gap-1">
-            {[...Array(totalPages)].map((_, i) => (
-              <button key={i + 1} onClick={() => setPage(i + 1)} className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${page === i + 1 ? "bg-blue-600 text-white" : "border border-gray-300 text-gray-700 hover:bg-gray-100"}`}>{i + 1}</button>
-            ))}
+      {paymentDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-80">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-gray-800">Payment Details</h3>
+              <button onClick={() => setPaymentDetail(null)} className="text-gray-400 hover:text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Invoice No</span>
+                <span className="font-medium text-gray-800">{paymentDetail.invoice_number || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Vendor</span>
+                <span className="font-medium text-gray-800">{paymentDetail.vendor_name || "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Total Amount</span>
+                <span className="font-semibold text-gray-900">₹ {Number(paymentDetail.total || 0).toLocaleString("en-IN")}</span>
+              </div>
+              {paymentDetail.tds_applicable && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">TDS Deducted</span>
+                  <span className="font-medium text-red-600">₹ {Number(paymentDetail.tds_total || 0).toLocaleString("en-IN")}</span>
+                </div>
+              )}
+              <div className="border-t border-gray-100 pt-3 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Paid Date</span>
+                  <span className="font-medium text-gray-800">{formatDate(paymentDetail.paid_date)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Payment Type</span>
+                  <span className="font-medium text-gray-800">{paymentDetail.payment_type || "—"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Reference</span>
+                  <span className="font-medium text-indigo-600 font-mono text-xs">{paymentDetail.payment_reference || "—"}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setPaymentDetail(null)}
+              className="mt-5 w-full px-4 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
+
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalCount={filtered.length}
+        onPageChange={setPage}
+        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+      />
     </div>
   );
 }

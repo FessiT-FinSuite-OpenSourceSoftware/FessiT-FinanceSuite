@@ -328,11 +328,12 @@ impl LedgerService {
         org_id: &ObjectId,
         payment_date: DateTime,
         created_by: Option<&ObjectId>,
+        payment_type: Option<&str>,
+        payment_reference: Option<&str>,
     ) -> anyhow::Result<LedgerEntry> {
         let amount_paise = Self::to_smallest_unit(amount)?;
         let now = DateTime::now();
 
-        // Use vendor_id directly if present, else try name-match, else fall back to org_id
         let party_id = if let Some(vid) = vendor_id {
             *vid
         } else {
@@ -358,8 +359,8 @@ impl LedgerService {
             credit: 0,
             balance: 0,
             payment_method: None,
-            payment_type: None,
-            payment_reference: None,
+            payment_type: payment_type.map(|v| v.to_string()),
+            payment_reference: payment_reference.map(|v| v.to_string()),
             status: Some("cleared".to_string()),
             created_by: created_by.copied(),
             is_reversed: Some(false),
@@ -377,6 +378,10 @@ impl LedgerService {
         }
 
         Ok(recorded_entry)
+    }
+
+    pub async fn recalculate_balances(&self, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<(u64, u64)> {
+        Ok(self.repo.recalculate_balances(org_id).await?)
     }
 
     pub async fn query(

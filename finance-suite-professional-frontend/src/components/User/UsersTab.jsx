@@ -85,10 +85,10 @@ export default function UsersTab() {
         <tbody className="divide-y divide-gray-200">
           {currentUsers.length > 0 ? currentUsers.map((u) => (
             <tr key={u?._id?.$oid} className="hover:bg-gray-50 transition-colors">
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${u?.is_admin ? "bg-purple-100" : "bg-indigo-100"}`}>
-                    {u?.is_admin ? <Shield className="w-6 h-6 text-purple-600" /> : <UserCircle className="w-6 h-6 text-indigo-600" />}
+              <td className="px-4 py-2 whitespace-nowrap">
+                <div className="flex items-center gap-2">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${u?.is_admin ? "bg-purple-100" : "bg-indigo-100"}`}>
+                    {u?.is_admin ? <Shield className="w-4 h-4 text-purple-600" /> : <UserCircle className="w-4 h-4 text-indigo-600" />}
                   </div>
                   <div>
                     <p className="font-medium text-gray-900 capitalize">{u?.name}</p>
@@ -96,25 +96,25 @@ export default function UsersTab() {
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-gray-600">{u?.email}</td>
-              <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+              <td className="px-4 py-2 whitespace-nowrap text-gray-600">{u?.email}</td>
+              <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">
                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full capitalize ${getRoleColor(u?.role)}`}>{u?.role || "N/A"}</span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+              <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">
                 <div className="flex gap-1 flex-wrap">
-                  {u?.permissions?.organisation?.read && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">Org</span>}
-                  {u?.permissions?.invoice?.read      && <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded">Invoice</span>}
-                  {u?.permissions?.expenses?.read     && <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded">Expenses</span>}
-                  {u?.permissions?.users?.read        && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded">Users</span>}
-                  {u?.is_admin                        && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded">Super Admin</span>}
+                  {u?.permissions?.organisation?.read && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">Org</span>}
+                  {u?.permissions?.invoice?.read      && <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded">Invoice</span>}
+                  {u?.permissions?.expenses?.read     && <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded">Expenses</span>}
+                  {u?.permissions?.users?.read        && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded">Users</span>}
+                  {u?.is_admin                        && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded">Super Admin</span>}
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 py-2 whitespace-nowrap">
                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${u?.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                   {u?.is_active ? "Active" : "Inactive"}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right">
+              <td className="px-4 py-2 whitespace-nowrap text-right">
                 <div className="flex items-center justify-end gap-3">
                   <button onClick={() => hasWrite && nav(`/users/editUser/${u?._id?.$oid}`)} disabled={!hasWrite} className={`transition-colors ${hasWrite ? "text-gray-600 hover:text-green-600" : "text-gray-300 cursor-not-allowed"}`}><Edit2 className="w-4 h-4" /></button>
                   <div className="relative">
