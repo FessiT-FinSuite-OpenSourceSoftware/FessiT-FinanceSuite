@@ -64,9 +64,9 @@ export function CreateButton({ onClick, label = "Create", icon: Icon }) {
 }
 
 // ── Table Wrapper ─────────────────────────────────────────────────────────────
-export function TableWrapper({ children }) {
+export function TableWrapper({ children, className }) {
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className={className || "bg-white rounded-lg shadow-sm overflow-hidden"}>
       <div className="overflow-x-auto">
         <table className="w-full">{children}</table>
       </div>
@@ -178,6 +178,97 @@ export function TruncatedCell({ text, maxWidth = "max-w-[180px]", className = ""
 
 // ── Shared input class ────────────────────────────────────────────────────────
 export const inputCls = "border border-gray-300 rounded px-3 py-2 w-full text-sm";
+
+// ── Confirm Delete Modal ─────────────────────────────────────────────────────
+export function ConfirmModal({ title = "Confirm Delete", message, onConfirm, onClose, confirmLabel = "Delete", confirmClass = "bg-red-600 hover:bg-red-700" }) {
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-xl p-6 w-96">
+        <h3 className="text-base font-semibold text-gray-800 mb-3">{title}</h3>
+        <p className="text-sm text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+          <button onClick={onConfirm} className={`px-4 py-2 text-sm rounded-lg text-white ${confirmClass}`}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ── Info Card (expandable row detail) ────────────────────────────────────────
+export function InfoCard({ label, value, className = "", valueClassName = "" }) {
+  return (
+    <div className={`rounded-xl border border-slate-200 bg-white p-3 ${className}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className={`mt-1 text-sm font-semibold text-slate-800 ${valueClassName}`}>{value || "-"}</p>
+    </div>
+  );
+}
+
+// ── Form Field (input) ────────────────────────────────────────────────────────
+export function Field({ label, name, value, onChange, placeholder, type = "text", readOnly = false }) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
+      <input
+        type={type} name={name} value={value} onChange={onChange}
+        placeholder={placeholder} readOnly={readOnly}
+        className={`w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 ${
+          readOnly ? "cursor-not-allowed bg-slate-100 text-slate-500 focus:ring-0" : ""
+        }`}
+      />
+    </div>
+  );
+}
+
+// ── Data Table ───────────────────────────────────────────────────────────────
+// columns: [{ label, key?, render?, right?, hidden?, stopPropagation? }]
+// data: array of row objects
+// rowKey: fn(row) => unique key
+// renderExpanded: fn(row) => JSX — enables expandable rows
+export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wrapperClass, tbodyClass = "divide-y divide-gray-200", emptyMessage }) {
+  const [openId, setOpenId] = React.useState(null);
+  const expandable = typeof renderExpanded === "function";
+  return (
+    <TableWrapper className={wrapperClass}>
+      <TableHead columns={columns} />
+      <tbody className={tbodyClass}>
+        {isLoading ? (
+          <EmptyRow colSpan={columns.length} message={emptyMessage || "Loading..."} />
+        ) : !data?.length ? (
+          <EmptyRow colSpan={columns.length} message={emptyMessage || "No records found."} />
+        ) : data.map((row) => {
+          const key = rowKey(row);
+          const isOpen = expandable && openId === key;
+          return (
+            <React.Fragment key={key}>
+              <tr
+                className={`hover:bg-gray-50 transition-colors${expandable ? " cursor-pointer" : ""}`}
+                onClick={expandable ? () => setOpenId(isOpen ? null : key) : undefined}
+              >
+                {columns.map((col) => (
+                  <td
+                    key={col.label}
+                    className={`px-4 py-2 whitespace-nowrap${col.right ? " text-right" : ""}${col.hidden ? " hidden lg:table-cell" : ""}`}
+                    onClick={col.stopPropagation ? (e) => e.stopPropagation() : undefined}
+                  >
+                    {col.render ? col.render(row) : row[col.key] ?? "-"}
+                  </td>
+                ))}
+              </tr>
+              {isOpen && (
+                <tr className="bg-blue-50">
+                  <td colSpan={columns.length}>{renderExpanded(row)}</td>
+                </tr>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </tbody>
+    </TableWrapper>
+  );
+}
 
 // ── Pagination Bar ────────────────────────────────────────────────────────────
 export function Pagination({ currentPage, totalPages, pageSize, totalCount, onPageChange, onPageSizeChange }) {

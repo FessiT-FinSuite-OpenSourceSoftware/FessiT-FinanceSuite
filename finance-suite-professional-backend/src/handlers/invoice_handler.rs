@@ -22,6 +22,8 @@ struct OrgEmailQuery {
 struct PeriodQuery {
     year: Option<String>,
     month: Option<String>,
+    start_date: Option<String>, // YYYY-MM-DD
+    end_date: Option<String>,   // YYYY-MM-DD
 }
 
 fn resolve_period(query: &PeriodQuery) -> (String, String) {
@@ -240,7 +242,16 @@ pub async fn list_invoices(
         Vec::new()
     };
 
-    if query.year.is_some() || query.month.is_some() {
+    if query.start_date.is_some() || query.end_date.is_some() {
+        let start = query.start_date.clone().unwrap_or_default();
+        let end = query.end_date.clone().unwrap_or_default();
+        invoices.retain(|inv| {
+            let raw = inv.invoice_date.trim();
+            let date = &raw[..raw.len().min(10)];
+            (start.is_empty() || date >= start.as_str()) &&
+            (end.is_empty()   || date <= end.as_str())
+        });
+    } else if query.year.is_some() || query.month.is_some() {
         let (year, month) = resolve_period(&query);
         invoices.retain(|inv| {
             let date = inv.invoice_date.trim();

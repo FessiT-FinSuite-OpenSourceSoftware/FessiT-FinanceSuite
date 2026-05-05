@@ -31,7 +31,7 @@ build/
 Thumbs.db
 
 target/
-
+uploads/
 # Logs
 *.log
 npm-debug.log*

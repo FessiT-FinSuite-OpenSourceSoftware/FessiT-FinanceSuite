@@ -12,7 +12,7 @@ import SalaryTab from "./SalaryTab";
 import OthersTab from "./OthersTab";
 import IncomingInvoicesTab from "./IncomingInvoicesTab";
 import ProjectsTab from "./ProjectsTab";
-import { TabActionBar, FilterSelect, StatCard, TableWrapper, TableHead, EmptyRow, RowActions, Pagination } from "../../shared/ui";
+import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination } from "../../shared/ui";
 
 const getExpenseId = (expense) => {
   if (!expense) return "";
@@ -30,12 +30,10 @@ const formatDate = (dateStr) => {
   try {
     if (typeof dateStr === "object" && dateStr.$date)
       return new Date(dateStr.$date).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
-    // Handle dd-mm-yyyy
     if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
       const [d, m, y] = dateStr.split("-");
       return new Date(+y, +m - 1, +d).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
     }
-    // Handle yyyy-mm-dd
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       const [y, m, d] = dateStr.split("-");
       return new Date(+y, +m - 1, +d).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
@@ -48,12 +46,12 @@ const formatDate = (dateStr) => {
 
 const getStatusColor = (status) => {
   switch ((status || "").toUpperCase()) {
-    case "DRAFT":       return "bg-gray-100 text-gray-700";
-    case "SUBMITTED":   return "bg-blue-100 text-blue-700";
-    case "APPROVED":    return "bg-green-100 text-green-700";
-    case "REJECTED":    return "bg-red-100 text-red-700";
-    case "REIMBURSED":  return "bg-purple-100 text-purple-700";
-    default:            return "bg-gray-100 text-gray-700";
+    case "DRAFT":      return "bg-gray-100 text-gray-700";
+    case "SUBMITTED":  return "bg-blue-100 text-blue-700";
+    case "APPROVED":   return "bg-green-100 text-green-700";
+    case "REJECTED":   return "bg-red-100 text-red-700";
+    case "REIMBURSED": return "bg-purple-100 text-purple-700";
+    default:           return "bg-gray-100 text-gray-700";
   }
 };
 
@@ -71,18 +69,11 @@ const toStoredDate = (yyyymmdd) => {
   return `${d}-${m}-${y}`;
 };
 
-
 const TABS = [
   { key: "expenses", label: "Reimbursements" },
   { key: "incoming", label: "Invoices" },
   { key: "salary",   label: "Salary" },
   { key: "others",   label: "General" },
-];
-
-const COLUMNS = [
-  { label: "Title" }, { label: "Project / Cost Center", hidden: true },
-  { label: "Date", hidden: true }, { label: "Amount" },
-  { label: "Status", hidden: true }, { label: "Actions", right: true },
 ];
 
 export default function ExpenseList() {
@@ -94,22 +85,19 @@ export default function ExpenseList() {
   const [projects,      setProjects]      = useState([]);
   const [statusPopup,   setStatusPopup]   = useState(null);
 
-  const dispatch   = useDispatch();
-  const nav        = useNavigate();
+  const dispatch  = useDispatch();
+  const nav       = useNavigate();
   const { expenseData, isLoading } = useSelector(expenseSelector);
-  const { user }   = useSelector(authSelector);
-  const isAdmin    = user?.is_admin === true;
-  const hasWrite   = canWrite(user, Module.Expenses);
-  const hasDelete  = canDelete(user, Module.Expenses);
+  const { user }  = useSelector(authSelector);
+  const isAdmin   = user?.is_admin === true;
+  const hasWrite  = canWrite(user, Module.Expenses);
+  const hasDelete = canDelete(user, Module.Expenses);
 
   useEffect(() => { dispatch(fetchExpenseData()); dispatch(fetchIncomingInvoices()); }, [dispatch]);
   useEffect(() => { axiosInstance.get("/expenses/projects").then((res) => { if (res?.status === 200) setProjects(res.data || []); }).catch(() => {}); }, []);
 
   const handleStatusSave = () => {
-    if (statusPopup.status === "REIMBURSED" && !statusPopup.reimbursedAt) {
-      toast.error("Please select a reimbursement date");
-      return;
-    }
+    if (statusPopup.status === "REIMBURSED" && !statusPopup.reimbursedAt) { toast.error("Please select a reimbursement date"); return; }
     const exp = (expenseData || []).find((e) => getExpenseId(e) === statusPopup.id);
     if (!exp) return;
     const formData = new FormData();
@@ -118,8 +106,7 @@ export default function ExpenseList() {
     formData.append("currency", exp.items?.[0]?.currency || "INR");
     formData.append("notes", exp.notes || "");
     formData.append("status", statusPopup.status);
-    if (statusPopup.status === "REIMBURSED")
-      formData.append("reimbursedAt", toStoredDate(statusPopup.reimbursedAt));
+    if (statusPopup.status === "REIMBURSED") formData.append("reimbursedAt", toStoredDate(statusPopup.reimbursedAt));
     dispatch(updateExpense(statusPopup.id, formData));
     setStatusPopup(null);
   };
@@ -130,15 +117,61 @@ export default function ExpenseList() {
     catch (err) { toast.error(err.message || "Something went wrong while deleting expense"); }
   };
 
-  const expenses    = (expenseData || []).filter((exp) => !searchTerm || (exp.expense_title || "").toLowerCase().includes(searchTerm.toLowerCase()));
-  const totalCount  = expenses.length;
+  const expenses   = (expenseData || []).filter((exp) => !searchTerm || (exp.expense_title || "").toLowerCase().includes(searchTerm.toLowerCase()));
+  const totalCount = expenses.length;
   const totalAmount = expenses.reduce((sum, exp) => sum + (parseFloat(exp.total_amount) || 0), 0);
-  const totalPages  = Math.max(1, Math.ceil(totalCount / pageSize));
-  const paginated   = expenses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const paginated  = expenses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const columns = [
+    {
+      label: "Title",
+      render: (expense) => {
+        const id = getExpenseId(expense);
+        return <span className="text-blue-600 font-medium cursor-pointer" onClick={() => nav(`/expenses/editExpense/${id}`)}>{expense.expense_title || "-"}</span>;
+      },
+    },
+    { label: "Project / Cost Center", hidden: true, render: (expense) => expense.project_cost_center || "-" },
+    { label: "Date",   hidden: true, render: (expense) => formatDate(expense.items?.[0]?.expense_date || expense.created_at) },
+    {
+      label: "Amount",
+      render: (expense) => <span className="font-semibold">{expense.items?.[0]?.currency || "INR"} {Number(expense.total_amount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>,
+    },
+    {
+      label: "Status",
+      hidden: true,
+      render: (expense) => {
+        const id = getExpenseId(expense);
+        const locked = (expense.status || "").toUpperCase() === "REIMBURSED" && !isAdmin;
+        return (
+          <span
+            onClick={() => !locked && hasWrite && setStatusPopup({ id, status: expense.status || "DRAFT", reimbursedAt: toInputDate(expense.reimbursed_at) })}
+            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(expense.status)} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
+          >
+            {expense.status || "DRAFT"}
+          </span>
+        );
+      },
+    },
+    {
+      label: "Actions",
+      right: true,
+      stopPropagation: true,
+      render: (expense) => {
+        const id = getExpenseId(expense);
+        return (
+          <RowActions
+            onEdit={() => hasWrite && nav(`/expenses/editExpense/${id}`)}
+            onDelete={() => hasDelete && handleDelete(id)}
+            canEdit={hasWrite} canDelete={hasDelete}
+          />
+        );
+      },
+    },
+  ];
 
   return (
     <div>
-      {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         {TABS.map((t) => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -174,42 +207,13 @@ export default function ExpenseList() {
             <StatCard label="Total Amount" value={`₹ ${totalAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} valueClass="text-indigo-700" />
           </div>
 
-          <TableWrapper>
-            <TableHead columns={COLUMNS} />
-            <tbody className="divide-y divide-gray-200">
-              {paginated.length > 0 ? paginated.map((expense) => {
-                const id = getExpenseId(expense);
-                const firstItem = expense.items?.[0];
-                const locked = (expense.status || "").toUpperCase() === "REIMBURSED" && !isAdmin;
-                return (
-                  <tr key={id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-2 whitespace-nowrap text-blue-600 font-medium cursor-pointer" onClick={() => nav(`/expenses/editExpense/${id}`)}>{expense.expense_title || "-"}</td>
-                    <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">{expense.project_cost_center || "-"}</td>
-                    <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">{formatDate(firstItem?.expense_date || expense.created_at)}</td>
-                    <td className="px-4 py-2 whitespace-nowrap font-semibold">{firstItem?.currency || "INR"} {Number(expense.total_amount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</td>
-                    <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">
-                      <span
-                        onClick={() => !locked && hasWrite && setStatusPopup({ id, status: expense.status || "DRAFT", reimbursedAt: toInputDate(expense.reimbursed_at) })}
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(expense.status)} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
-                      >
-                        {expense.status || "DRAFT"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-right">
-                      <RowActions
-                        onEdit={() => hasWrite && nav(`/expenses/editExpense/${id}`)}
-                        onDelete={() => hasDelete && handleDelete(id)}
-                        canEdit={hasWrite}
-                        canDelete={hasDelete}
-                      />
-                    </td>
-                  </tr>
-                );
-              }) : (
-                <EmptyRow colSpan={6} message={isLoading ? "Loading..." : "No expenses found. Try creating one."} />
-              )}
-            </tbody>
-          </TableWrapper>
+          <DataTable
+            isLoading={isLoading}
+            data={paginated}
+            rowKey={getExpenseId}
+            columns={columns}
+          />
+
           <Pagination currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} totalCount={totalCount} onPageChange={setCurrentPage} onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }} />
         </div>
       )}
@@ -230,18 +234,8 @@ export default function ExpenseList() {
             </select>
             {statusPopup.status === "REIMBURSED" && (
               <div className="mt-3">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Reimbursement Date *
-                </label>
-                <input
-                  type="date"
-                  value={statusPopup.reimbursedAt || ""}
-                  onChange={(e) => setStatusPopup((p) => ({ ...p, reimbursedAt: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {/* {statusPopup.reimbursedAt && (
-                  <p className="text-xs text-gray-500 mt-1">Stored: {formatDate(toStoredDate(statusPopup.reimbursedAt))}</p>
-                )} */}
+                <label className="block text-xs font-medium text-gray-700 mb-1">Reimbursement Date *</label>
+                <input type="date" value={statusPopup.reimbursedAt || ""} onChange={(e) => setStatusPopup((p) => ({ ...p, reimbursedAt: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             )}
             <div className="flex justify-end gap-2 mt-5">

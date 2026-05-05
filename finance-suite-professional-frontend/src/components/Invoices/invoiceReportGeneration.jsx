@@ -1,7 +1,7 @@
 import React from "react";
 import Logo from "../../assets/FessitLogoTrans.png";
-import { sampleData, bankDetails, terms } from "./SampleInvoiceData";
-import { formatNumber, getCurrencySymbol, formatCurrency } from "../../utils/formatNumber";
+import { sampleData, terms } from "./sampleInvoiceData";
+import { formatNumber, getCurrencySymbol } from "../../utils/formatNumber";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
 
@@ -100,7 +100,7 @@ async function printInvoicePdf(invoiceNumber) {
   }
 }
 
-const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
+const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
   const handleBack = () => {
     if (onBack) onBack();
   };
@@ -183,14 +183,22 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
   const handlePrint = () => printInvoicePdf(data.invoice_number);
   const handleDownload = () => generateInvoicePdf(data.invoice_number);
 
-  // 🔗 Terms & Conditions: from notes if present, else static terms
+  // 🔗 Terms & Conditions:
+  // Priority: invoice notes → org footerNote → org paymentInstructions → static fallback
   const customTermsLines = (data.notes || "")
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
 
+  const orgTermsLines = [
+    ...(orgData?.footerNote || "").split("\n").map((l) => l.trim()).filter(Boolean),
+    ...(orgData?.paymentInstructions || "").split("\n").map((l) => l.trim()).filter(Boolean),
+  ];
+
   const termsToRender =
-    customTermsLines.length > 0 ? customTermsLines : terms;
+    customTermsLines.length > 0 ? customTermsLines :
+    orgTermsLines.length > 0    ? orgTermsLines :
+    terms;
 
   return (
     <div className="bg-gray-100 min-h-screen py-6 print:bg-white invoice-wrapper">
@@ -522,14 +530,16 @@ const InvoiceReportGeneration = ({ invoiceData, onBack }) => {
           {/* Bank Details & Terms */}
           <div className="text-xs text-gray-800 space-y-3">
             <div>
-              <h3 className="font-semibold mb-1">{bankDetails.title}</h3>
+              <h3 className="font-semibold mb-1">Bank Details</h3>
               <div className="border border-gray-400 rounded p-2">
-                {bankDetails.fields.map((field) => (
-                  <p key={field.label}>
-                    <span className="font-semibold">{field.label}:</span>{" "}
-                    {field.value}
-                  </p>
-                ))}
+                {orgData?.accountHolder && <p><span className="font-semibold">Account Name:</span> {orgData.accountHolder}</p>}
+                {orgData?.accountNumber && <p><span className="font-semibold">Account Number:</span> {orgData.accountNumber}</p>}
+                {orgData?.bankName      && <p><span className="font-semibold">Bank:</span> {orgData.bankName}</p>}
+                {orgData?.ifscCode      && <p><span className="font-semibold">IFSC Code:</span> {orgData.ifscCode}</p>}
+                {orgData?.upiId         && <p><span className="font-semibold">UPI ID:</span> {orgData.upiId}</p>}
+                {!orgData?.accountHolder && !orgData?.accountNumber && !orgData?.bankName && !orgData?.ifscCode && !orgData?.upiId && (
+                  <p className="text-gray-400 italic">No bank details configured. Please update in Settings.</p>
+                )}
               </div>
             </div>
 

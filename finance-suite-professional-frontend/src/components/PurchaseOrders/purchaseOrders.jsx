@@ -6,7 +6,7 @@ import { fetchPurchaseOrderData, deletePurchaseOrder, purchaseOrderSelector } fr
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
 import { getCurrencySymbol } from "../../utils/formatNumber";
-import { TabActionBar, FilterSelect, StatCard, TableWrapper, TableHead, EmptyRow, RowActions, Pagination } from "../../shared/ui";
+import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination } from "../../shared/ui";
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -26,12 +26,6 @@ const getStatusColor = (status) => {
     default:          return "bg-gray-100 text-gray-800";
   }
 };
-
-const COLUMNS = [
-  { label: "PO Number" }, { label: "Vendor" },
-  { label: "PO Date", hidden: true }, { label: "Due Date", hidden: true },
-  { label: "Amount" }, { label: "Status" }, { label: "Actions", right: true },
-];
 
 export default function PurchaseOrderList() {
   const nav      = useNavigate();
@@ -56,7 +50,7 @@ export default function PurchaseOrderList() {
     const matchSearch = (po.po_number || "").toLowerCase().includes(searchTerm.toLowerCase()) || (po.vendor_name || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = statusFilter === "All" || po.status === statusFilter;
     const cur = po.currency_type || "INR";
-    const matchCurrency = currencyFilter === "All" || (currencyFilter === "Others" ? !["INR","USD","EUR"].includes(cur) : cur === currencyFilter);
+    const matchCurrency = currencyFilter === "All" || (currencyFilter === "Others" ? !["INR", "USD", "EUR"].includes(cur) : cur === currencyFilter);
     return matchSearch && matchStatus && matchCurrency;
   });
 
@@ -68,6 +62,44 @@ export default function PurchaseOrderList() {
     if (!window.confirm("Are you sure you want to delete this purchase order?")) return;
     try { await dispatch(deletePurchaseOrder(id)); } catch (e) { console.error(e); }
   };
+
+  const columns = [
+    {
+      label: "PO Number",
+      render: (po) => {
+        const id = po._id?.$oid || po.id;
+        return <span className="text-blue-600 font-medium cursor-pointer" onClick={() => nav(`/purchases/editPurchaseOrder/${id}`)}>{po.po_number}</span>;
+      },
+    },
+    { label: "Vendor",   render: (po) => <span className="text-gray-600">{po.vendor_name}</span> },
+    { label: "PO Date",  hidden: true, render: (po) => <span className="text-gray-600">{formatDate(po.po_date)}</span> },
+    { label: "Due Date", hidden: true, render: (po) => <span className="text-gray-600">{formatDate(po.po_dueDate)}</span> },
+    {
+      label: "Amount",
+      render: (po) => <span className="font-semibold">{getCurrencySymbol(po.currency_type)} {Number(po.total || 0).toLocaleString()}</span>,
+    },
+    {
+      label: "Status",
+      render: (po) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(po.status)}`}>{po.status}</span>
+      ),
+    },
+    {
+      label: "Actions",
+      right: true,
+      stopPropagation: true,
+      render: (po) => {
+        const id = po._id?.$oid || po.id;
+        return (
+          <RowActions
+            onEdit={() => hasWrite && nav(`/purchases/editPurchaseOrder/${id}`)}
+            onDelete={() => hasDelete && handleDelete(id)}
+            canEdit={hasWrite} canDelete={hasDelete}
+          />
+        );
+      },
+    },
+  ];
 
   return (
     <div className="max-w-7xl lg:w-full md:w-full">
@@ -97,42 +129,19 @@ export default function PurchaseOrderList() {
       </TabActionBar>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <StatCard label="Total Purchase Orders"  value={purchaseOrders.length} />
-        <StatCard label="Approved"  value={countByStatus("Approved")}  valueClass="text-green-600" />
-        <StatCard label="Sent"      value={countByStatus("Sent")}      valueClass="text-blue-600" />
-        <StatCard label="Draft"     value={countByStatus("Draft")}     valueClass="text-gray-600" />
+        <StatCard label="Total Purchase Orders" value={purchaseOrders.length} />
+        <StatCard label="Approved" value={countByStatus("Approved")} valueClass="text-green-600" />
+        <StatCard label="Sent"     value={countByStatus("Sent")}     valueClass="text-blue-600" />
+        <StatCard label="Draft"    value={countByStatus("Draft")}    valueClass="text-gray-600" />
       </div>
 
-      <TableWrapper>
-        <TableHead columns={COLUMNS} />
-        <tbody className="divide-y divide-gray-200">
-          {current.length > 0 ? current.map((po) => {
-            const id = po._id?.$oid || po.id;
-            return (
-              <tr key={id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-2 whitespace-nowrap text-blue-600 font-medium cursor-pointer" onClick={() => nav(`/purchases/editPurchaseOrder/${id}`)}>{po.po_number}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-gray-600">{po.vendor_name}</td>
-                <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell text-gray-600">{formatDate(po.po_date)}</td>
-                <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell text-gray-600">{formatDate(po.po_dueDate)}</td>
-                <td className="px-4 py-2 whitespace-nowrap font-semibold">{getCurrencySymbol(po.currency_type)} {Number(po.total || 0).toLocaleString()}</td>
-                <td className="px-4 py-2 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(po.status)}`}>{po.status}</span>
-                </td>
-                <td className="px-4 py-2 whitespace-nowrap text-right">
-                  <RowActions
-                    onEdit={() => hasWrite && nav(`/purchases/editPurchaseOrder/${id}`)}
-                    onDelete={() => hasDelete && handleDelete(id)}
-                    canEdit={hasWrite}
-                    canDelete={hasDelete}
-                  />
-                </td>
-              </tr>
-            );
-          }) : (
-            <EmptyRow colSpan={7} message={isLoading ? "Loading..." : "No purchase orders found."} />
-          )}
-        </tbody>
-      </TableWrapper>
+      <DataTable
+        isLoading={isLoading}
+        data={current}
+        rowKey={(po) => po._id?.$oid || po.id}
+        columns={columns}
+      />
+
       <Pagination currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} totalCount={filtered.length} onPageChange={setCurrentPage} onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }} />
     </div>
   );

@@ -93,13 +93,19 @@ export const fetchNextInvoiceNumber = () => async (dispatch) => {
 }
 
 
-// Fetch All Invoices (optionally filtered by year+month)
+// Fetch All Invoices (optionally filtered by year+month or full financial year)
 export const fetchInvoiceData = (year, month) => async (dispatch) => {
   dispatch(getInvoice())
   try {
     const params = new URLSearchParams()
-    if (year)  params.set('year',  year)
-    if (month) params.set('month', String(month).padStart(2, '0'))
+    if (year && month === "fy") {
+      // Indian FY: April 1 of `year` to March 31 of `year+1`
+      params.set('start_date', `${year}-04-01`)
+      params.set('end_date',   `${year + 1}-03-31`)
+    } else {
+      if (year)  params.set('year',  year)
+      if (month) params.set('month', String(month).padStart(2, '0'))
+    }
     const qs = params.toString() ? '?' + params.toString() : ''
     const { data } = await axiosInstance.get(`/invoices${qs}`)
     dispatch(getInvoiceSuccess(data))

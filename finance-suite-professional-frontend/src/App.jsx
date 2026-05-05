@@ -48,6 +48,7 @@ const EditCostCenter = lazy(() => import("./components/CostCenter/EditCostCenter
 const Estimats= lazy(()=>import('./components/Estimates'))
 const AddEstimate = lazy(()=>import('./components/Estimates/AddEstimate'))
 const EditEstimate = lazy(()=>import('./components/Estimates/EditEstimate'))
+const Assets = lazy(() => import('./components/Assets'))
 
 
 
@@ -63,7 +64,7 @@ export default function App() {
   // Check for existing token on app load
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
-    if (storedToken && !isAuthenticated && !token) {
+    if (storedToken && !isAuthenticated) {
       dispatch(verifyToken());
     }
   }, []);
@@ -193,6 +194,9 @@ export default function App() {
               <Route path="/users" element={<ProtectedRoute user={user} module={Module.Users}><Users /></ProtectedRoute>} />
               <Route path="/users/editUser/:id" element={<ProtectedRoute user={user} module={Module.Users}><EditUser /></ProtectedRoute>} />
               <Route path="/users/addUser" element={<ProtectedRoute user={user} module={Module.Users}><AddUser /></ProtectedRoute>} />
+
+              {/* Assets */}
+              <Route path="/assets" element={<Assets />} />
             </Routes>
           }
         />

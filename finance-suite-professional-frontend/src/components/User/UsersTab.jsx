@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, UserCircle, Shield } from "lucide-react";
+import { Plus, UserCircle, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchUserData, userSelector, deleteUser } from "../../ReduxApi/user";
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
-import { TabActionBar, FilterSelect, StatCard, TableWrapper, TableHead, EmptyRow, Pagination } from "../../shared/ui";
-
-const COLUMNS = [
-  { label: "User" }, { label: "Email" }, { label: "Role", hidden: true },
-  { label: "Permissions", hidden: true }, { label: "Status" }, { label: "Actions", right: true },
-];
+import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal } from "../../shared/ui";
 
 const getRoleColor = (role) => {
   switch (role?.toLowerCase()) {
@@ -34,7 +29,7 @@ export default function UsersTab() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage,  setCurrentPage]  = useState(1);
   const [pageSize,     setPageSize]     = useState(10);
-  const [showAction,   setShowAction]   = useState(null);
+  const [deleteModal,  setDeleteModal]  = useState(null);
 
   useEffect(() => { dispatch(fetchUserData()); }, [dispatch]);
   useEffect(() => { setCurrentPage(1); }, [searchTerm, roleFilter, statusFilter]);
@@ -50,6 +45,64 @@ export default function UsersTab() {
 
   const totalPages   = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentUsers = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const columns = [
+    {
+      label: "User",
+      render: (u) => (
+        <div className="flex items-center gap-2">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center ${u?.is_admin ? "bg-purple-100" : "bg-indigo-100"}`}>
+            {u?.is_admin ? <Shield className="w-4 h-4 text-purple-600" /> : <UserCircle className="w-4 h-4 text-indigo-600" />}
+          </div>
+          <div>
+            <p className="font-medium text-gray-900 capitalize">{u?.name}</p>
+            {u?.is_admin && <p className="text-xs text-purple-600 font-semibold">Super Admin</p>}
+          </div>
+        </div>
+      ),
+    },
+    { label: "Email", render: (u) => <span className="text-gray-600">{u?.email}</span> },
+    {
+      label: "Role",
+      hidden: true,
+      render: (u) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full capitalize ${getRoleColor(u?.role)}`}>{u?.role || "N/A"}</span>
+      ),
+    },
+    {
+      label: "Permissions",
+      hidden: true,
+      render: (u) => (
+        <div className="flex gap-1 flex-wrap">
+          {u?.permissions?.organisation?.read && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">Org</span>}
+          {u?.permissions?.invoice?.read      && <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded">Invoice</span>}
+          {u?.permissions?.expenses?.read     && <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded">Expenses</span>}
+          {u?.permissions?.users?.read        && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded">Users</span>}
+          {u?.is_admin                        && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded">Super Admin</span>}
+        </div>
+      ),
+    },
+    {
+      label: "Status",
+      render: (u) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${u?.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+          {u?.is_active ? "Active" : "Inactive"}
+        </span>
+      ),
+    },
+    {
+      label: "Actions",
+      right: true,
+      stopPropagation: true,
+      render: (u) => (
+        <RowActions
+          onEdit={() => hasWrite && nav(`/users/editUser/${u?._id?.$oid}`)}
+          onDelete={() => hasDelete && setDeleteModal({ id: u?._id?.$oid, name: u?.name })}
+          canEdit={hasWrite} canDelete={hasDelete}
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="max-w-7xl lg:w-full md:w-full">
@@ -76,68 +129,26 @@ export default function UsersTab() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <StatCard label="Total Users" value={usersData.filter((u) => !u.is_admin).length} />
-        <StatCard label="Active"      value={usersData.filter((u) => u.is_active && !u.is_admin).length} valueClass="text-green-600" />
+        <StatCard label="Active"      value={usersData.filter((u) => u.is_active && !u.is_admin).length}  valueClass="text-green-600" />
         <StatCard label="Inactive"    value={usersData.filter((u) => !u.is_active && !u.is_admin).length} valueClass="text-red-600" />
       </div>
 
-      <TableWrapper>
-        <TableHead columns={COLUMNS} />
-        <tbody className="divide-y divide-gray-200">
-          {currentUsers.length > 0 ? currentUsers.map((u) => (
-            <tr key={u?._id?.$oid} className="hover:bg-gray-50 transition-colors">
-              <td className="px-4 py-2 whitespace-nowrap">
-                <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${u?.is_admin ? "bg-purple-100" : "bg-indigo-100"}`}>
-                    {u?.is_admin ? <Shield className="w-4 h-4 text-purple-600" /> : <UserCircle className="w-4 h-4 text-indigo-600" />}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900 capitalize">{u?.name}</p>
-                    {u?.is_admin && <p className="text-xs text-purple-600 font-semibold">Super Admin</p>}
-                  </div>
-                </div>
-              </td>
-              <td className="px-4 py-2 whitespace-nowrap text-gray-600">{u?.email}</td>
-              <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full capitalize ${getRoleColor(u?.role)}`}>{u?.role || "N/A"}</span>
-              </td>
-              <td className="px-4 py-2 whitespace-nowrap hidden lg:table-cell">
-                <div className="flex gap-1 flex-wrap">
-                  {u?.permissions?.organisation?.read && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">Org</span>}
-                  {u?.permissions?.invoice?.read      && <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded">Invoice</span>}
-                  {u?.permissions?.expenses?.read     && <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded">Expenses</span>}
-                  {u?.permissions?.users?.read        && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded">Users</span>}
-                  {u?.is_admin                        && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded">Super Admin</span>}
-                </div>
-              </td>
-              <td className="px-4 py-2 whitespace-nowrap">
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${u?.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                  {u?.is_active ? "Active" : "Inactive"}
-                </span>
-              </td>
-              <td className="px-4 py-2 whitespace-nowrap text-right">
-                <div className="flex items-center justify-end gap-3">
-                  <button onClick={() => hasWrite && nav(`/users/editUser/${u?._id?.$oid}`)} disabled={!hasWrite} className={`transition-colors ${hasWrite ? "text-gray-600 hover:text-green-600" : "text-gray-300 cursor-not-allowed"}`}><Edit2 className="w-4 h-4" /></button>
-                  <div className="relative">
-                    <button onClick={(e) => { if (!hasDelete) return; e.stopPropagation(); setShowAction((p) => (p === u?._id?.$oid ? null : u?._id?.$oid)); }} disabled={!hasDelete} className={`transition-colors ${hasDelete ? "text-gray-600 hover:text-red-600" : "text-gray-300 cursor-not-allowed"}`}><Trash2 className="w-4 h-4" /></button>
-                    {showAction === u?._id?.$oid && (
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 bg-white shadow-xl border border-gray-200 rounded-lg p-5 pb-8 z-50">
-                        <p className="text-gray-800 text-sm">Are you sure you want to delete <span className="font-bold capitalize">{u?.name}</span>?</p>
-                        <div className="flex justify-end gap-3 mt-4">
-                          <button onClick={() => setShowAction(null)} className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700">Cancel</button>
-                          <button onClick={() => dispatch(deleteUser(u._id?.$oid))} className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-600 text-white">Confirm</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </td>
-            </tr>
-          )) : (
-            <EmptyRow colSpan={6} message={isLoading ? "Loading users..." : "No users found"} />
-          )}
-        </tbody>
-      </TableWrapper>
+      <DataTable
+        isLoading={isLoading}
+        data={currentUsers}
+        rowKey={(u) => u?._id?.$oid}
+        columns={columns}
+      />
+
       <Pagination currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} totalCount={filtered.length} onPageChange={setCurrentPage} onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }} />
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete <span className="font-bold capitalize">{deleteModal.name}</span>?</>}
+          onConfirm={() => { dispatch(deleteUser(deleteModal.id)); setDeleteModal(null); }}
+          onClose={() => setDeleteModal(null)}
+        />
+      )}
     </div>
   );
 }

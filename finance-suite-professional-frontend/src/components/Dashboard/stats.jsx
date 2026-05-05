@@ -32,10 +32,14 @@ export default function Stats() {
 
   const orgCurrency = currentOrganisation?.currency || "INR";
 
+  // Indian FY: April 1 – March 31
+  const now = new Date();
+  const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const fyLabel = `FY ${fyStartYear}-${String(fyStartYear + 1).slice(2)}`;
+
   useEffect(() => {
-    const now = new Date();
     const currentMonth = [{ year: now.getFullYear(), month: now.getMonth() + 1 }];
-    dispatch(fetchInvoiceData());
+    dispatch(fetchInvoiceData(fyStartYear, "fy")); // pass fy flag
     dispatch(fetchGstSummary(currentMonth));
     dispatch(fetchTdsSummary(currentMonth));
     dispatch(fetchEstimates());
@@ -85,9 +89,9 @@ export default function Stats() {
 
   const stats = [
     {
-      label: "Total Revenue",
+      label: `Current Year revenue`,
       value: fmt(totalRevenue),
-      change: `${invoiceData.length} total invoices`,
+      change: `${invoiceData.length} invoices`,
       trend: "up",
       icon: TrendingUp,
     },

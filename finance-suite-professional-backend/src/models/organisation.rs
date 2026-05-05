@@ -177,6 +177,10 @@ pub struct Organisation {
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub services: Vec<Service>,
+
+    /// Organisation logo (stored UUID filename)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub logo: String,
 }
 
 //
@@ -330,6 +334,7 @@ pub struct UpdateOrganizationRequest {
     pub cash_instructions: Option<String>,
     pub custom_payment_name: Option<String>,
     pub services: Option<Vec<Service>>,
+    pub logo: Option<String>,
 }
 
 //
@@ -432,6 +437,7 @@ impl Organisation {
             last_estimate_sequence: 0,
             service_ids: Vec::new(),
             services: Vec::new(),
+            logo: String::new(),
         }
     }
 }

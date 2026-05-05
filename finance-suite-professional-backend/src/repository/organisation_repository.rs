@@ -300,6 +300,19 @@ impl OrganisationRepository{
         Ok(update_organisation)
     }
 
+    pub async fn update_logo(&self, id: &str, logo: String) -> Result<Organisation, ApiError> {
+        let object_id = ObjectId::parse_str(id)
+            .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
+        let filter = doc! { "_id": object_id };
+        self.collection
+            .update_one(filter.clone(), doc! { "$set": { "logo": &logo } }, None)
+            .await?;
+        self.collection
+            .find_one(filter, None)
+            .await?
+            .ok_or_else(|| ApiError::NotFound("Organisation not found after logo update".to_string()))
+    }
+
     pub async fn set_service_ids(&self, id: &str, service_ids: Vec<ObjectId>) -> Result<Organisation, ApiError> {
         let object_id = ObjectId::parse_str(id)
             .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;

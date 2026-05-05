@@ -1,5 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import customerReducer from "./customer";
+import assetReducer from './asset';
 import organisationReducer from './organisation';
 import expenseReducer from './expense';
 import invoiceReducer from './invoice';
@@ -13,6 +14,7 @@ import salaryReducer from './salary';
 import generalExpenseReducer from './generalExpense';
 import challanReducer from './challan';
 import categoryReducer from './category';
+import assetCategoryReducer from './assetCategory';
 import estimateReducer from './estimate';
 import ledgerReducer from './ledger';
 import productReducer from './product';
@@ -41,6 +43,8 @@ const store = configureStore({
     product: productReducer,
     gstSummary: gstSummaryReducer,
     tdsSummary: tdsSummaryReducer,
+  asset: assetReducer,
+  assetCategory: assetCategoryReducer,
   },
 });
 

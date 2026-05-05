@@ -174,7 +174,7 @@ export default function EditEstimate() {
 
   if (isLoading && !currentEstimate) return <div className="p-8 text-gray-500 text-sm">Loading estimate...</div>;
 
-  if (showPreview) return <EstimateReportGeneration estimateData={previewData} onBack={() => setShowPreview(false)} />;
+  if (showPreview) return <EstimateReportGeneration estimateData={previewData} orgData={currentOrganisation} onBack={() => setShowPreview(false)} />;
 
   return (
     <div className="relative">

@@ -17,6 +17,8 @@ pub mod ledger;
 pub mod ledgerCounter;
 pub mod account;
 pub mod service;
+pub mod assets;
+pub mod asset_category;
 
 pub use customer::{CreateCustomerRequest, Customer, UpdateCustomerRequest};
 pub use organisation::{CreateOrganisationRequest, Organisation, UpdateOrganizationRequest};
@@ -36,3 +38,5 @@ pub use ledger::{EntryType, LedgerEntry, LedgerEntryType};
 pub use ledgerCounter::PartyCounter;
 pub use account::{Account, AccountType, AccountCategory, OrganizationBalance, AccountBalance};
 pub use service::{CreateServiceRequest, Service, UpdateServiceRequest};
+pub use assets::Asset;
+pub use asset_category::AssetCategory;

@@ -3,7 +3,7 @@ use std::env;
 
 use crate::models::{
     Category, Challan, CostCenter, Customer, Expense, GeneralExpense, IncomingInvoice, Invoice,
-    Organisation, PartyCounter, Product, PurchaseOrder, Salary, User, Account, Service,
+    Organisation, PartyCounter, Product, PurchaseOrder, Salary, User, Account, Service, AssetCategory,
 };
 
 #[derive(Clone)]
@@ -108,5 +108,13 @@ impl MongoDbClient {
 
     pub fn get_service_collection(&self) -> Collection<Service> {
         self.database.collection("services")
+    }
+
+    pub fn get_asset_collection(&self) -> Collection<crate::models::assets::Asset> {
+        self.database.collection("assets")
+    }
+
+    pub fn get_asset_category_collection(&self) -> Collection<AssetCategory> {
+        self.database.collection::<AssetCategory>("asset_categories")
     }
 }

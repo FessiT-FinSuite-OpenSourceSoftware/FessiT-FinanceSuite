@@ -1,28 +1,31 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
-import { ChevronDown, ChevronRight, Download, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 
-const fmt = (n) =>
-  `₹${Math.abs(Number(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmt = (n) => {
+  const val = Number(n) || 0;
+  const abs = Math.abs(val).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return val < 0 ? `-₹${abs}` : `₹${abs}`;
+};
 
 const pct = (n) => `${((Number(n) || 0) * 100).toFixed(1)}%`;
 
 const fmtDate = (value) => {
   if (!value) return "—";
   try {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return value;
+    return d.toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "2-digit" });
   } catch { return value; }
 };
 
 const fmtPeriod = (value) => {
   if (!value) return "—";
   try {
-    const date = new Date(value + "-01");
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString("en-IN", { year: "numeric", month: "long" });
+    const d = new Date(value + "-01");
+    if (isNaN(d.getTime())) return value;
+    return d.toLocaleDateString("en-IN", { year: "numeric", month: "long" });
   } catch { return value; }
 };
 
@@ -50,7 +53,7 @@ function KpiCard({ label, value, sub, positive, icon: Icon }) {
   );
 }
 
-function Section({ title, total, totalLabel = "Total", children, accent = "indigo", defaultOpen = false }) {
+function Section({ title, total, children, accent = "indigo", defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   const colors = {
     indigo: "bg-indigo-50 border-indigo-200 text-indigo-800",
@@ -69,7 +72,7 @@ function Section({ title, total, totalLabel = "Total", children, accent = "indig
           <span className="font-semibold text-gray-800">{title}</span>
         </div>
         <span className={`px-3 py-1 rounded-full text-sm font-bold border ${colors[accent]}`}>
-          {totalLabel}: {fmt(total)}
+          Total: {fmt(total)}
         </span>
       </button>
       {open && <div className="border-t border-gray-100">{children}</div>}
@@ -108,10 +111,9 @@ function ItemTable({ columns, rows, emptyMsg = "No records in this period." }) {
 }
 
 export default function ProfitLossPage() {
-  const [fy, setFy] = useState(currentFY());
-  const [data, setData] = useState(null);
+  const [fy, setFy]           = useState(currentFY());
+  const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
 
   const load = useCallback(async (fyYear) => {
     setLoading(true);
@@ -127,32 +129,53 @@ export default function ProfitLossPage() {
 
   useEffect(() => { load(fy); }, [fy, load]);
 
-  const handlePdf = async () => {
-    setPdfLoading(true);
-    try {
-      const res = await axiosInstance.get("/reports/profit-loss/pdf", {
-        params: { fy },
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.setAttribute("download", `PnL_FY${fy}-${fy + 1}.pdf`);
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success("P&L PDF downloaded");
-    } catch {
-      toast.error("PDF download failed");
-    } finally {
-      setPdfLoading(false);
-    }
-  };
+  // ── Map new response shape to familiar variable names ──────────────────────
+  const summary  = data?.summary;
+  const revenue  = data?.revenue;
+  const expenses = data?.expenses;
+  const meta     = data?.meta;
 
-  const kpis = data?.kpis;
-  const sec  = data?.sections;
-  const meta = data?.meta;
+  // Old KPI names — derived from new response
+  const kpis = summary ? {
+    revenue:          summary.revenue,
+    cost_of_revenue:  expenses?.incoming_invoices?.total || 0,
+    gross_profit:     summary.revenue - (expenses?.incoming_invoices?.total || 0),
+    gross_margin:     summary.revenue > 0
+      ? (summary.revenue - (expenses?.incoming_invoices?.total || 0)) / summary.revenue
+      : 0,
+    total_expenses:   summary.total_expenses,
+    operating_profit: summary.net_profit,
+    net_profit:       summary.net_profit,
+    net_margin:       summary.net_margin_pct,
+  } : null;
+
+  // Old section names — derived from new response
+  const sec = expenses ? {
+    income: {
+      total: revenue?.total || 0,
+      items: revenue?.items || [],
+    },
+    direct_costs: {
+      total:        expenses.incoming_invoices?.total || 0,
+      items:        expenses.incoming_invoices?.items || [],
+      gross_profit: (summary?.revenue || 0) - (expenses.incoming_invoices?.total || 0),
+    },
+    operating_expenses: {
+      total:             (expenses.employee_expenses?.total || 0) + (expenses.general_expenses?.total || 0) + (expenses.payroll?.gross_total || 0),
+      operating_profit:  summary?.net_profit || 0,
+      employee_expenses: expenses.employee_expenses,
+      general_expenses:  expenses.general_expenses,
+      payroll:           expenses.payroll,
+    },
+  } : null;
+
+  const counts = data ? {
+    revenue_invoices:  revenue?.count || 0,
+    incoming_invoices: expenses?.incoming_invoices?.count || 0,
+    employee_expenses: expenses?.employee_expenses?.count || 0,
+    general_expenses:  expenses?.general_expenses?.count || 0,
+    salary_records:    expenses?.payroll?.count || 0,
+  } : null;
 
   return (
     <div className="max-w-7xl w-full space-y-4">
@@ -190,15 +213,6 @@ export default function ProfitLossPage() {
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </button>
-
-        <button
-          onClick={handlePdf}
-          disabled={pdfLoading || !data}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-        >
-          <Download className="w-4 h-4" />
-          {pdfLoading ? "Generating..." : "Download PDF"}
-        </button>
       </div>
 
       {loading && (
@@ -207,14 +221,14 @@ export default function ProfitLossPage() {
         </div>
       )}
 
-      {!loading && data && (
+      {!loading && data && kpis && sec && counts && (
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard label="Revenue"        value={fmt(kpis.revenue)}        sub={`${data.counts.revenue_invoices} invoices`}  icon={TrendingUp}   positive={kpis.revenue > 0} />
-            <KpiCard label="Gross Profit"   value={fmt(kpis.gross_profit)}   sub={`Margin: ${pct(kpis.gross_margin)}`}                             positive={kpis.gross_profit >= 0} />
-            <KpiCard label="Total Expenses" value={fmt(kpis.total_expenses)}                                                   icon={TrendingDown}  positive={false} />
-            <KpiCard label="Net Profit"     value={fmt(kpis.net_profit)}     sub={`Margin: ${pct(kpis.net_margin)}`}                               positive={kpis.net_profit >= 0} />
+            <KpiCard label="Revenue"        value={fmt(kpis.revenue)}        sub={`${counts.revenue_invoices} invoices`}  icon={TrendingUp}   positive={kpis.revenue > 0} />
+            <KpiCard label="Gross Profit"   value={fmt(kpis.gross_profit)}   sub={`Margin: ${pct(kpis.gross_margin)}`}                        positive={kpis.gross_profit >= 0} />
+            <KpiCard label="Total Expenses" value={fmt(kpis.total_expenses)}                                               icon={TrendingDown}  positive={false} />
+            <KpiCard label="Net Profit"     value={fmt(kpis.net_profit)}     sub={`Margin: ${pct(kpis.net_margin)}`}                          positive={kpis.net_profit >= 0} />
           </div>
 
           {/* Summary strip */}
@@ -242,10 +256,11 @@ export default function ProfitLossPage() {
                 { key: "date",           label: "Date",       fmt: fmtDate },
                 { key: "ref",            label: "Invoice No", mono: true },
                 { key: "party",          label: "Customer" },
+                { key: "type",           label: "Type" },
                 { key: "currency",       label: "Currency" },
-                { key: "amount_foreign", label: "Amount",     right: true, fmt: (v) => fmt(v) },
+                { key: "amount_foreign", label: "Amount",     right: true, fmt: fmt },
                 { key: "fx_rate",        label: "FX Rate",    right: true, fmt: (v) => Number(v).toFixed(4) },
-                { key: "amount_inr",     label: "INR Amount", right: true, fmt: (v) => fmt(v) },
+                { key: "amount_inr",     label: "INR Amount", right: true, fmt: fmt },
               ]}
               rows={sec.income.items}
             />
@@ -254,14 +269,14 @@ export default function ProfitLossPage() {
             </div>
           </Section>
 
-          {/* Direct Costs */}
-          <Section title="Cost of Revenue (Direct Costs)" total={sec.direct_costs.total} accent="red">
+          {/* Direct Costs — Incoming Invoices */}
+          <Section title="Cost of Revenue — Incoming Invoices (Paid)" total={sec.direct_costs.total} accent="red">
             <ItemTable
               columns={[
-                { key: "date",   label: "Date",   fmt: fmtDate },
+                { key: "date",   label: "Date",       fmt: fmtDate },
                 { key: "ref",    label: "Invoice No", mono: true },
                 { key: "vendor", label: "Vendor" },
-                { key: "amount", label: "Amount", right: true, fmt: (v) => fmt(v) },
+                { key: "amount", label: "Amount",     right: true, fmt: fmt },
               ]}
               rows={sec.direct_costs.items}
             />
@@ -279,7 +294,7 @@ export default function ProfitLossPage() {
             {/* Employee Expenses */}
             <div className="border-b border-gray-100">
               <p className="px-5 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
-                Employee Expenses ({data.counts.employee_expenses})
+                Employee Expenses ({counts.employee_expenses})
               </p>
               <ItemTable
                 columns={[
@@ -287,7 +302,7 @@ export default function ProfitLossPage() {
                   { key: "title",    label: "Title" },
                   { key: "category", label: "Category" },
                   { key: "vendor",   label: "Vendor" },
-                  { key: "amount",   label: "Amount", right: true, fmt: (v) => fmt(v) },
+                  { key: "amount",   label: "Amount",   right: true, fmt: fmt },
                 ]}
                 rows={sec.operating_expenses.employee_expenses.items}
               />
@@ -299,14 +314,14 @@ export default function ProfitLossPage() {
             {/* General Expenses */}
             <div className="border-b border-gray-100">
               <p className="px-5 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
-                General Expenses ({data.counts.general_expenses})
+                General Expenses ({counts.general_expenses})
               </p>
               <ItemTable
                 columns={[
                   { key: "date",     label: "Date",     fmt: fmtDate },
                   { key: "title",    label: "Title" },
                   { key: "category", label: "Category" },
-                  { key: "amount",   label: "Amount", right: true, fmt: (v) => fmt(v) },
+                  { key: "amount",   label: "Amount",   right: true, fmt: fmt },
                 ]}
                 rows={sec.operating_expenses.general_expenses.items}
               />
@@ -318,24 +333,24 @@ export default function ProfitLossPage() {
             {/* Payroll */}
             <div>
               <p className="px-5 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
-                Payroll ({data.counts.salary_records})
+                Payroll / Salaries ({counts.salary_records})
               </p>
               <ItemTable
                 columns={[
                   { key: "period",       label: "Period",     fmt: fmtPeriod },
                   { key: "emp_name",     label: "Employee" },
-                  { key: "emp_id",       label: "Emp ID",    mono: true },
+                  { key: "emp_id",       label: "Emp ID",     mono: true },
                   { key: "department",   label: "Department" },
-                  { key: "gross_salary", label: "Gross",     right: true, fmt: (v) => fmt(v) },
-                  { key: "tds",          label: "TDS",       right: true, fmt: (v) => fmt(v) },
-                  { key: "net_salary",   label: "Net",       right: true, fmt: (v) => fmt(v) },
+                  { key: "gross_salary", label: "Gross",      right: true, fmt: fmt },
+                  { key: "tds",          label: "TDS",        right: true, fmt: fmt },
+                  { key: "net_salary",   label: "Net",        right: true, fmt: fmt },
                 ]}
                 rows={sec.operating_expenses.payroll.items}
               />
               <div className="flex justify-end gap-6 px-5 py-2 bg-orange-50 text-xs font-semibold text-orange-700">
-                <span>Gross: {fmt(sec.operating_expenses.payroll.gross_total)}</span>
+                <span>Gross (Cost): {fmt(sec.operating_expenses.payroll.gross_total)}</span>
                 <span>TDS: {fmt(sec.operating_expenses.payroll.tds_total)}</span>
-                <span>Net: {fmt(sec.operating_expenses.payroll.net_total)}</span>
+                <span>Net Paid: {fmt(sec.operating_expenses.payroll.net_total)}</span>
               </div>
             </div>
 
@@ -351,23 +366,28 @@ export default function ProfitLossPage() {
           <div className={`rounded-xl border-2 shadow-sm p-5 flex items-center justify-between ${kpis.net_profit >= 0 ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}>
             <div>
               <p className="text-sm font-medium text-gray-600">Net Profit / Loss</p>
-              <p className="text-xs text-gray-400 mt-0.5">{meta?.report?.period?.fy} · {meta?.report?.basis} basis</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {meta?.report?.fy} · Revenue {fmt(kpis.revenue)} − Expenses {fmt(kpis.total_expenses)}
+              </p>
             </div>
             <p className={`text-3xl font-bold ${kpis.net_profit >= 0 ? "text-green-700" : "text-red-700"}`}>
-              {kpis.net_profit < 0 ? "-" : ""}{fmt(kpis.net_profit)}
+              {fmt(kpis.net_profit)}
             </p>
           </div>
 
           {/* Notes */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Notes</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">How this report is calculated</p>
             <div className="space-y-2">
               {data.notes.map((n, i) => (
-                <div key={i} className="flex gap-2 text-sm">
-                  <span className="font-medium text-gray-700 whitespace-nowrap">{n.title}:</span>
-                  <span className="text-gray-500">{n.description}</span>
+                <div key={i} className="flex gap-3 text-sm">
+                  <span className="font-semibold text-gray-700 whitespace-nowrap min-w-[160px]">{n.title}</span>
+                  <span className="text-gray-500">{n.rule} · Date: <span className="font-mono text-xs text-indigo-600">{n.date}</span></span>
                 </div>
               ))}
+            </div>
+            <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-400">
+              Net Profit = Revenue − (Incoming Invoices + Employee Expenses + General Expenses + Payroll Gross)
             </div>
           </div>
         </>

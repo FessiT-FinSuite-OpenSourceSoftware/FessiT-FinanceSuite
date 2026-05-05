@@ -192,7 +192,7 @@ export default function AddEstimate() {
   };
 
   if (showPreview) {
-    return <EstimateReportGeneration estimateData={previewData} onBack={() => setShowPreview(false)} />;
+    return <EstimateReportGeneration estimateData={previewData} orgData={currentOrganisation} onBack={() => setShowPreview(false)} />;
   }
 
   return (

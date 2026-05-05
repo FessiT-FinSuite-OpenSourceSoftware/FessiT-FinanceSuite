@@ -26,6 +26,7 @@ import {
   BookOpen,
   ReceiptText,
   BarChart2,
+  Package,
 } from "lucide-react";
 
 function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
@@ -42,7 +43,7 @@ function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
     <div
       ref={menuRef}
       style={{ top: pos.top, right: pos.right }}
-      className="fixed bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-[9999] overflow-hidden"
+      className="fixed bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-9999 overflow-hidden"
     >
       <button
         onClick={onLogout}
@@ -117,6 +118,7 @@ export default function SideBar({ component }) {
     { id: "projects", label: "Projects", icon: FolderKanban, module: Module.Customers },
     { id: "cost-centers", label: "Cost Centers", icon: Layers, module: Module.Customers },
     { id: "items", label: "Items", icon: Boxes, module: Module.Products },
+    { id: "assets", label: "Assets", icon: Package, module: null },
     { id: "users", label: "User Management", icon: UserLockIcon, module: Module.Users },
     { id: "settings", label: "Settings", icon: Settings, module: null, adminOnly: true },
   ];
@@ -269,7 +271,7 @@ export default function SideBar({ component }) {
             {sidebarOpen ? (
               <ChevronLeft
                 className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
-                size={24}
+                size={20}
                 strokeWidth={1.5}
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               />
@@ -277,7 +279,7 @@ export default function SideBar({ component }) {
               <ChevronRight
                 size={24}
                 strokeWidth={1.5}
-                className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-3 transition-colors"
+                className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-5.5 transition-colors"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               />
             )}
@@ -351,6 +353,7 @@ export default function SideBar({ component }) {
                     )}
                     {location.pathname.includes("/settings") && <p>Settings</p>}
                     {location.pathname.includes("/users") && <p>User Management</p>}
+                    {location.pathname.includes("/assets") && <p>Assets</p>}
 
                   </h2>
                   <p className="text-sm absolute text-gray-500">

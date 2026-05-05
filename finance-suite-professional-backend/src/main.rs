@@ -20,15 +20,17 @@ use handlers::{
     configure_cost_center_routes, configure_salary_routes, configure_general_expense_routes,
     configure_challan_routes, configure_category_routes, configure_product_routes,
     configure_estimate_routes, configure_ledger_routes, configure_account_routes,
-    configure_service_routes, configure_report_routes,
+    configure_service_routes, configure_report_routes, configure_asset_routes,
+    configure_asset_category_routes,
 };
 use repository::{
     CustomerRepository, ExpenseRepository, InvoiceRepository, IncomingInvoiceRepository,
     OrganisationRepository, UserRepository, PurchaseOrderRepository, CostCenterRepository,
     SalaryRepository, GeneralExpenseRepository, ChallanRepository, CategoryRepository, ProductRepository,
-    EstimateRepository, LedgerRepository, AccountRepository, ServiceRepository,
+    EstimateRepository, LedgerRepository, AccountRepository, ServiceRepository, AssetRepository,
+    AssetCategoryRepository,
 };
-use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService, ServiceService};
+use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService, ServiceService, AssetService, AssetCategoryService};
 use utils::jwt_middleware::JwtMiddleware;
 
 #[actix_web::main]
@@ -139,6 +141,17 @@ async fn main() -> std::io::Result<()> {
     let category_collection = db_client.get_category_collection();
     let category_repository = CategoryRepository::new(category_collection);
     let category_service = CategoryService::new(category_repository, user_repository.clone());
+
+    // Assets
+    let asset_collection = db_client.get_asset_collection();
+    let asset_repository = AssetRepository::new(asset_collection);
+    let asset_service = AssetService::new(asset_repository, user_repository.clone());
+
+    // Asset Categories
+    let asset_category_collection = db_client.get_asset_category_collection();
+    let asset_category_repository = AssetCategoryRepository::new(asset_category_collection);
+    let asset_category_service = AssetCategoryService::new(asset_category_repository, user_repository.clone());
+
     log::info!("Starting server at http://{}:{}", host, port);
 
     HttpServer::new(move || {
@@ -165,6 +178,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(ledger_service.clone()))
             .app_data(web::Data::new(account_service.clone()))
             .app_data(web::Data::new(service_service.clone()))
+            .app_data(web::Data::new(asset_service.clone()))
+            .app_data(web::Data::new(asset_category_service.clone()))
             .service(
                 web::scope("/api/v1")
                     .configure(configure_user_routes)
@@ -190,6 +205,8 @@ async fn main() -> std::io::Result<()> {
                             .configure(configure_account_routes)
                             .configure(configure_service_routes)
                             .configure(configure_report_routes)
+                            .configure(configure_asset_routes)
+                            .configure(configure_asset_category_routes)
                     )
             )
     })

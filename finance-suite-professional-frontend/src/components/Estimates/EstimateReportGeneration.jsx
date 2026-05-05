@@ -1,6 +1,5 @@
 import React from "react";
 import Logo from "../../assets/FessitLogoTrans.png";
-import { bankDetails } from "../Invoices/sampleInvoiceData";
 import { formatNumber, getCurrencySymbol } from "../../utils/formatNumber";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
@@ -89,7 +88,7 @@ async function printEstimatePdf(estimateNumber) {
   }
 }
 
-export default function EstimateReportGeneration({ estimateData, onBack }) {
+export default function EstimateReportGeneration({ estimateData, orgData, onBack }) {
   const data = estimateData || {};
   const items = Array.isArray(data.items) ? data.items : [];
   const currency = data.currency || "INR";
@@ -295,14 +294,16 @@ export default function EstimateReportGeneration({ estimateData, onBack }) {
         <div className="grid grid-cols-2 gap-6 mb-6">
           <div className="text-xs text-gray-800 space-y-3">
             <div>
-              <h3 className="font-semibold mb-1">{bankDetails.title}</h3>
+              <h3 className="font-semibold mb-1">Bank Details</h3>
               <div className="border border-gray-400 rounded p-2">
-                {bankDetails.fields.map((field) => (
-                  <p key={field.label}>
-                    <span className="font-semibold">{field.label}:</span>{" "}
-                    {field.value}
-                  </p>
-                ))}
+                {orgData?.accountHolder && <p><span className="font-semibold">Account Name:</span> {orgData.accountHolder}</p>}
+                {orgData?.accountNumber && <p><span className="font-semibold">Account Number:</span> {orgData.accountNumber}</p>}
+                {orgData?.bankName      && <p><span className="font-semibold">Bank:</span> {orgData.bankName}</p>}
+                {orgData?.ifscCode      && <p><span className="font-semibold">IFSC Code:</span> {orgData.ifscCode}</p>}
+                {orgData?.upiId         && <p><span className="font-semibold">UPI ID:</span> {orgData.upiId}</p>}
+                {!orgData?.accountHolder && !orgData?.accountNumber && !orgData?.bankName && !orgData?.ifscCode && !orgData?.upiId && (
+                  <p className="text-gray-400 italic">No bank details configured. Please update in Settings.</p>
+                )}
               </div>
             </div>
 

@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import axiosInstance from "../../utils/axiosInstance";
 import { categorySelector, createCategory, fetchCategories } from "../../ReduxApi/category";
+import ManageCategoriesModal from "./ManageCategoriesModal";
 import {
   createProduct,
   deleteProduct,
@@ -15,8 +16,7 @@ import {
 import { authSelector } from "../../ReduxApi/auth";
 import { canRead, canWrite, canDelete, Module } from "../../utils/permissions";
 import { KeyUri } from "../../shared/key";
-import { RowActions } from "../../shared/ui";
-import { Pagination } from "../../shared/ui";
+import { RowActions, Pagination, StatCard, InfoCard, Field, DataTable } from "../../shared/ui";
 
 const fmt = (value) => Number(value || 0).toLocaleString("en-IN");
 const textValue = (value, fallback = "") =>
@@ -121,7 +121,6 @@ export default function Products() {
   const [stockFilter, setStockFilter] = useState("All");
   const [taxFilter, setTaxFilter] = useState("All");
   const [sortBy, setSortBy] = useState("name-asc");
-  const [openId, setOpenId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [showModal, setShowModal] = useState(false);
@@ -135,6 +134,7 @@ export default function Products() {
   const [previewModal, setPreviewModal] = useState({ open: false, src: "", title: "" });
   const [stockModal, setStockModal] = useState({ open: false, productId: null, productName: "", quantity: "" });
   const [descriptionPreview, setDescriptionPreview] = useState(null);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   useEffect(() => {
     dispatch(fetchProductData());
@@ -458,6 +458,15 @@ export default function Products() {
               <RefreshCcw className="w-4 h-4" />
               Refresh
             </button>
+            {hasWrite && (
+              <button
+                type="button"
+                onClick={() => setShowCategoryManager(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Categories
+              </button>
+            )}
             <button
               type="button"
               onClick={() => hasWrite && openCreateModal()}
@@ -727,10 +736,8 @@ export default function Products() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card label="Total Products" value={summary.total} />
-        {/* <Card label="Out of Stock" value={summary.out} valueClassName="text-red-600" /> */}
-        {/* <Card label="Low Stock" value={summary.low} valueClassName="text-amber-600" /> */}
-        <Card label="Inventory Value" value={`Rs. ${fmt(summary.totalValue)}`} valueClassName="text-blue-700" />
+        <StatCard label="Total Products" value={summary.total} />
+        <StatCard label="Inventory Value" value={`Rs. ${fmt(summary.totalValue)}`} valueClass="text-blue-700" />
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -771,140 +778,87 @@ export default function Products() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Image</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Name</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Description</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">HSN</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Item Code</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Category</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Stock</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Sold</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">In Stock</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Sale Price</th>
-                <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-200">
-              {paginatedProducts.map((product) => {
-                const isOpen = openId === product.id;
-                const saleAfterDiscount = product.salePrice - (product.salePrice * product.discount) / 100;
-                const totalAfterTax = saleAfterDiscount + (saleAfterDiscount * product.tax) / 100;
-
-                return (
-                  <React.Fragment key={product.id}>
-                    <tr
-                      className="cursor-pointer hover:bg-slate-50/70 transition-colors align-middle"
-                      onClick={() => setOpenId(isOpen ? null : product.id)}
-                    >
-                      <td className="px-3 py-2">
-                        {product.image ? (
-                          <button type="button" onClick={(e) => { e.stopPropagation(); const src = productImageSrc(product); if (src) openPreviewModal(src, product.name || "Product Image"); }} className="block">
-                            <img src={productImageSrc(product)} alt={product.name} onError={(e) => { e.currentTarget.style.display = "none"; }} className="h-8 w-10 rounded-lg object-cover border border-slate-200" />
-                          </button>
-                        ) : (
-                          <div className="h-8 w-10 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-400">No img</div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="whitespace-nowrap text-sm font-semibold text-slate-900">{product.name}</div>
-                        <div className="text-xs text-slate-400">{product.manufacturer}</div>
-                      </td>
-                      <td className="px-3 py-2 max-w-[140px]">
-                        <div className="text-xs text-slate-600 line-clamp-2 cursor-help" onMouseEnter={(e) => openDescriptionPreview(e, product)} onMouseLeave={closeDescriptionPreview}>
-                          {product.description || "-"}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">{product.hsn || "-"}</td>
-                      <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">{product.itemCode || "-"}</td>
-                      <td className="px-3 py-2">
-                        <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 whitespace-nowrap">
-                          {textValue(product.categoryLabel, "Unassigned") || "Unassigned"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className={`text-xs font-semibold ${stockCountClass(product.stocks)}`}>{fmt(product.stocks)-fmt(product.soldStocks)}</span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="text-xs font-semibold text-slate-500">{fmt(product.soldStocks)}</span>
-                      </td>
-                      <td className="px-3 py-2">
-                        {(() => {
-                          const total = Number(product.stocks || 0);
-                          const sold = Number(product.soldStocks || 0);
-                          const inStock = Math.max(total - sold, 0);
-                          const pct = total > 0 ? Math.round((inStock / total) * 100) : 0;
-                          const color = pct > 50 ? "bg-emerald-500" : pct > 20 ? "bg-amber-400" : "bg-red-500";
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              <div className="h-1.5 w-12 rounded-full bg-slate-200">
-                                <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
-                              </div>
-                              <span className={`text-xs font-semibold ${pct > 50 ? "text-emerald-600" : pct > 20 ? "text-amber-600" : "text-red-600"}`}>
-                                {/* {inStock}  */}
-                                ({pct}%)
-                              </span>
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="text-xs font-semibold text-slate-900 whitespace-nowrap">Rs. {fmt(product.salePrice)}</span>
-                      </td>
-                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          {hasWrite && (
-                            <button type="button" onClick={() => openStockModal(product)} className="rounded-lg border border-emerald-300 px-2 py-0.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50" title="Add Stock">
-                              +Stock
-                            </button>
-                          )}
-                          <RowActions onEdit={() => openEditModal(product)} onDelete={() => handleDelete(product.id)} canEdit={hasWrite} canDelete={hasDelete} />
-                        </div>
-                      </td>
-                    </tr>
-
-                    {isOpen && (
-                      <tr className="bg-slate-50">
-                        <td colSpan={9} className="px-4 py-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
-                            <InfoCard
-                              label="Description"
-                              value={product.description || "-"}
-                              className="xl:col-span-3"
-                              valueClassName="line-clamp-2 min-h-[2.5rem]"
-                            />
-                            <InfoCard label="Manufacturer" value={product.manufacturer} />
-                            <InfoCard label="Stocks" value={fmt(product.stocks)} />
-                            <InfoCard label="Discount" value={`${product.discount}%`} />
-                            <InfoCard label="Tax" value={`${product.tax}%`} />
-                            <InfoCard label="Purchased Price" value={`Rs. ${fmt(product.purchasePrice)}`} />
-                            <InfoCard label="After Discount" value={`Rs. ${fmt(saleAfterDiscount)}`} />
-                            <InfoCard label="After Tax" value={`Rs. ${fmt(totalAfterTax)}`} />
-                            <InfoCard label="Category" value={textValue(product.categoryLabel, "Unassigned") || "Unassigned"} />
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-
-              {filteredProducts.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="px-6 py-14 text-center text-slate-500">
-                    No products matched your filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        isLoading={isLoading}
+        data={paginatedProducts}
+        rowKey={(p) => p.id}
+        wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+        tbodyClass="divide-y divide-slate-200"
+        emptyMessage="No products matched your filters."
+        columns={[
+          {
+            label: 'Image', stopPropagation: true,
+            render: (product) => product.image ? (
+              <button type="button" onClick={(e) => { e.stopPropagation(); const src = productImageSrc(product); if (src) openPreviewModal(src, product.name || 'Product Image'); }} className="block">
+                <img src={productImageSrc(product)} alt={product.name} onError={(e) => { e.currentTarget.style.display = 'none'; }} className="h-8 w-10 rounded-lg object-cover border border-slate-200" />
+              </button>
+            ) : <div className="h-8 w-10 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-400">No img</div>,
+          },
+          {
+            label: 'Name',
+            render: (product) => (
+              <><div className="whitespace-nowrap text-sm font-semibold text-slate-900">{product.name}</div><div className="text-xs text-slate-400">{product.manufacturer}</div></>
+            ),
+          },
+          {
+            label: 'Description',
+            render: (product) => (
+              <div className="text-xs text-slate-600 line-clamp-2 cursor-help max-w-[140px]" onMouseEnter={(e) => openDescriptionPreview(e, product)} onMouseLeave={closeDescriptionPreview}>{product.description || '-'}</div>
+            ),
+          },
+          { label: 'HSN',       render: (p) => <span className="text-xs text-slate-700">{p.hsn || '-'}</span> },
+          { label: 'Item Code', render: (p) => <span className="text-xs text-slate-700">{p.itemCode || '-'}</span> },
+          { label: 'Category',  render: (p) => <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">{textValue(p.categoryLabel, 'Unassigned') || 'Unassigned'}</span> },
+          { label: 'Stock',     render: (p) => <span className={`text-xs font-semibold ${stockCountClass(p.stocks)}`}>{fmt(p.stocks) - fmt(p.soldStocks)}</span> },
+          { label: 'Sold',      render: (p) => <span className="text-xs font-semibold text-slate-500">{fmt(p.soldStocks)}</span> },
+          {
+            label: 'In Stock',
+            render: (p) => {
+              const total = Number(p.stocks || 0), sold = Number(p.soldStocks || 0);
+              const inStock = Math.max(total - sold, 0);
+              const pct = total > 0 ? Math.round((inStock / total) * 100) : 0;
+              const color = pct > 50 ? 'bg-emerald-500' : pct > 20 ? 'bg-amber-400' : 'bg-red-500';
+              return (
+                <div className="flex items-center gap-1.5">
+                  <div className="h-1.5 w-12 rounded-full bg-slate-200"><div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} /></div>
+                  <span className={`text-xs font-semibold ${pct > 50 ? 'text-emerald-600' : pct > 20 ? 'text-amber-600' : 'text-red-600'}`}>({pct}%)</span>
+                </div>
+              );
+            },
+          },
+          { label: 'Sale Price', render: (p) => <span className="text-xs font-semibold text-slate-900">Rs. {fmt(p.salePrice)}</span> },
+          {
+            label: 'Actions', right: true, stopPropagation: true,
+            render: (product) => (
+              <div className="flex items-center justify-end gap-1">
+                {hasWrite && (
+                  <button type="button" onClick={() => openStockModal(product)} className="rounded-lg border border-emerald-300 px-2 py-0.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">+Stock</button>
+                )}
+                <RowActions onEdit={() => openEditModal(product)} onDelete={() => handleDelete(product.id)} canEdit={hasWrite} canDelete={hasDelete} />
+              </div>
+            ),
+          },
+        ]}
+        renderExpanded={(product) => {
+          const saleAfterDiscount = product.salePrice - (product.salePrice * product.discount) / 100;
+          const totalAfterTax = saleAfterDiscount + (saleAfterDiscount * product.tax) / 100;
+          return (
+            <div className="px-4 py-4 bg-slate-50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
+                <InfoCard label="Description" value={product.description || '-'} className="xl:col-span-3" valueClassName="line-clamp-2 min-h-[2.5rem]" />
+                <InfoCard label="Manufacturer" value={product.manufacturer} />
+                <InfoCard label="Stocks" value={fmt(product.stocks)} />
+                <InfoCard label="Discount" value={`${product.discount}%`} />
+                <InfoCard label="Tax" value={`${product.tax}%`} />
+                <InfoCard label="Purchased Price" value={`Rs. ${fmt(product.purchasePrice)}`} />
+                <InfoCard label="After Discount" value={`Rs. ${fmt(saleAfterDiscount)}`} />
+                <InfoCard label="After Tax" value={`Rs. ${fmt(totalAfterTax)}`} />
+                <InfoCard label="Category" value={textValue(product.categoryLabel, 'Unassigned') || 'Unassigned'} />
+              </div>
+            </div>
+          );
+        }}
+      />
 
       <Pagination
         currentPage={currentPage}
@@ -914,42 +868,12 @@ export default function Products() {
         onPageChange={goToPage}
         onPageSizeChange={(n) => { setPageSize(Number(n)); setCurrentPage(1); }}
       />
+
+      {showCategoryManager && (
+        <ManageCategoriesModal onClose={() => setShowCategoryManager(false)} />
+      )}
     </div>
   );
 }
 
-function Card({ label, value, valueClassName = "text-slate-900" }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className={`text-2xl font-bold ${valueClassName}`}>{value}</p>
-    </div>
-  );
-}
 
-function InfoCard({ label, value, className = "", valueClassName = "" }) {
-  return (
-    <div className={`rounded-xl border border-slate-200 bg-white p-4 ${className}`}>
-      <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
-      <p className={`mt-1 text-sm font-semibold text-slate-900 ${valueClassName}`}>{value}</p>
-    </div>
-  );
-}
-
-function Field({ label, name, value, onChange, placeholder, type = "text", readOnly = false }) {
-  return (
-    <div>
-      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        readOnly={readOnly}
-        className={`w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 ${readOnly ? "cursor-not-allowed bg-slate-100 text-slate-500 focus:ring-0" : ""
-          }`}
-      />
-    </div>
-  );
-}

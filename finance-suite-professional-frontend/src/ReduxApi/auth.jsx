@@ -3,12 +3,18 @@ import axiosInstance from "../utils/axiosInstance";
 import { KeyUri } from "../shared/key";
 
 // Initial state
+import { isTokenExpired } from "../utils/axiosInstance";
+
+const _storedToken = localStorage.getItem("token");
+const _tokenValid = _storedToken && !isTokenExpired(_storedToken);
+if (!_tokenValid && _storedToken) localStorage.clear();
+
 const initialState = {
   user: null,
-  token: localStorage.getItem("token") || null,
-  refreshToken: localStorage.getItem("refreshToken") || null,
-  isAuthenticated: !!localStorage.getItem("token"),
-  isLoading: false,
+  token: _tokenValid ? _storedToken : null,
+  refreshToken: _tokenValid ? localStorage.getItem("refreshToken") : null,
+  isAuthenticated: false, // always false until verifyToken confirms
+  isLoading: !!_tokenValid, // show loader while verifying
   error: null,
   loginAttempts: 0,
   lastLoginAttempt: null,
@@ -280,13 +286,10 @@ const authSlice = createSlice({
       })
       .addCase(verifyToken.rejected, (state, action) => {
         state.isLoading = false;
-        // Only deauthenticate on explicit 401, keep session alive on network errors
-        if (action.payload === "Token verification failed" || action.payload?.includes?.("401")) {
-          state.isAuthenticated = false;
-          state.user = null;
-          state.token = null;
-          state.refreshToken = null;
-        }
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+        state.refreshToken = null;
         state.error = action.payload;
       })
       

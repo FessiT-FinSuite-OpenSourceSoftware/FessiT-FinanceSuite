@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { countriesData } from "../../utils/countriesData";
-import { Search } from "lucide-react";
-import { Pencil, Save } from "lucide-react"; // 🖊️ and 💾 icons
+import { Eye, Pencil, Save, Search, X } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
-import { createOrganisation, fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector, updateOrganisationData, clearLoading } from "../../ReduxApi/organisation";
+import axiosInstance from "../../utils/axiosInstance";
+import { createOrganisation, fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector, updateOrganisationData, clearLoading, uploadOrgLogo } from "../../ReduxApi/organisation";
 import ServicesTab from "./ServicesTab";
 import Products from "./products";
 
@@ -113,6 +113,9 @@ export default function SettingsCreation() {
   const { currentOrganisation, isLoading, isError } = useSelector(orgamisationSelector);
   const [orgId, setOrgID] = useState(null);
   const [emailDisable, setEmailDisable] = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState('');
+  const [isLogoPreviewOpen, setIsLogoPreviewOpen] = useState(false);
   const dispatch = useDispatch();
 
   // Debug logging
@@ -642,6 +645,15 @@ export default function SettingsCreation() {
       setIsEditing(true);
       setEmailDisable(true);
 
+      // Load existing logo preview
+      if (currentOrganisation.logo) {
+        axiosInstance.get(`/organisation-logo/${currentOrganisation.logo}`, { responseType: 'blob' })
+          .then((res) => setLogoPreview(URL.createObjectURL(res.data)))
+          .catch(() => {})
+      } else {
+        setLogoPreview('')
+      }
+
       const foundCountry = countriesData.countries.find(
         (c) =>
           c.country === currentOrganisation.country ||
@@ -653,6 +665,23 @@ export default function SettingsCreation() {
       setInputErrors({});
     }
   }, [currentOrganisation]);
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0] || null
+    setLogoFile(file)
+    setLogoPreview(file ? URL.createObjectURL(file) : logoPreview)
+  }
+
+  const handleLogoUpload = async () => {
+    if (!logoFile || !orgId) return
+    await dispatch(uploadOrgLogo(orgId, logoFile))
+    setLogoFile(null)
+  }
+
+  const openLogoPreview = () => {
+    if (!logoPreview) return;
+    setIsLogoPreviewOpen(true);
+  }
 
   const handleReset = () => {
     setSettings(initialSettings);
@@ -668,6 +697,34 @@ export default function SettingsCreation() {
   );
   return (
     <>
+      {isLogoPreviewOpen && logoPreview && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4" onClick={() => setIsLogoPreviewOpen(false)}>
+          <div
+            className="w-full max-w-2xl rounded-xl bg-white p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+              <h3 className="text-base font-semibold text-gray-900">Logo Preview</h3>
+              <button
+                type="button"
+                onClick={() => setIsLogoPreviewOpen(false)}
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+                title="Close preview"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-4 flex min-h-64 items-center justify-center rounded-lg bg-gray-50 p-6">
+              <img
+                src={logoPreview}
+                alt="Organisation logo preview"
+                className="max-h-[65vh] max-w-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Settings Form */}
       <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6">
         {/* Tabs + Action Buttons */}
@@ -762,7 +819,55 @@ export default function SettingsCreation() {
                   Organization Settings
                 </h2>
 
-                {/* Form Grid */}
+                {/* Logo Upload */}
+                <div className="mb-6 flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={openLogoPreview}
+                    disabled={!logoPreview}
+                    className="h-12 w-12 shrink-0 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden disabled:cursor-default"
+                    title={logoPreview ? "Preview logo" : "No logo selected"}
+                  >
+                    {logoPreview
+                      ? <img src={logoPreview} alt="Logo" className="h-full w-full object-contain" />
+                      : <span className="text-xs text-gray-400">No logo</span>
+                    }
+                  </button>
+                  <div className="flex flex-col gap-2">
+                    <label className="block text-gray-700 font-medium text-sm">Organisation Logo</label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="flex max-w-64 cursor-pointer items-center rounded-md border border-gray-300 bg-gray-50 px-2 py-1 text-xs text-gray-600 hover:border-blue-500 hover:text-blue-600">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoChange}
+                          className="sr-only"
+                        />
+                        <span className="truncate">
+                          {logoFile?.name || "Change Logo"}
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={openLogoPreview}
+                        disabled={!logoPreview}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-700 rounded-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Preview
+                      </button>
+                    </div>
+                    {logoFile && (
+                      <button
+                        type="button"
+                        onClick={handleLogoUpload}
+                        className="self-start px-3 py-1.5 text-xs bg-blue-600 text-white rounded-full hover:bg-blue-700"
+                      >
+                        Upload Logo
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   {/* Organization Name */}
                   <div className="relative">

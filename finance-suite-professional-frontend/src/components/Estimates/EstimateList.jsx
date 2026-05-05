@@ -15,9 +15,7 @@ import {
   TabActionBar,
   FilterSelect,
   CreateButton,
-  TableWrapper,
-  TableHead,
-  EmptyRow,
+  DataTable,
   RowActions,
   Pagination,
   Modal,
@@ -53,7 +51,6 @@ const formatDate = (value) => {
   } catch { return "-"; }
 };
 
-// Handles both { $oid: "..." } and plain string _id
 const getId = (row) =>
   row?._id?.$oid || (typeof row?._id === "string" ? row._id : "") ||
   row?.id?.$oid  || (typeof row?.id  === "string" ? row.id  : "") || "";
@@ -83,19 +80,10 @@ export default function EstimateList() {
     dispatch(fetchEstimates(params));
   }, [dispatch, currentPage, pageSize, search, statusFilter, fromDate, toDate]);
 
-  // Reset to page 1 when filters change (not when page itself changes)
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, statusFilter, fromDate, toDate, pageSize]);
-
-  // Fetch whenever page or filters change
-  useEffect(() => {
-    doFetch();
-  }, [doFetch]);
+  useEffect(() => { setCurrentPage(1); }, [search, statusFilter, fromDate, toDate, pageSize]);
+  useEffect(() => { doFetch(); }, [doFetch]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  // Derive stats from current estimateData (all records already fetched)
   const allData = Array.isArray(estimateData) ? estimateData : [];
   const stats = {
     total,
@@ -113,6 +101,62 @@ export default function EstimateList() {
     setStatusPopup(null);
   };
 
+  const columns = [
+    {
+      label: "Estimate No",
+      render: (row) => {
+        const id = getId(row);
+        return (
+          <span className="font-medium text-blue-600 cursor-pointer" onClick={() => hasWrite && nav(`/estimates/edit/${id}`)}>
+            {row.estimateNumber || "-"}
+          </span>
+        );
+      },
+    },
+    {
+      label: "Customer",
+      render: (row) => (
+        <span className="block truncate max-w-40 text-gray-600" title={row.customerName || "-"}>
+          {row.customerName || "-"}
+        </span>
+      ),
+    },
+    { label: "Issue Date",  render: (row) => <span className="text-gray-600">{formatDate(row.issueDate)}</span> },
+    { label: "Expiry Date", render: (row) => <span className="text-gray-600">{formatDate(row.expiryDate)}</span> },
+    { label: "Total",       render: (row) => <span className="font-semibold text-gray-900">{fmt(row.total)}</span> },
+    {
+      label: "Status",
+      render: (row) => {
+        const id     = getId(row);
+        const locked = (row.status || "").toLowerCase() === "converted";
+        return (
+          <span
+            onClick={() => !locked && hasWrite && setStatusPopup({ id, status: (row.status || "draft").toLowerCase() })}
+            className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(row.status)} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
+          >
+            {cap(row.status)}
+          </span>
+        );
+      },
+    },
+    {
+      label: "Actions",
+      right: true,
+      render: (row) => {
+        const id     = getId(row);
+        const locked = (row.status || "").toLowerCase() === "converted";
+        return (
+          <RowActions
+            onEdit={() => hasWrite && nav(`/estimates/edit/${id}`)}
+            onDelete={() => hasDelete && handleDelete(id)}
+            canEdit={hasWrite && !locked}
+            canDelete={hasDelete && !locked}
+          />
+        );
+      },
+    },
+  ];
+
   return (
     <div className="max-w-7xl lg:w-full md:w-full">
       <TabActionBar
@@ -127,23 +171,6 @@ export default function EstimateList() {
           ))}
         </FilterSelect>
 
-        {/* <input
-          type="date"
-          value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          title="From date"
-        />
-        <label className="text-sm text-gray-600">-</label>
-
-        <input
-          type="date"
-          value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          title="To date"
-        /> */}
-
         <CreateButton
           onClick={() => hasWrite && nav("/estimates/create")}
           label="Create"
@@ -157,56 +184,12 @@ export default function EstimateList() {
         <StatCard label="Accepted" value={stats.accepted} valueClass="text-green-700" />
       </div>
 
-      <TableWrapper>
-        <TableHead columns={[
-          { label: "Estimate No" },
-          { label: "Customer" },
-          { label: "Issue Date" },
-          { label: "Expiry Date" },
-          { label: "Total" },
-          { label: "Status" },
-          { label: "Actions", right: true },
-        ]} />
-        <tbody className="divide-y divide-gray-200">
-          {isLoading ? (
-            <EmptyRow colSpan={7} message="Loading estimates..." />
-          ) : allData.length === 0 ? (
-            <EmptyRow colSpan={7} message="No estimates found." />
-          ) : allData.map((row) => {
-            const id     = getId(row);
-            const locked = (row.status || "").toLowerCase() === "converted";
-            return (
-              <tr key={id || row.estimateNumber} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-2 whitespace-nowrap font-medium text-blue-600 cursor-pointer" onClick={() => hasWrite && nav(`/estimates/edit/${id}`)}>
-                  {row.estimateNumber || "-"}
-                </td>
-                <td className="px-4 py-2 text-gray-600 max-w-[160px]">
-                  <span className="block truncate" title={row.customerName || "-"}>{row.customerName || "-"}</span>
-                </td>
-                <td className="px-4 py-2 whitespace-nowrap text-gray-600">{formatDate(row.issueDate)}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-gray-600">{formatDate(row.expiryDate)}</td>
-                <td className="px-4 py-2 whitespace-nowrap font-semibold text-gray-900">{fmt(row.total)}</td>
-                <td className="px-4 py-2 whitespace-nowrap">
-                  <span
-                    onClick={() => !locked && hasWrite && setStatusPopup({ id, status: (row.status || "draft").toLowerCase() })}
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(row.status)} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
-                  >
-                    {cap(row.status)}
-                  </span>
-                </td>
-                <td className="px-4 py-2 whitespace-nowrap text-right">
-                  <RowActions
-                    onEdit={() => hasWrite && nav(`/estimates/edit/${id}`)}
-                    onDelete={() => hasDelete && handleDelete(id)}
-                    canEdit={hasWrite && !locked}
-                    canDelete={hasDelete && !locked}
-                  />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </TableWrapper>
+      <DataTable
+        isLoading={isLoading}
+        data={allData}
+        rowKey={(row) => getId(row) || row.estimateNumber}
+        columns={columns}
+      />
 
       <Pagination
         currentPage={currentPage}

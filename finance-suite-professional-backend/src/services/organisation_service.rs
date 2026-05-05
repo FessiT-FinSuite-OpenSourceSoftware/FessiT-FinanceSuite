@@ -314,6 +314,10 @@ impl OrganisationService {
         };
         self.populate_services(updated).await
     }
+    pub async fn update_logo(&self, id: &str, logo: String) -> Result<Organisation, ApiError> {
+        self.repository.update_logo(id, logo).await
+    }
+
      pub async fn delete_organisation(&self, id: &str) -> Result<bool, ApiError> {
         // Check if customer exists
         self.repository

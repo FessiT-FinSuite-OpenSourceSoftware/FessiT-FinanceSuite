@@ -101,6 +101,7 @@ const normalizeOrganisation = (organisation) => {
       organisation.cashInstructions ?? organisation.cash_instructions ?? '',
     customPaymentName:
       organisation.customPaymentName ?? organisation.custom_payment_name ?? '',
+    logo: organisation.logo || '',
   }
 }
 
@@ -297,5 +298,22 @@ export const deleteCustomer = (id) => async (dispatch) => {
         `Failed: ${error?.response?.statusText || 'Unknown error'}`
     )
     dispatch(getOrganisationFailure())
+  }
+}
+
+export const uploadOrgLogo = (orgId, file) => async (dispatch) => {
+  dispatch(getOrganisation())
+  try {
+    const fd = new FormData()
+    fd.append('logo', file)
+    const { data } = await axiosInstance.put(`/organisation/${orgId}/logo`, fd)
+    const normalized = normalizeOrganisation(data)
+    dispatch(updateOrganisationSuccess(normalized))
+    toast.success('Logo uploaded successfully')
+    return normalized
+  } catch (error) {
+    toast.error(error?.response?.data?.message || 'Failed to upload logo')
+    dispatch(getOrganisationFailure())
+    throw error
   }
 }

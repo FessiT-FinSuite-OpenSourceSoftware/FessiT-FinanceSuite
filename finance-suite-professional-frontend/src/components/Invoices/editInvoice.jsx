@@ -5,7 +5,9 @@ import { countries } from "../../shared/countries";
 import { useNavigate, useParams } from "react-router-dom";
 import { formatNumber, getCurrencySymbol, formatCurrency } from "../../utils/formatNumber";
 import InvoiceReportGeneration from "./invoiceReportGeneration";
-import { KeyUri } from "../../shared/key";
+import { useSelector, useDispatch } from "react-redux";
+import { orgamisationSelector } from "../../ReduxApi/organisation";
+import { fetchOneInvoice, updateInvoice, invoiceSelector } from "../../ReduxApi/invoice";
 import axiosInstance from "../../utils/axiosInstance";
 
 const initialInvoiceData = {
@@ -68,6 +70,8 @@ export default function EditInvoice() {
   const [serviceFetchError, setServiceFetchError] = useState("");
   const nav = useNavigate();
   const { id } = useParams();
+  const dispatch = useDispatch();
+  const { currentOrganisation } = useSelector(orgamisationSelector);
 
   // treat missing type as domestic for safety
   const isDomestic =
@@ -151,15 +155,8 @@ export default function EditInvoice() {
     const fetchInvoice = async () => {
       try {
         if (!id) return;
-
-
-        const response = await axiosInstance.get(`${KeyUri.BACKENDURI}/invoices/${id}`)
-        const data = await response.data;
-        console.log("Fetched invoice:", data);
-
-        if (!data || typeof data !== "object") {
-          throw new Error("Invoice not found or empty response");
-        }
+        const data = await dispatch(fetchOneInvoice(id));
+        if (!data || typeof data !== "object") throw new Error("Invoice not found or empty response");
 
         const normalizedItems =
           Array.isArray(data.items) && data.items.length > 0
@@ -186,9 +183,8 @@ export default function EditInvoice() {
         toast.error(err.message || "Failed to load invoice");
       }
     };
-
     fetchInvoice();
-  }, [id]);
+  }, [id, dispatch]);
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -518,19 +514,10 @@ export default function EditInvoice() {
     setInputErrors({});
 
     try {
-
-
-      const response = await axiosInstance.put(`${KeyUri.BACKENDURI}/invoices/${id}`, invoiceData)
-
-
-      console.log("response", response)
-      toast.success("Invoice updated successfully");
-      nav("/invoices");
+      const result = await dispatch(updateInvoice(id, invoiceData));
+      if (result) nav("/invoices");
     } catch (err) {
-      console.error("error while putting",err);
-      toast.error(
-        err.response.data.message || "Something went wrong while updating invoice"
-      );
+      console.error("error while updating", err);
     }
   };
 
@@ -1523,6 +1510,7 @@ export default function EditInvoice() {
           {/* Invoice Preview Component */}
           <InvoiceReportGeneration
             invoiceData={invoiceData}
+            orgData={currentOrganisation}
             onBack={() => setShowInvoicePreview(false)}
           />
         </>

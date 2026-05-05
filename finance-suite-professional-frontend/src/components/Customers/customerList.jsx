@@ -1,32 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { Search, Plus, Eye, Edit2, Trash2, Filter, FolderPlus, X } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Plus, FolderPlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchCustomerData, customerSelector, deleteCustomer, updateCustomerData } from "../../ReduxApi/customer";
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
 import { toast } from "react-toastify";
-import { Pagination } from "../../shared/ui";
-
-const emptyProject = { projectName: "", projectOwner: "", description: "" };
-
-const LABELS = {
-  projectName: "Project Name *",
-  projectOwner: "Project Owner *",
-  description: "Description",
-};
+import { X } from "lucide-react";
+import {
+  TabActionBar, FilterSelect, StatCard, DataTable, RowActions,
+  Pagination, ConfirmModal, Modal, FormField, inputCls,
+} from "../../shared/ui";
 
 function ProjectModal({ customerName, onSave, onClose }) {
-  const [form, setForm] = useState({ ...emptyProject });
+  const [form, setForm] = useState({ projectName: "", projectOwner: "", description: "" });
   const handleSave = () => {
-    if (!form.projectName.trim() || !form.projectOwner.trim()) {
-      toast.error("Project name and owner are required");
-      return;
-    }
+    if (!form.projectName.trim() || !form.projectOwner.trim()) { toast.error("Project name and owner are required"); return; }
     onSave(form);
   };
   return (
-    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
         <div className="flex justify-between items-center mb-1">
           <h3 className="text-base font-semibold text-gray-800">Add Project</h3>
@@ -34,18 +27,12 @@ function ProjectModal({ customerName, onSave, onClose }) {
         </div>
         <p className="text-xs text-gray-500 mb-4">for <span className="font-medium capitalize">{customerName}</span></p>
         <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{LABELS.projectName}</label>
-            <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter project name" value={form.projectName} onChange={e => setForm(p => ({ ...p, projectName: e.target.value }))} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{LABELS.projectOwner}</label>
-            <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter project owner" value={form.projectOwner} onChange={e => setForm(p => ({ ...p, projectOwner: e.target.value }))} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">{LABELS.description}</label>
-            <input className="border border-gray-300 rounded-md px-3 py-2 w-full text-sm focus:ring-1 focus:ring-blue-500" placeholder="Enter description" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
-          </div>
+          {[{ label: "Project Name *", key: "projectName" }, { label: "Project Owner *", key: "projectOwner" }, { label: "Description", key: "description" }].map(({ label, key }) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+              <input className={inputCls} placeholder={`Enter ${label.replace(" *", "").toLowerCase()}`} value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} />
+            </div>
+          ))}
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-300 rounded-full hover:border-gray-400">Cancel</button>
@@ -56,112 +43,37 @@ function ProjectModal({ customerName, onSave, onClose }) {
   );
 }
 
-// Sample invoice data - replace with your actual data/API call
-const sampleCustomers = [
-  {
-    id: 1,
-    invoice_number: "INV-2024-001",
-    company_name: "Acme Corporation",
-    customer_name: "John Doe",
-    invoice_date: "2024-01-15",
-    due_date: "2024-02-15",
-    total: 15000,
-    status: "Active",
-  },
-  {
-    id: 2,
-    invoice_number: "INV-2024-002",
-    company_name: "Tech Solutions",
-    customer_name: "Jane Smith",
-    invoice_date: "2024-01-20",
-    due_date: "2024-02-20",
-    total: 25000,
-    status: "Pending",
-  },
-  {
-    id: 3,
-    invoice_number: "INV-2024-003",
-    company_name: "Digital Ventures",
-    customer_name: "Bob Johnson",
-    invoice_date: "2024-01-25",
-    due_date: "2024-02-25",
-    total: 18500,
-    status: "Active",
-  },
-  {
-    id: 4,
-    invoice_number: "INV-2024-004",
-    company_name: "Innovation Labs",
-    customer_name: "Alice Williams",
-    invoice_date: "2024-02-01",
-    due_date: "2024-03-01",
-    total: 32000,
-    status: "Active",
-  },
-  {
-    id: 5,
-    invoice_number: "INV-2024-005",
-    company_name: "Creative Studios",
-    customer_name: "Charlie Brown",
-    invoice_date: "2024-02-10",
-    due_date: "2024-03-10",
-    total: 12500,
-    status: "Pending",
-  },
-  {
-    id: 6,
-    invoice_number: "INV-2024-006",
-    company_name: "Global Enterprises",
-    customer_name: "David Miller",
-    invoice_date: "2024-02-15",
-    due_date: "2024-03-15",
-    total: 45000,
-    status: "Pending",
-  },
-  {
-    id: 7,
-    invoice_number: "INV-2024-007",
-    company_name: "Smart Solutions",
-    customer_name: "Emma Davis",
-    invoice_date: "2024-02-20",
-    due_date: "2024-03-20",
-    total: 28000,
-    status: "Pending",
-  },
-  {
-    id: 8,
-    invoice_number: "INV-2024-008",
-    company_name: "Future Tech",
-    customer_name: "Frank Wilson",
-    invoice_date: "2024-02-25",
-    due_date: "2024-03-25",
-    total: 19500,
-    status: "New",
-  },
-];
+const getStatusColor = (status) => {
+  switch (status) {
+    case "Active":   return "bg-green-100 text-green-800";
+    case "Prospect": return "bg-blue-100 text-blue-800";
+    case "Closed":   return "bg-gray-100 text-gray-800";
+    default:         return "bg-red-100 text-red-800";
+  }
+};
 
 export default function CustomerList() {
   const { customersData } = useSelector(customerSelector);
   const { user } = useSelector(authSelector);
   const hasWrite = canWrite(user, Module.Customers);
   const hasDelete = canDelete(user, Module.Customers);
+  const dispatch = useDispatch();
+  const nav = useNavigate();
 
-  // const [customers,setCustomers] = useState(customersData);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [roleFilter, setRoleFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const [showAction, setShowAction] = useState(null);
-  const [page, setPage] = useState(10);
-  const [projectModal, setProjectModal] = useState(null); // { id, customerName, projects }
-  const [statusModal, setStatusModal] = useState(null); // { id, currentStatus }
+  const [pageSize, setPageSize] = useState(10);
+  const [projectModal, setProjectModal] = useState(null);
+  const [statusModal, setStatusModal] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("");
-  const { id } = useParams();
-  const dispatch = useDispatch();
-  const nav = useNavigate();
-  const itemsPerPage = page;
+  const [deleteModal, setDeleteModal] = useState(null);
 
-  const filteredCustomers = customersData.filter((item) => {
+  useEffect(() => { dispatch(fetchCustomerData()); }, [dispatch]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, roleFilter]);
+
+  const filtered = customersData.filter((item) => {
     const matchesSearch =
       item.gstIN.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -174,348 +86,156 @@ export default function CustomerList() {
     return matchesSearch && matchesStatus && matchesRole;
   });
 
-  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentCustomer = filteredCustomers.slice(startIndex, endIndex);
-
-
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
-
-  useEffect(() => {
-    dispatch(fetchCustomerData());
-  }, [dispatch]);
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Active":
-        return "bg-green-100 text-green-800";
-      case "Prospect":
-        return "bg-blue-100 text-blue-800";
-      case "Closed":
-        return "bg-gray-100 text-gray-800";
-      case "New":
-      default:
-        return "bg-red-100 text-red-800";
-    }
-  };
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const current = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleAddProject = (form) => {
     const target = customersData.find(c => c._id?.$oid === projectModal.id);
     if (!target) return;
-    const updated = { ...target, projects: [...(target.projects || []), form] };
-    dispatch(updateCustomerData(projectModal.id, updated));
+    dispatch(updateCustomerData(projectModal.id, { ...target, projects: [...(target.projects || []), form] }));
     setProjectModal(null);
-  };
-
-  const openStatusModal = (customer) => {
-    const currentStatus = customer.isActive || "New";
-    if (!hasWrite) return;
-
-    setSelectedStatus(currentStatus);
-    setStatusModal({
-      id: customer._id?.$oid,
-      currentStatus,
-      customerName: customer.customerName
-    });
-  };
-
-  const closeStatusModal = () => {
-    setStatusModal(null);
-    setSelectedStatus("");
   };
 
   const handleStatusUpdate = async () => {
     if (!statusModal) return;
-
-    const fullCustomer = customersData.find((customer) => customer._id?.$oid === statusModal.id);
-    if (!fullCustomer) return;
-
-    const payload = {
-      ...fullCustomer,
-      isActive: selectedStatus,
-    };
-
-    try {
-      await dispatch(updateCustomerData(statusModal.id, payload));
-      closeStatusModal();
-    } catch (error) {
-      // Error handling is already done in the Redux action
-      console.error('Status update failed:', error);
-    }
+    const full = customersData.find((c) => c._id?.$oid === statusModal.id);
+    if (!full) return;
+    await dispatch(updateCustomerData(statusModal.id, { ...full, isActive: selectedStatus }));
+    setStatusModal(null);
   };
 
-  const onCreateNew = () => {
-    nav("/customers/addCustomer");
-  };
-
-  const onEdit = (id) => {
-    nav(`/customers/editCustomer/${id}`);
-  };
-
-  const onView = (id) => {
-    nav(`/customers/customer/${id}`);
-    console.log(id);
-  };
-  const handleDelete = (id) => {
-    console.log(id);
-    dispatch(deleteCustomer(id));
-  };
-  console.log(customersData);
-  const onSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const onShowAction = (id, e) => {
-    e.stopPropagation();
-    setShowAction((prev) => (prev === id ? null : id));
-  };
-
-  const onPageItemSet = (e) => {
-    setPage(e.target.value)
-  }
+  const columns = [
+    {
+      label: "Customer",
+      render: (item) => (
+        <span className="block truncate max-w-[160px] text-blue-600 font-medium cursor-pointer capitalize" title={item?.customerName} onClick={() => nav(`/customers/customer/${item?._id?.$oid}`)}>
+          {item?.customerName}
+        </span>
+      ),
+    },
+    {
+      label: "Company",
+      render: (item) => (
+        <span className="block truncate max-w-[160px] text-gray-700 capitalize" title={item?.companyName}>{item?.companyName}</span>
+      ),
+    },
+    {
+      label: "GSTIN",
+      hidden: true,
+      render: (item) => <span className="text-gray-500">{item?.gstIN || "—"}</span>,
+    },
+    {
+      label: "Business Type",
+      render: (item) => (
+        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+          (item?.role === "Customer" || (!item?.role && !item?.is_vendor_too)) ? "bg-blue-100 text-blue-700" :
+          item?.role === "Vendor" ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"
+        }`}>
+          {item?.role || (item?.is_vendor_too ? "Both" : "Customer")}
+        </span>
+      ),
+    },
+    {
+      label: "Status",
+      render: (item) => (
+        <span
+          onClick={() => {
+            if (!hasWrite) return;
+            setSelectedStatus(item?.isActive || "New");
+            setStatusModal({ id: item?._id?.$oid, customerName: item?.customerName });
+          }}
+          className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${getStatusColor(item?.isActive)} ${hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
+        >
+          {item?.isActive || "New"}
+        </span>
+      ),
+    },
+    {
+      label: "Projects",
+      render: (item) => (
+        <div className="flex items-center justify-center gap-1">
+          {item?.projects?.length > 0 ? item.projects.length : "—"}
+          <button onClick={(e) => { e.stopPropagation(); setProjectModal({ id: item?._id?.$oid, customerName: item?.customerName }); }} className="text-gray-400 hover:text-blue-600 ml-1" title="Add Project">
+            <FolderPlus className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
+    {
+      label: "Actions",
+      right: true,
+      stopPropagation: true,
+      render: (item) => (
+        <RowActions
+          onEdit={() => hasWrite && nav(`/customers/editCustomer/${item?._id?.$oid}`)}
+          onDelete={() => hasDelete && setDeleteModal({ id: item?._id?.$oid, name: item?.customerName })}
+          canEdit={hasWrite} canDelete={hasDelete}
+        />
+      ),
+    },
+  ];
 
   return (
-    <div>
-      <div className="max-w-7xl lg:w-full md:w-full ">
-        {/* Action Bar */}
-        <div className="sticky top-[88px] z-10 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm mb-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            {/* Search Bar */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search by customer, or company..."
-                className="w-full ml-2 pl-10 pr-4 py-2 border border-gray-700 rounded-lg"
-                value={searchTerm}
-                onChange={onSearchChange}
-              />
-            </div>
+    <div className="max-w-7xl lg:w-full md:w-full">
+      <TabActionBar searchValue={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Search by customer, or company...">
+        <FilterSelect value={statusFilter} onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+          <option value="All">All Status</option>
+          <option value="New">New</option>
+          <option value="Prospect">Prospect</option>
+          <option value="Active">Active</option>
+          <option value="Closed">Closed</option>
+        </FilterSelect>
+        <FilterSelect value={roleFilter} onChange={(v) => { setRoleFilter(v); setCurrentPage(1); }}>
+          <option value="All">All Roles</option>
+          <option value="Customer">Customer</option>
+          <option value="Vendor">Vendor</option>
+          <option value="Both">Both</option>
+        </FilterSelect>
+        <button onClick={() => nav("/customers/addCustomer")} disabled={!hasWrite}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm ${hasWrite ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
+          <Plus className="w-4 h-4" /><span className="hidden sm:inline">Create</span>
+        </button>
+      </TabActionBar>
 
-            {/* Filter and Create Button */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Filter className="w-5 h-5 text-gray-500" />
-                <select
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-grey-500"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="All">All Status</option>
-                  <option value="New">New</option>
-                  <option value="Prospect">Prospect</option>
-                  <option value="Active">Active</option>
-                  <option value="Closed">Closed</option>
-                </select>
-                <select
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-grey-500"
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                >
-                  <option value="All">All Roles</option>
-                  <option value="Customer">Customer</option>
-                  <option value="Vendor">Vendor</option>
-                  <option value="Both">Both</option>
-                </select>
-              </div>
-
-              <button
-                onClick={onCreateNew}
-                disabled={!hasWrite}
-                className={`flex items-center mr-2 gap-2 px-4 py-2 rounded-lg transition-colors ${hasWrite
-                  ? "cursor-pointer bg-blue-600 text-white hover:bg-blue-700"
-                  : "cursor-not-allowed bg-gray-200 text-gray-400"
-                  }`}
-                title={!hasWrite ? "You don't have permission to create customers" : ""}
-              >
-                <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Create</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-5 gap-3 mb-4">
-          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-            <p className="text-xs text-gray-500 mb-0.5">Total</p>
-            <p className="text-xl font-bold text-gray-900">{customersData.length}</p>
-          </div>
-          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-            <p className="text-xs text-gray-500 mb-0.5">Customers</p>
-            <p className="text-xl font-bold text-blue-600">{customersData.filter((i) => i.role === "Customer" || (!i.role && !i.is_vendor_too)).length}</p>
-          </div>
-          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-            <p className="text-xs text-gray-500 mb-0.5">Vendors</p>
-            <p className="text-xl font-bold text-purple-600">{customersData.filter((i) => i.role === "Vendor").length}</p>
-          </div>
-          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-            <p className="text-xs text-gray-500 mb-0.5">Both</p>
-            <p className="text-xl font-bold text-green-600">{customersData.filter((i) => i.role === "Both" || (!i.role && i.is_vendor_too)).length}</p>
-          </div>
-          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-            <p className="text-xs text-gray-500 mb-0.5">Active</p>
-            <p className="text-xl font-bold text-green-600">{customersData.filter((i) => i.isActive === "Active").length}</p>
-          </div>
-        </div>
-
-        {/* Customer Table */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Company</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">GSTIN</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Business Type</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Projects</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {currentCustomer?.length > 0 ? (
-                currentCustomer?.map((item) => (
-                  <tr key={item?._id?.$oid} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-2 text-sm text-blue-600 font-medium cursor-pointer capitalize max-w-[160px]" onClick={() => onView(item?._id?.$oid)}>
-                      <span className="block truncate" title={item?.customerName}>{item?.customerName}</span>
-                    </td>
-                    <td className="px-4 py-2 text-sm text-gray-700 capitalize max-w-[160px]">
-                      <span className="block truncate" title={item?.companyName}>{item?.companyName}</span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">{item?.gstIN || "—"}</td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                        (item?.role === "Customer" || (!item?.role && !item?.is_vendor_too)) ? "bg-blue-100 text-blue-700" :
-                        item?.role === "Vendor" ? "bg-purple-100 text-purple-700" :
-                        "bg-green-100 text-green-700"
-                      }`}>
-                        {item?.role || (item?.is_vendor_too ? "Both" : "Customer")}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span
-                        onClick={() => hasWrite && openStatusModal(item)}
-                        className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${getStatusColor(item?.isActive)} ${hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
-                      >
-                        {item?.isActive || "New"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-gray-500">
-                      {item?.projects?.length > 0 ? item.projects.length : "—"}
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => setProjectModal({ id: item?._id?.$oid, customerName: item?.customerName, projects: item?.projects || [] })} className="text-gray-400 hover:text-blue-600 transition-colors" title="Add Project">
-                          <FolderPlus className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => hasWrite && onEdit(item?._id?.$oid)}
-                          disabled={!hasWrite}
-                          className={`transition-colors ${hasWrite ? "text-gray-400 hover:text-green-600 cursor-pointer" : "text-gray-200 cursor-not-allowed"}`}
-                          title={!hasWrite ? "No write permission" : "Edit"}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <div className="relative">
-                          <button
-                            onClick={(e) => hasDelete && onShowAction(item?._id?.$oid, e)}
-                            disabled={!hasDelete}
-                            className={`transition-colors ${hasDelete ? "text-gray-400 hover:text-red-600 cursor-pointer" : "text-gray-200 cursor-not-allowed"}`}
-                            title={!hasDelete ? "No delete permission" : "Delete"}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          {showAction === item?._id?.$oid && (
-                            <div className="absolute right-6 top-1/2 -translate-y-1/2 bg-white shadow-xl border border-gray-200 rounded-lg p-4 z-10 w-56">
-                              <p className="text-sm text-gray-700 mb-3">Delete <span className="font-semibold capitalize">{item?.customerName}</span>?</p>
-                              <div className="flex justify-end gap-2">
-                                <button onClick={() => setShowAction(null)} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Cancel</button>
-                                <button onClick={() => handleDelete(item._id?.$oid)} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 text-white">Confirm</button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="7" className="px-4 py-10 text-center text-sm text-gray-400">No customers found</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          pageSize={itemsPerPage}
-          totalCount={filteredCustomers.length}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={(n) => { setPage(n); setCurrentPage(1); }}
-        />
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+        <StatCard label="Total"     value={customersData.length} />
+        <StatCard label="Customers" value={customersData.filter((i) => i.role === "Customer" || (!i.role && !i.is_vendor_too)).length} valueClass="text-blue-600" />
+        <StatCard label="Vendors"   value={customersData.filter((i) => i.role === "Vendor").length} valueClass="text-purple-600" />
+        <StatCard label="Both"      value={customersData.filter((i) => i.role === "Both" || (!i.role && i.is_vendor_too)).length} valueClass="text-green-600" />
+        <StatCard label="Active"    value={customersData.filter((i) => i.isActive === "Active").length} valueClass="text-green-600" />
       </div>
-      {projectModal && (
-        <ProjectModal
-          customerName={projectModal.customerName}
-          onSave={handleAddProject}
-          onClose={() => setProjectModal(null)}
+
+      <DataTable
+        data={current}
+        rowKey={(item) => item?._id?.$oid}
+        columns={columns}
+      />
+
+      <Pagination currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} totalCount={filtered.length} onPageChange={setCurrentPage} onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }} />
+
+      {projectModal && <ProjectModal customerName={projectModal.customerName} onSave={handleAddProject} onClose={() => setProjectModal(null)} />}
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete <span className="font-medium capitalize">{deleteModal.name}</span>?</>}
+          onConfirm={() => { dispatch(deleteCustomer(deleteModal.id)); setDeleteModal(null); }}
+          onClose={() => setDeleteModal(null)}
         />
       )}
 
       {statusModal && (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-96 relative z-10000">
-            <h3 className="text-base font-semibold text-gray-800 mb-4">
-              Update Customer Status
-            </h3>
-
-            <p className="text-sm text-gray-600 mb-4">
-              Update status for <span className="font-medium capitalize">{statusModal.customerName}</span>
-            </p>
-
-            <div className="flex flex-wrap gap-4 mb-4">
-              {["New", "Prospect", "Active", "Closed"].map((option) => (
-                <label key={option} className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
-                  <input
-                    type="radio"
-                    name="status"
-                    value={option}
-                    checked={selectedStatus === option}
-                    onChange={() => setSelectedStatus(option)}
-                    className="w-4 h-4 accent-blue-600"
-                  />
-                  <span className="font-medium">{option}</span>
+        <Modal title="Update Customer Status" onClose={() => setStatusModal(null)} onSave={handleStatusUpdate} saveLabel="Update">
+          <FormField label={`Status for ${statusModal.customerName}`} colSpan>
+            <div className="flex flex-wrap gap-4">
+              {["New", "Prospect", "Active", "Closed"].map((opt) => (
+                <label key={opt} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="status" value={opt} checked={selectedStatus === opt} onChange={() => setSelectedStatus(opt)} className="w-4 h-4 accent-blue-600" />
+                  <span className="font-medium">{opt}</span>
                 </label>
               ))}
             </div>
-
-            <div className="flex justify-end gap-2 mt-5">
-              <button
-                onClick={closeStatusModal}
-                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleStatusUpdate}
-                disabled={!selectedStatus}
-                className={`px-4 py-2 text-sm rounded-lg ${selectedStatus
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
-              >
-                Update
-              </button>
-            </div>
-          </div>
-        </div>
+          </FormField>
+        </Modal>
       )}
     </div>
   );
