@@ -181,6 +181,21 @@ pub struct Organisation {
     /// Organisation logo (stored UUID filename)
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub logo: String,
+
+    #[serde(default)]
+    pub lut: String,
+
+    #[serde(default)]
+    pub iec: String,
+
+    #[serde(rename = "accountType", default)]
+    pub account_type: String,
+
+    #[serde(rename = "bankBranch", default)]
+    pub bank_branch: String,
+
+    #[serde(rename = "swiftCode", default)]
+    pub swift_code: String,
 }
 
 //
@@ -261,6 +276,16 @@ pub struct CreateOrganisationRequest {
     pub custom_payment_name: String,
     #[serde(default)]
     pub services: Vec<Service>,
+    #[serde(default)]
+    pub lut: String,
+    #[serde(default)]
+    pub iec: String,
+    #[serde(default)]
+    pub account_type: String,
+    #[serde(default)]
+    pub bank_branch: String,
+    #[serde(default)]
+    pub swift_code: String,
 }
 
 //
@@ -335,6 +360,14 @@ pub struct UpdateOrganizationRequest {
     pub custom_payment_name: Option<String>,
     pub services: Option<Vec<Service>>,
     pub logo: Option<String>,
+    pub lut: Option<String>,
+    pub iec: Option<String>,
+    #[serde(rename = "accountType", default)]
+    pub account_type: Option<String>,
+    #[serde(rename = "bankBranch", default)]
+    pub bank_branch: Option<String>,
+    #[serde(rename = "swiftCode", default)]
+    pub swift_code: Option<String>,
 }
 
 //
@@ -438,6 +471,11 @@ impl Organisation {
             service_ids: Vec::new(),
             services: Vec::new(),
             logo: String::new(),
+            lut: req.lut,
+            iec: req.iec,
+            account_type: req.account_type,
+            bank_branch: req.bank_branch,
+            swift_code: req.swift_code,
         }
     }
 }

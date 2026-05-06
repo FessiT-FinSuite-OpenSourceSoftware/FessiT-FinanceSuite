@@ -80,6 +80,11 @@ const initialSettings = {
   cashInstructions: "",
   customPaymentName: "",
   services: [],
+  lut: "",
+  iec: "",
+  accountType: "",
+  bankBranch: "",
+  swiftCode: "",
 };
 
 const mapServicePayload = (service) => ({
@@ -379,6 +384,11 @@ export default function SettingsCreation() {
       card_api_key: settings.cardApiKey,
       cash_instructions: settings.cashInstructions,
       custom_payment_name: settings.customPaymentName,
+      lut: settings.lut,
+      iec: settings.iec,
+      accountType: settings.accountType,
+      bankBranch: settings.bankBranch,
+      swiftCode: settings.swiftCode,
       new_user_name: settings.newUserName,
       new_user_email: settings.newUserEmail,
       new_user_password: settings.newUserPassword,
@@ -493,6 +503,11 @@ export default function SettingsCreation() {
       card_api_key: settings.cardApiKey,
       cash_instructions: settings.cashInstructions,
       custom_payment_name: settings.customPaymentName,
+      lut: settings.lut,
+      iec: settings.iec,
+      accountType: settings.accountType,
+      bankBranch: settings.bankBranch,
+      swiftCode: settings.swiftCode,
       // User fields - use snake_case to match backend expectations
       new_user_name: settings.newUserName,
       new_user_email: settings.newUserEmail,
@@ -624,6 +639,11 @@ export default function SettingsCreation() {
         cardApiKey: currentOrganisation?.cardApiKey || "",
         cashInstructions: currentOrganisation?.cashInstructions || "",
         customPaymentName: currentOrganisation?.customPaymentName || "",
+        lut: currentOrganisation?.lut || "",
+        iec: currentOrganisation?.iec || "",
+        accountType: currentOrganisation?.accountType || "",
+        bankBranch: currentOrganisation?.bankBranch || "",
+        swiftCode: currentOrganisation?.swiftCode || "",
         // Services
         services: (currentOrganisation?.services || []).map((service) => ({
           id: service.id || service._id || undefined,
@@ -698,7 +718,7 @@ export default function SettingsCreation() {
   return (
     <>
       {isLogoPreviewOpen && logoPreview && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4" onClick={() => setIsLogoPreviewOpen(false)}>
+        <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/70 p-4" onClick={() => setIsLogoPreviewOpen(false)}>
           <div
             className="w-full max-w-2xl rounded-xl bg-white p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -1373,7 +1393,7 @@ export default function SettingsCreation() {
 
                       <div className="relative">
                         <label className="block text-gray-700 font-medium mb-1">
-                          IFSC / SWIFT Code
+                          IFSC Code
                         </label>
                         <input
                           type="text"
@@ -1396,6 +1416,79 @@ export default function SettingsCreation() {
                           onChange={handleChange}
                           className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
                           placeholder="e.g., abc@okhdfcbank"
+                        />
+                      </div>
+
+                      <div className="relative">
+                        <label className="block text-gray-700 font-medium mb-1">
+                          Account Type (Bank)
+                        </label>
+                        <select
+                          name="accountType"
+                          value={settings.accountType || ""}
+                          onChange={handleChange}
+                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">Select account type</option>
+                          <option value="savings">Savings</option>
+                          <option value="current">Current</option>
+                          <option value="overdraft">Overdraft</option>
+                        </select>
+                      </div>
+
+                      <div className="relative">
+                        <label className="block text-gray-700 font-medium mb-1">
+                          Bank Branch
+                        </label>
+                        <input
+                          type="text"
+                          name="bankBranch"
+                          value={settings.bankBranch || ""}
+                          onChange={handleChange}
+                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                          placeholder="e.g., Connaught Place, New Delhi"
+                        />
+                      </div>
+
+                      <div className="relative">
+                        <label className="block text-gray-700 font-medium mb-1">
+                          SWIFT Code
+                        </label>
+                        <input
+                          type="text"
+                          name="swiftCode"
+                          value={settings.swiftCode || ""}
+                          onChange={handleChange}
+                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                          placeholder="e.g., HDFCINBB"
+                        />
+                      </div>
+
+                      <div className="relative">
+                        <label className="block text-gray-700 font-medium mb-1">
+                          LUT Number
+                        </label>
+                        <input
+                          type="text"
+                          name="lut"
+                          value={settings.lut || ""}
+                          onChange={handleChange}
+                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                          placeholder="e.g., AD070124012345T"
+                        />
+                      </div>
+
+                      <div className="relative">
+                        <label className="block text-gray-700 font-medium mb-1">
+                          IEC Code
+                        </label>
+                        <input
+                          type="text"
+                          name="iec"
+                          value={settings.iec || ""}
+                          onChange={handleChange}
+                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                          placeholder="e.g., AABCP1234C"
                         />
                       </div>
                     </div>

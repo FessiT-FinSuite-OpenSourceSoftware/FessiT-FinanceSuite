@@ -9,13 +9,18 @@ const categorySlice = createSlice({
   initialState: { 
     isLoading: false, 
     categoryData: [], 
-    isError: false 
+    isError: false,
+    hasLoadedOnce: false
   },
   reducers: {
     categoryRequest:
       (state) => { state.isLoading = true; state.isError = false; },
     categorySuccess:
-      (state, { payload }) => { state.isLoading = false; state.categoryData = payload; },
+      (state, { payload }) => { 
+        state.isLoading = false; 
+        state.categoryData = payload; 
+        state.hasLoadedOnce = true;
+      },
     categoryFailure:
       (state) => { state.isLoading = false; state.isError = true; },
   },

@@ -1,6 +1,6 @@
-import React from "react";
-import Logo from "../../assets/FessitLogoTrans.png";
-import { sampleData, terms } from "./sampleInvoiceData";
+import React, { useEffect, useState } from "react";
+import axiosInstance from "../../utils/axiosInstance";
+import { sampleData } from "./sampleInvoiceData";
 import { formatNumber, getCurrencySymbol } from "../../utils/formatNumber";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
@@ -105,15 +105,32 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
     if (onBack) onBack();
   };
 
+  const [logoUrl, setLogoUrl] = useState(null);
+
+  useEffect(() => {
+    let objectUrl = null;
+    if (orgData?.logo) {
+      axiosInstance
+        .get(`/organisation-logo/${orgData.logo}`, { responseType: "blob" })
+        .then((res) => {
+          objectUrl = URL.createObjectURL(res.data);
+          setLogoUrl(objectUrl);
+        })
+        .catch(() => setLogoUrl(null));
+    } else {
+      setLogoUrl(null);
+    }
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [orgData?.logo]);
+
   // 🧠 Prefer actual invoiceData, fall back to sampleData
   const baseData =
     invoiceData && Object.keys(invoiceData || {}).length > 0
       ? invoiceData
       : sampleData;
 
-  // Always ensure we have a logo
   const data = {
-    company_logo: Logo,
+    company_logo: logoUrl,
     ...baseData,
   };
 
@@ -198,7 +215,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
   const termsToRender =
     customTermsLines.length > 0 ? customTermsLines :
     orgTermsLines.length > 0    ? orgTermsLines :
-    terms;
+    [];
 
   return (
     <div className="bg-gray-100 min-h-screen py-6 print:bg-white invoice-wrapper">
@@ -298,67 +315,21 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
               <tr>
                 {/* LEFT COLUMN – Invoice side */}
                 <td className="w-1/2 align-top border-r border-gray-400 px-4 py-2">
-                  <p>
-                    <span className="font-semibold">Invoice No.</span>
-                    <span className="ml-2">
-                      : {data.invoice_number || "-"}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">Invoice Date</span>
-                    <span className="ml-2">
-                      : {data.invoice_date || "-"}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">Terms</span>
-                    <span className="ml-2">
-                      : {data.invoice_terms || "-"}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">Due Date</span>
-                    <span className="ml-2">
-                      : {data.invoice_dueDate || "-"}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">Place of Supply</span>
-                    <span className="ml-2">
-                      : {data.place_of_supply || "-"}
-                    </span>
-                  </p>
+                  {data.invoice_number && <p><span className="font-semibold">Invoice No.</span><span className="ml-2">: {data.invoice_number}</span></p>}
+                  {data.invoice_date && <p><span className="font-semibold">Invoice Date</span><span className="ml-2">: {data.invoice_date}</span></p>}
+                  {data.invoice_terms && <p><span className="font-semibold">Terms</span><span className="ml-2">: {data.invoice_terms}</span></p>}
+                  {data.invoice_dueDate && <p><span className="font-semibold">Due Date</span><span className="ml-2">: {data.invoice_dueDate}</span></p>}
+                  {data.place_of_supply && <p><span className="font-semibold">Place of Supply</span><span className="ml-2">: {data.place_of_supply}</span></p>}
                 </td>
 
                 {/* RIGHT COLUMN – P.O. side */}
                 <td className="w-1/2 align-top px-4 py-2">
-                  <p>
-                    <span className="font-semibold">P O Number</span>
-                    <span className="ml-2">
-                      : {data.po_number || "-"}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">P O Date</span>
-                    <span className="ml-2">
-                      : {data.po_date || "-"}
-                    </span>
-                  </p>
-
+                  {data.po_number && <p><span className="font-semibold">P O Number</span><span className="ml-2">: {data.po_number}</span></p>}
+                  {data.po_date && <p><span className="font-semibold">P O Date</span><span className="ml-2">: {data.po_date}</span></p>}
                   {isInternational && (
                     <>
-                      <p>
-                        <span className="font-semibold">LUT No</span>
-                        <span className="ml-2">
-                          : {data.lut_no || data.lutNo || "-"}
-                        </span>
-                      </p>
-                      <p>
-                        <span className="font-semibold">IEC No</span>
-                        <span className="ml-2">
-                          : {data.iec_no || data.iecNo || "-"}
-                        </span>
-                      </p>
+                      {(data.lut_no || data.lutNo) && <p><span className="font-semibold">LUT No</span><span className="ml-2">: {data.lut_no || data.lutNo}</span></p>}
+                      {(data.iec_no || data.iecNo) && <p><span className="font-semibold">IEC No</span><span className="ml-2">: {data.iec_no || data.iecNo}</span></p>}
                     </>
                   )}
                 </td>
@@ -529,28 +500,41 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
         <div className="grid grid-cols-2 gap-6 mb-6">
           {/* Bank Details & Terms */}
           <div className="text-xs text-gray-800 space-y-3">
-            <div>
-              <h3 className="font-semibold mb-1">Bank Details</h3>
-              <div className="border border-gray-400 rounded p-2">
-                {orgData?.accountHolder && <p><span className="font-semibold">Account Name:</span> {orgData.accountHolder}</p>}
-                {orgData?.accountNumber && <p><span className="font-semibold">Account Number:</span> {orgData.accountNumber}</p>}
-                {orgData?.bankName      && <p><span className="font-semibold">Bank:</span> {orgData.bankName}</p>}
-                {orgData?.ifscCode      && <p><span className="font-semibold">IFSC Code:</span> {orgData.ifscCode}</p>}
-                {orgData?.upiId         && <p><span className="font-semibold">UPI ID:</span> {orgData.upiId}</p>}
-                {!orgData?.accountHolder && !orgData?.accountNumber && !orgData?.bankName && !orgData?.ifscCode && !orgData?.upiId && (
-                  <p className="text-gray-400 italic">No bank details configured. Please update in Settings.</p>
-                )}
-              </div>
-            </div>
+            {(() => {
+              const requiredFields = [orgData?.accountHolder, orgData?.accountNumber, orgData?.bankName, orgData?.ifscCode];
+              const internationalFields = isInternational ? [orgData?.accountType, orgData?.bankBranch, orgData?.swiftCode] : [];
+              const domesticFields = isDomestic ? [orgData?.upiId] : [];
+              
+              const allRequiredFields = [...requiredFields, ...internationalFields, ...domesticFields];
+              const hasAllRequiredFields = allRequiredFields.every(field => field && field.trim() !== '');
+              
+              return hasAllRequiredFields ? (
+                <div>
+                  <h3 className="font-semibold mb-1">Bank Details</h3>
+                  <div className="border border-gray-400 rounded p-2">
+                    {orgData?.accountHolder && <p><span className="font-semibold">Account Name:</span> {orgData.accountHolder}</p>}
+                    {orgData?.accountNumber && <p><span className="font-semibold">Account Number:</span> {orgData.accountNumber}</p>}
+                    {orgData?.accountType && <p><span className="font-semibold">Account Type:</span> {orgData.accountType}</p>}
+                    {orgData?.ifscCode && <p><span className="font-semibold">IFSC Code:</span> {orgData.ifscCode}</p>}
+                    {orgData?.bankName && <p><span className="font-semibold">Bank Name:</span> {orgData.bankName}</p>}
+                    {orgData?.bankBranch && <p><span className="font-semibold">Branch:</span> {orgData.bankBranch}</p>}
+                    {isInternational && orgData?.swiftCode && <p><span className="font-semibold">Swift Code:</span> {orgData.swiftCode}</p>}
+                    {isDomestic && orgData?.upiId && <p><span className="font-semibold">UPI ID:</span> {orgData.upiId}</p>}
+                  </div>
+                </div>
+              ) : null;
+            })()}
 
-            <div>
-              <h3 className="font-semibold mb-1">Terms &amp; Conditions</h3>
-              <ul className="list-disc list-inside space-y-1">
-                {termsToRender.map((t, idx) => (
-                  <li key={idx}>{t}</li>
-                ))}
-              </ul>
-            </div>
+            {termsToRender.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-1">Terms &amp; Conditions</h3>
+                <ul className="list-disc list-inside space-y-1">
+                  {termsToRender.map((t, idx) => (
+                    <li key={idx}>{t}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* Totals */}

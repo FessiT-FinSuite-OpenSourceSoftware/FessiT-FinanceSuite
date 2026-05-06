@@ -1,5 +1,5 @@
-import React from "react";
-import Logo from "../../assets/FessitLogoTrans.png";
+import React, { useEffect, useState } from "react";
+import axiosInstance from "../../utils/axiosInstance";
 import { formatNumber, getCurrencySymbol } from "../../utils/formatNumber";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
@@ -94,16 +94,34 @@ export default function EstimateReportGeneration({ estimateData, orgData, onBack
   const currency = data.currency || "INR";
   const currencySymbol = getCurrencySymbol(currency);
 
+  const [logoUrl, setLogoUrl] = useState(null);
+
+  useEffect(() => {
+    let objectUrl = null;
+    if (orgData?.logo) {
+      axiosInstance
+        .get(`/organisation-logo/${orgData.logo}`, { responseType: "blob" })
+        .then((res) => { objectUrl = URL.createObjectURL(res.data); setLogoUrl(objectUrl); })
+        .catch(() => setLogoUrl(null));
+    } else {
+      setLogoUrl(null);
+    }
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [orgData?.logo]);
+
+  const hasBankDetails = orgData?.accountHolder && orgData?.accountNumber && orgData?.bankName && orgData?.ifscCode && orgData?.upiId;
+
   const subtotal =
     data.subtotal ?? items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   const discount = Number(data.discount) || 0;
   const discountAmount = (subtotal * discount) / 100;
   const total = data.total ?? subtotal - discountAmount;
 
-  const termsLines = (data.terms || "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const termsLines = [
+    ...(data.terms || "").split("\n").map((l) => l.trim()).filter(Boolean),
+    ...(orgData?.footerNote || "").split("\n").map((l) => l.trim()).filter(Boolean),
+    ...(orgData?.paymentInstructions || "").split("\n").map((l) => l.trim()).filter(Boolean),
+  ];
 
   const notesLines = (data.notes || "")
     .split("\n")
@@ -166,10 +184,10 @@ export default function EstimateReportGeneration({ estimateData, orgData, onBack
       >
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-3">
-            <img src={Logo} alt="Logo" className="h-12 object-contain" />
+            {logoUrl && <img src={logoUrl} alt="Logo" className="h-12 object-contain" />}
             <div>
               <h1 className="text-xl font-bold text-gray-900">
-                {data.companyName || "FessiT Solutions Private Limited"}
+                {data.companyName}
               </h1>
               <p className="text-xs text-gray-700 whitespace-pre-line">
                 {data.companyAddress || ""}
@@ -193,29 +211,35 @@ export default function EstimateReportGeneration({ estimateData, orgData, onBack
             <tbody>
               <tr>
                 <td className="w-1/2 align-top border-r border-gray-400 px-4 py-2">
-                  <p>
-                    <span className="font-semibold">Estimate No.</span>
-                    <span className="ml-2">: {data.estimateNumber || "-"}</span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">Issue Date</span>
-                    <span className="ml-2">: {data.issueDate || "-"}</span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">Expiry Date</span>
-                    <span className="ml-2">: {data.expiryDate || "-"}</span>
-                  </p>
-                  <p>
-                    <span className="font-semibold">Currency</span>
-                    <span className="ml-2">: {currency}</span>
-                  </p>
+                  {data.estimateNumber && <p><span className="font-semibold">Estimate No.</span><span className="ml-2">: {data.estimateNumber}</span></p>}
+                  {data.issueDate && <p><span className="font-semibold">Issue Date</span><span className="ml-2">: {data.issueDate}</span></p>}
+                  {data.expiryDate && <p><span className="font-semibold">Expiry Date</span><span className="ml-2">: {data.expiryDate}</span></p>}
+                  {currency && <p><span className="font-semibold">Currency</span><span className="ml-2">: {currency}</span></p>}
                 </td>
 
                 <td className="w-1/2 align-top px-4 py-2">
-                  <p className="font-semibold mb-1">Customer</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {data.customerName || data.customerId || "-"}
-                  </p>
+                  {(data.customerName || data.customerCompanyName || data.customerId) && (
+                    <>
+                      <p className="font-semibold mb-1">Customer</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {data.customerName || data.customerCompanyName || data.customerId}
+                      </p>
+                      {data.customerAddress && (
+                        <p className="text-xs text-gray-600 mt-1 whitespace-pre-line">
+                          {data.customerAddress}
+                        </p>
+                      )}
+                      {data.customerGstin && (
+                        <p className="text-xs text-gray-600">GSTIN: {data.customerGstin}</p>
+                      )}
+                      {data.customerEmail && (
+                        <p className="text-xs text-gray-600">Email: {data.customerEmail}</p>
+                      )}
+                      {data.customerPhone && (
+                        <p className="text-xs text-gray-600">Ph: {data.customerPhone}</p>
+                      )}
+                    </>
+                  )}
                 </td>
               </tr>
             </tbody>
@@ -293,19 +317,28 @@ export default function EstimateReportGeneration({ estimateData, orgData, onBack
 
         <div className="grid grid-cols-2 gap-6 mb-6">
           <div className="text-xs text-gray-800 space-y-3">
-            <div>
-              <h3 className="font-semibold mb-1">Bank Details</h3>
-              <div className="border border-gray-400 rounded p-2">
-                {orgData?.accountHolder && <p><span className="font-semibold">Account Name:</span> {orgData.accountHolder}</p>}
-                {orgData?.accountNumber && <p><span className="font-semibold">Account Number:</span> {orgData.accountNumber}</p>}
-                {orgData?.bankName      && <p><span className="font-semibold">Bank:</span> {orgData.bankName}</p>}
-                {orgData?.ifscCode      && <p><span className="font-semibold">IFSC Code:</span> {orgData.ifscCode}</p>}
-                {orgData?.upiId         && <p><span className="font-semibold">UPI ID:</span> {orgData.upiId}</p>}
-                {!orgData?.accountHolder && !orgData?.accountNumber && !orgData?.bankName && !orgData?.ifscCode && !orgData?.upiId && (
-                  <p className="text-gray-400 italic">No bank details configured. Please update in Settings.</p>
-                )}
+            {hasBankDetails && (
+              <div>
+                <h3 className="font-semibold mb-1">Bank Details</h3>
+                <div className="border border-gray-400 rounded p-2">
+                  <p><span className="font-semibold">Account Name:</span> {orgData.accountHolder}</p>
+                  <p><span className="font-semibold">Account Number:</span> {orgData.accountNumber}</p>
+                  <p><span className="font-semibold">Bank:</span> {orgData.bankName}</p>
+                  <p><span className="font-semibold">IFSC Code:</span> {orgData.ifscCode}</p>
+                  <p><span className="font-semibold">UPI ID:</span> {orgData.upiId}</p>
+                </div>
               </div>
-            </div>
+            )}
+            {notesLines.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-1">Notes</h3>
+                <ul className="list-disc list-inside space-y-1">
+                  {notesLines.map((line, idx) => (
+                    <li key={idx}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {termsLines.length > 0 && (
               <div>
@@ -318,16 +351,7 @@ export default function EstimateReportGeneration({ estimateData, orgData, onBack
               </div>
             )}
 
-            {notesLines.length > 0 && (
-              <div>
-                <h3 className="font-semibold mb-1">Notes</h3>
-                <ul className="list-disc list-inside space-y-1">
-                  {notesLines.map((line, idx) => (
-                    <li key={idx}>{line}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            
           </div>
 
           <div className="text-xs text-gray-900">
@@ -363,7 +387,7 @@ export default function EstimateReportGeneration({ estimateData, orgData, onBack
         <div className="flex justify-end mt-8">
           <div className="text-center">
             <p className="text-xs font-semibold text-gray-700 mb-16">
-              For {data.companyName || "FessiT Solutions Private Limited"}
+              For {data.companyName}
             </p>
             <div className="border-t border-gray-400 pt-1">
               <p className="text-xs text-gray-600">Authorized Signatory</p>

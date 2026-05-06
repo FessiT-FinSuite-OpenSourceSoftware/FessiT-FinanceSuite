@@ -168,10 +168,36 @@ export default function AddEstimate() {
     companyEmail:   currentOrganisation?.email || "",
     companyPhone:   currentOrganisation?.phone || "",
     customerId: form.customerId,
-    customerName: (Array.isArray(customersData) ? customersData : [])
-      .find((c) => getCustomerId(c) === form.customerId)?.companyName ||
-      (Array.isArray(customersData) ? customersData : [])
-      .find((c) => getCustomerId(c) === form.customerId)?.customerName || "",
+    customerName: (() => {
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.customerName || customer?.companyName || "";
+    })(),
+    customerCompanyName: (() => {
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.companyName || "";
+    })(),
+    customerAddress: (() => {
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.addresses?.[0]?.value || "";
+    })(),
+    customerGstin: (() => {
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.gstIN || "";
+    })(),
+    customerEmail: (() => {
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.email || "";
+    })(),
+    customerPhone: (() => {
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.phone || "";
+    })(),
     issueDate: form.issueDate,
     expiryDate: form.expiryDate,
     currency: form.currency,

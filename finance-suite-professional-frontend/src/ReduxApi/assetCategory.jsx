@@ -10,10 +10,15 @@ const assetCategorySlice = createSlice({
     isLoading: false,
     assetCategoryData: [],
     isError: false,
+    hasLoadedOnce: false,
   },
   reducers: {
     assetCategoryRequest: (state) => { state.isLoading = true; state.isError = false; },
-    assetCategorySuccess: (state, { payload }) => { state.isLoading = false; state.assetCategoryData = payload; },
+    assetCategorySuccess: (state, { payload }) => { 
+      state.isLoading = false; 
+      state.assetCategoryData = payload; 
+      state.hasLoadedOnce = true;
+    },
     assetCategoryFailure: (state) => { state.isLoading = false; state.isError = true; },
   },
 });

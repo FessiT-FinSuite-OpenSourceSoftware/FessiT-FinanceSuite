@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { formatNumber, getCurrencySymbol, formatCurrency } from "../../utils/formatNumber";
 import InvoiceReportGeneration from "./invoiceReportGeneration";
 import { useSelector, useDispatch } from "react-redux";
-import { orgamisationSelector } from "../../ReduxApi/organisation";
+import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
 import { fetchOneInvoice, updateInvoice, invoiceSelector } from "../../ReduxApi/invoice";
 import axiosInstance from "../../utils/axiosInstance";
 
@@ -228,6 +228,17 @@ export default function EditInvoice() {
 
     fetchServices();
   }, []);
+
+  // Auto-fill LUT and IEC from organization data for international invoices
+  useEffect(() => {
+    if (currentOrganisation && isInternational) {
+      setInvoiceData((prev) => ({
+        ...prev,
+        lut_no: currentOrganisation?.lut || prev.lut_no || "",
+        iec_no: currentOrganisation?.iec || prev.iec_no || "",
+      }));
+    }
+  }, [currentOrganisation, isInternational]);
 
   const handleSelect = (e) => {
     const selected = countries.find((c) => c.code === e.target.value);
@@ -469,9 +480,9 @@ export default function EditInvoice() {
     // International: LUT & IEC required
     if (isInternational) {
       if (!invoiceData.lut_no?.trim())
-        newErrors.lut_no = "LUT No is required for international invoices";
+        newErrors.lut_no = "LUT No is required for international invoices. Please configure it in organization settings.";
       if (!invoiceData.iec_no?.trim())
-        newErrors.iec_no = "IEC No is required for international invoices";
+        newErrors.iec_no = "IEC No is required for international invoices. Please configure it in organization settings.";
     }
 
     if (!invoiceData?.invoice_number?.trim())
@@ -576,13 +587,19 @@ export default function EditInvoice() {
                   {/* Just opens preview; actual download is inside preview */}
                   <button
                     className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
-                    onClick={() => setShowInvoicePreview(true)}
+                    onClick={async () => {
+                      await dispatch(fetchOrganisationByEmail(localStorage.getItem("email"), true));
+                      setShowInvoicePreview(true);
+                    }}
                   >
                     Download
                   </button>
 
                   <button
-                    onClick={() => setShowInvoicePreview(true)}
+                    onClick={async () => {
+                      await dispatch(fetchOrganisationByEmail(localStorage.getItem("email"), true));
+                      setShowInvoicePreview(true);
+                    }}
                     className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                   >
                     Preview Invoice
@@ -758,16 +775,20 @@ export default function EditInvoice() {
                       </label>
                       <input
                         type="text"
-                        placeholder="Enter LUT No"
-                        className="border border-gray-300 rounded px-3 
-                          py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                        placeholder="Auto-filled from organization settings"
+                        className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                         value={invoiceData.lut_no}
                         name="lut_no"
-                        onChange={handleChange}
+                        disabled
                       />
                       {inputErrors?.lut_no && (
                         <p className="absolute text-[13px] text-[#f10404]">
                           {inputErrors?.lut_no}
+                        </p>
+                      )}
+                      {!invoiceData.lut_no && (
+                        <p className="absolute text-[11px] text-orange-600 mt-1">
+                          Please configure LUT No in organization settings
                         </p>
                       )}
                     </div>
@@ -777,16 +798,20 @@ export default function EditInvoice() {
                       </label>
                       <input
                         type="text"
-                        placeholder="Enter IEC No"
-                        className="border border-gray-300 rounded px-3 
-                          py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                        placeholder="Auto-filled from organization settings"
+                        className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                         value={invoiceData.iec_no}
                         name="iec_no"
-                        onChange={handleChange}
+                        disabled
                       />
                       {inputErrors?.iec_no && (
                         <p className="absolute text-[13px] text-[#f10404]">
                           {inputErrors?.iec_no}
+                        </p>
+                      )}
+                      {!invoiceData.iec_no && (
+                        <p className="absolute text-[11px] text-orange-600 mt-1">
+                          Please configure IEC No in organization settings
                         </p>
                       )}
                     </div>

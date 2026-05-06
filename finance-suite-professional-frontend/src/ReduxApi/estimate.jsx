@@ -33,6 +33,7 @@ const normalizeEstimate = (estimate) => {
     estimateNumber: estimate.estimateNumber ?? estimate.estimate_number ?? "",
     customerId: getId(estimate.customerId || estimate.customer_id),
     customerName: estimate.customerName ?? estimate.customer_name ?? "",
+    customerDetails: estimate.customerDetails ?? estimate.customer_details ?? null,
     issueDate: estimate.issueDate ?? estimate.issue_date ?? "",
     expiryDate: estimate.expiryDate ?? estimate.expiry_date ?? "",
     currency: estimate.currency ?? estimate.currency_type ?? "INR",

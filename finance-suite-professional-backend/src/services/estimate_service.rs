@@ -87,6 +87,11 @@ impl EstimateService {
         Ok(Self::format_estimate_number(&org.invoice_prefix, seq))
     }
 
+    async fn resolve_customer_details(&self, customer_id: Option<&ObjectId>) -> Option<crate::models::customer::Customer> {
+        let id = customer_id?;
+        self.customer_repo.find_by_id(&id.to_string()).await.ok().flatten()
+    }
+
     async fn resolve_customer_name(&self, customer_id: Option<&ObjectId>) -> Option<String> {
         let id = customer_id?;
         self.customer_repo.get_display_name(id).await.ok().flatten()
@@ -99,8 +104,13 @@ impl EstimateService {
     }
 
     async fn enrich(&self, mut estimate: Estimate) -> Estimate {
-        if estimate.customer_name.is_none() && estimate.customer_id.is_some() {
-            estimate.customer_name = self.resolve_customer_name(estimate.customer_id.as_ref()).await;
+        if estimate.customer_id.is_some() {
+            if estimate.customer_name.is_none() {
+                estimate.customer_name = self.resolve_customer_name(estimate.customer_id.as_ref()).await;
+            }
+            if estimate.customer_details.is_none() {
+                estimate.customer_details = self.resolve_customer_details(estimate.customer_id.as_ref()).await;
+            }
         }
         if estimate.organization_id.is_some() {
             if estimate.organization_details.is_none() {
@@ -142,6 +152,7 @@ impl EstimateService {
         // Always generate the number server-side — client value is ignored
         estimate.estimate_number = self.generate_estimate_number(org_id).await?;
         estimate.customer_name = self.resolve_customer_name(estimate.customer_id.as_ref()).await;
+        estimate.customer_details = self.resolve_customer_details(estimate.customer_id.as_ref()).await;
         if let Ok(org) = self.org_repo.get_organisation_by_id(&org_id.to_string()).await {
             Self::apply_org_snapshot(&mut estimate, &org);
         }
@@ -185,6 +196,7 @@ impl EstimateService {
     pub async fn update(&self, id: &str, mut estimate: Estimate) -> anyhow::Result<Option<Estimate>> {
         // Re-resolve customer name in case customerId changed
         estimate.customer_name = self.resolve_customer_name(estimate.customer_id.as_ref()).await;
+        estimate.customer_details = self.resolve_customer_details(estimate.customer_id.as_ref()).await;
         if let Some(org_id) = estimate.organization_id.as_ref() {
             if let Ok(org) = self.org_repo.get_organisation_by_id(&org_id.to_string()).await {
                 Self::apply_org_snapshot(&mut estimate, &org);

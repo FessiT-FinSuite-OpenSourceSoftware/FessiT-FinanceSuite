@@ -7,6 +7,7 @@ const initialState = {
   productData: [],
   isError: false,
   currentProduct: null,
+  hasLoadedOnce: false,
 }
 
 const productSlice = createSlice({
@@ -22,6 +23,7 @@ const productSlice = createSlice({
       state.isLoading = false
       state.isError = false
       state.productData = payload
+      state.hasLoadedOnce = true
     },
 
     getOneProduct: (state, { payload }) => {

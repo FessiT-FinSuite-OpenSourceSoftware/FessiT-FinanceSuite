@@ -163,9 +163,56 @@ export default function EditEstimate() {
     companyEmail:   currentOrganisation?.email || "",
     companyPhone:   currentOrganisation?.phone || "",
     customerId:   form.customerId,
-    customerName: (Array.isArray(customersData) ? customersData : []).find((c) => getCustomerId(c) === form.customerId)?.companyName ||
-                  (Array.isArray(customersData) ? customersData : []).find((c) => getCustomerId(c) === form.customerId)?.customerName ||
-                  currentEstimate?.customerName || "",
+    customerName: (() => {
+      // First try to get from backend customer details
+      if (currentEstimate?.customerDetails) {
+        return currentEstimate.customerDetails.customerName || currentEstimate.customerDetails.companyName || "";
+      }
+      // Fallback to frontend customer lookup
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.customerName || customer?.companyName || currentEstimate?.customerName || "";
+    })(),
+    customerCompanyName: (() => {
+      if (currentEstimate?.customerDetails) {
+        return currentEstimate.customerDetails.companyName || "";
+      }
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.companyName || "";
+    })(),
+    customerAddress: (() => {
+      if (currentEstimate?.customerDetails) {
+        return currentEstimate.customerDetails.addresses?.[0]?.value || "";
+      }
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.addresses?.[0]?.value || "";
+    })(),
+    customerGstin: (() => {
+      if (currentEstimate?.customerDetails) {
+        return currentEstimate.customerDetails.gstIN || "";
+      }
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.gstIN || "";
+    })(),
+    customerEmail: (() => {
+      if (currentEstimate?.customerDetails) {
+        return currentEstimate.customerDetails.email || "";
+      }
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.email || "";
+    })(),
+    customerPhone: (() => {
+      if (currentEstimate?.customerDetails) {
+        return currentEstimate.customerDetails.phone || "";
+      }
+      const customer = (Array.isArray(customersData) ? customersData : [])
+        .find((c) => getCustomerId(c) === form.customerId);
+      return customer?.phone || "";
+    })(),
     issueDate: form.issueDate, expiryDate: form.expiryDate,
     currency: form.currency, discount: parseFloat(form.discount) || 0,
     notes: form.notes, terms: form.terms, subtotal, total,
@@ -189,7 +236,7 @@ export default function EditEstimate() {
             <button onClick={handleSubmit} disabled={saving} className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600">
               {saving ? "Saving..." : "Update"}
             </button>
-            <button onClick={() => setShowPreview(true)} className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600">
+            <button onClick={async () => { await dispatch(fetchOrganisationByEmail(localStorage.getItem("email"), true)); setShowPreview(true); }} className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600">
               Preview
             </button>
           </div>

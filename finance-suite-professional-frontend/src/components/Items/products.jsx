@@ -109,7 +109,7 @@ const emptyForm = (defaultCategoryId = "") => ({
 
 export default function Products() {
   const dispatch = useDispatch();
-  const { productData, isLoading } = useSelector(productSelector);
+  const { productData, isLoading, hasLoadedOnce } = useSelector(productSelector);
   const { categoryData } = useSelector(categorySelector);
   const { user } = useSelector(authSelector);
   const hasRead = canRead(user, Module.Products);
@@ -135,10 +135,15 @@ export default function Products() {
   const [stockModal, setStockModal] = useState({ open: false, productId: null, productName: "", quantity: "" });
   const [descriptionPreview, setDescriptionPreview] = useState(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(!hasLoadedOnce)
 
   useEffect(() => {
-    dispatch(fetchProductData());
-    dispatch(fetchCategories());
+    if (!hasLoadedOnce) {
+      Promise.all([
+        dispatch(fetchProductData()),
+        dispatch(fetchCategories())
+      ]).then(() => setIsInitialLoad(false))
+    }
   }, [dispatch]);
 
   const categoryOptions = useMemo(() => normalizeCategoryOptions(categoryData || []), [categoryData]);
@@ -434,8 +439,85 @@ export default function Products() {
     ? productImagePreview
     : imageCache[form.image] || productImagePreview || "";
 
-  return (
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Toolbar skeleton */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="h-12 bg-slate-200 rounded-xl animate-pulse w-full md:max-w-xl"></div>
+          <div className="flex items-center gap-2">
+            <div className="h-12 w-24 bg-slate-200 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-28 bg-slate-200 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-20 bg-slate-200 rounded-xl animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="h-4 bg-slate-200 rounded animate-pulse mb-2 w-20"></div>
+            <div className="h-8 bg-slate-200 rounded animate-pulse w-16"></div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters skeleton */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-10 bg-slate-200 rounded-xl animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+
+      {/* Table skeleton */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="p-4">
+          {/* Table header */}
+          <div className="grid grid-cols-11 gap-4 pb-4 border-b border-slate-200">
+            {[...Array(11)].map((_, i) => (
+              <div key={i} className="h-4 bg-slate-200 rounded animate-pulse"></div>
+            ))}
+          </div>
+          {/* Table rows */}
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="grid grid-cols-11 gap-4 py-4 border-b border-slate-100">
+              {[...Array(11)].map((_, j) => (
+                <div key={j} className="h-4 bg-slate-100 rounded animate-pulse"></div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Pagination skeleton */}
+      <div className="flex justify-between items-center">
+        <div className="h-4 bg-slate-200 rounded animate-pulse w-32"></div>
+        <div className="flex gap-2">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-10 w-10 bg-slate-200 rounded-lg animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
+  if (isInitialLoad) return <LoadingSkeleton />
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6 relative">
+      {/* Subtle loading overlay for refreshes when data exists */}
+      {isLoading && hasLoadedOnce && (
+        <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
+          <div className="bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
+            <RefreshCcw className="w-4 h-4 animate-spin text-blue-600" />
+            <span className="text-sm font-medium text-slate-700">Refreshing products...</span>
+          </div>
+        </div>
+      )}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:max-w-xl">
@@ -453,10 +535,11 @@ export default function Products() {
             <button
               type="button"
               onClick={() => dispatch(fetchProductData())}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              disabled={isLoading}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCcw className="w-4 h-4" />
-              Refresh
+              <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Refreshing...' : 'Refresh'}
             </button>
             {hasWrite && (
               <button
@@ -779,12 +862,13 @@ export default function Products() {
       </div>
 
       <DataTable
-        isLoading={isLoading}
+        isLoading={isLoading && !isInitialLoad}
         data={paginatedProducts}
         rowKey={(p) => p.id}
         wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
         tbodyClass="divide-y divide-slate-200"
         emptyMessage="No products matched your filters."
+        loadingMessage="Loading products..."
         columns={[
           {
             label: 'Image', stopPropagation: true,

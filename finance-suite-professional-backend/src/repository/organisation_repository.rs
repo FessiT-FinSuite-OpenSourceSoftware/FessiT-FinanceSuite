@@ -266,7 +266,22 @@ impl OrganisationRepository{
         }
         if let Some(custom_payment_name) = req.custom_payment_name {
             update_doc.get_document_mut("$set").unwrap().insert("customPaymentName", custom_payment_name);
+        
         }
+        if let Some(lut) = req.lut {
+            update_doc.get_document_mut("$set").unwrap().insert("lut", lut);
+        }
+        if let Some(iec) = req.iec {
+            update_doc.get_document_mut("$set").unwrap().insert("iec", iec);
+        }
+        if let Some(account_type) = req.account_type {
+            update_doc.get_document_mut("$set").unwrap().insert("accountType", account_type);
+        }
+        if let Some(bank_branch) = req.bank_branch {
+            update_doc.get_document_mut("$set").unwrap().insert("bankBranch", bank_branch);
+        }
+        if let Some(swift_code) = req.swift_code {
+            update_doc.get_document_mut("$set").unwrap().insert("swiftCode", swift_code);}
         if let Some(new_user_name) = req.new_user_name {
             update_doc.get_document_mut("$set").unwrap().insert("newUserName", new_user_name);
         }

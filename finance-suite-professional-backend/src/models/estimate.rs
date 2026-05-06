@@ -91,6 +91,10 @@ pub struct Estimate {
     #[serde(rename = "customerName", default, skip_serializing_if = "Option::is_none")]
     pub customer_name: Option<String>,
 
+    /// Full customer details — populated at read time for display
+    #[serde(rename = "customerDetails", default, skip_serializing_if = "Option::is_none")]
+    pub customer_details: Option<crate::models::customer::Customer>,
+
     #[serde(default)]
     pub items: Vec<EstimateItem>,
 
@@ -260,6 +264,7 @@ impl From<EstimateRequest> for Estimate {
             estimate_number: r.estimate_number,
             customer_id: r.customer_id,
             customer_name: None, // populated by the service after customer lookup
+            customer_details: None, // populated by the service after customer lookup
             items: r.items.into_iter().map(|i| EstimateItem {
                 item_id: i.item_id,
                 name: i.name,

@@ -260,7 +260,10 @@ export default function AddInvoice() {
             company_address: currentOrganisation?.addresses[0]?.value,
             company_phone: currentOrganisation?.phone,
             company_email: currentOrganisation?.email,
-            invoice_number: nextNumber
+            invoice_number: nextNumber,
+            // Auto-fill LUT and IEC for international invoices
+            lut_no: isInternational ? (currentOrganisation?.lut || "") : prev.lut_no,
+            iec_no: isInternational ? (currentOrganisation?.iec || "") : prev.iec_no,
           }));
         } catch (error) {
           console.error('Failed to fetch invoice number:', error);
@@ -272,14 +275,17 @@ export default function AddInvoice() {
             company_address: currentOrganisation?.addresses[0]?.value,
             company_phone: currentOrganisation?.phone,
             company_email: currentOrganisation?.email,
-            invoice_number: `${currentOrganisation?.invoicePrefix}-${currentOrganisation?.startingInvoiceNo}`
+            invoice_number: `${currentOrganisation?.invoicePrefix}-${currentOrganisation?.startingInvoiceNo}`,
+            // Auto-fill LUT and IEC for international invoices
+            lut_no: isInternational ? (currentOrganisation?.lut || "") : prev.lut_no,
+            iec_no: isInternational ? (currentOrganisation?.iec || "") : prev.iec_no,
           }));
         }
       };
 
       getNextInvoiceNumber();
     }
-  }, [currentOrganisation, dispatch])
+  }, [currentOrganisation, dispatch, isInternational])
 
   const groupTaxValues = (items = []) => {
     const grouped = { cgst: {}, sgst: {}, igst: {} };
@@ -624,9 +630,9 @@ export default function AddInvoice() {
     // International specific validations
     if (isInternational) {
       if (!invoiceData.lut_no?.trim())
-        newErrors.lut_no = "LUT No is required for international invoices";
+        newErrors.lut_no = "LUT No is required for international invoices. Please configure it in organization settings.";
       if (!invoiceData.iec_no?.trim())
-        newErrors.iec_no = "IEC No is required for international invoices";
+        newErrors.iec_no = "IEC No is required for international invoices. Please configure it in organization settings.";
     }
 
     if (!invoiceData?.invoice_number?.trim())
@@ -885,15 +891,20 @@ export default function AddInvoice() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Enter LUT No"
-                    className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                    placeholder="Auto-filled from organization settings"
+                    className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                     value={invoiceData.lut_no}
                     name="lut_no"
-                    onChange={handleChange}
+                    disabled
                   />
                   {inputErrors?.lut_no && (
                     <p className="absolute text-[13px] text-[#f10404]">
                       {inputErrors?.lut_no}
+                    </p>
+                  )}
+                  {!invoiceData.lut_no && (
+                    <p className="absolute text-[11px] text-orange-600 mt-1">
+                      Please configure LUT No in organization settings
                     </p>
                   )}
                 </div>
@@ -903,15 +914,20 @@ export default function AddInvoice() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Enter IEC No"
-                    className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                    placeholder="Auto-filled from organization settings"
+                    className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400 bg-gray-50 cursor-not-allowed"
                     value={invoiceData.iec_no}
                     name="iec_no"
-                    onChange={handleChange}
+                    disabled
                   />
                   {inputErrors?.iec_no && (
                     <p className="absolute text-[13px] text-[#f10404]">
                       {inputErrors?.iec_no}
+                    </p>
+                  )}
+                  {!invoiceData.iec_no && (
+                    <p className="absolute text-[11px] text-orange-600 mt-1">
+                      Please configure IEC No in organization settings
                     </p>
                   )}
                 </div>

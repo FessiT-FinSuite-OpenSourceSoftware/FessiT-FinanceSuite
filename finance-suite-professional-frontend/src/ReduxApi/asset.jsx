@@ -7,6 +7,7 @@ const initialState = {
   assetData: [],
   isError: false,
   currentAsset: null,
+  hasLoadedOnce: false,
 }
 
 const assetSlice = createSlice({
@@ -14,7 +15,11 @@ const assetSlice = createSlice({
   initialState,
   reducers: {
     getAsset: (state) => { state.isLoading = true; state.isError = false },
-    getAssetSuccess: (state, { payload }) => { state.isLoading = false; state.assetData = payload },
+    getAssetSuccess: (state, { payload }) => { 
+      state.isLoading = false; 
+      state.assetData = payload; 
+      state.hasLoadedOnce = true;
+    },
     getOneAsset: (state, { payload }) => { state.isLoading = false; state.currentAsset = payload },
     getAssetFailure: (state) => { state.isLoading = false; state.isError = true },
   },

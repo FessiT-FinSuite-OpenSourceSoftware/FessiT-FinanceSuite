@@ -354,6 +354,8 @@ export default function SideBar({ component }) {
                     {location.pathname.includes("/settings") && <p>Settings</p>}
                     {location.pathname.includes("/users") && <p>User Management</p>}
                     {location.pathname.includes("/assets") && <p>Assets</p>}
+                    {location.pathname.includes("/items") && <p>Items</p>}
+
 
                   </h2>
                   <p className="text-sm absolute text-gray-500">

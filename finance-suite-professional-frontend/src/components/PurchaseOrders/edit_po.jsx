@@ -5,7 +5,8 @@ import { countries } from "../../shared/countries";
 import { useNavigate, useParams } from "react-router-dom";
 import { formatNumber } from "../../utils/formatNumber";
 import PurchaseOrderReportGeneration from "./purchaseReportGeneration";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
 import { fetchOnePurchaseOrder, updatePurchaseOrder } from "../../ReduxApi/purchaseOrder";
 import axiosInstance from "../../utils/axiosInstance";
 
@@ -49,6 +50,7 @@ export default function EditPurchaseOrder() {
   const nav = useNavigate();
   const { id } = useParams();
   const dispatch = useDispatch();
+  const { currentOrganisation } = useSelector(orgamisationSelector);
 
   useEffect(() => {
     if (!poData || !Array.isArray(poData.items)) return;
@@ -300,13 +302,19 @@ export default function EditPurchaseOrder() {
 
                 <button
                   className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
-                  onClick={() => setShowPOPreview(true)}
+                  onClick={async () => {
+                    await dispatch(fetchOrganisationByEmail(localStorage.getItem("email"), true));
+                    setShowPOPreview(true);
+                  }}
                 >
                   Download
                 </button>
 
                 <button
-                  onClick={() => setShowPOPreview(true)}
+                  onClick={async () => {
+                    await dispatch(fetchOrganisationByEmail(localStorage.getItem("email"), true));
+                    setShowPOPreview(true);
+                  }}
                   className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                 >
                   Preview PO
@@ -617,6 +625,7 @@ export default function EditPurchaseOrder() {
         <>
           <PurchaseOrderReportGeneration
             poData={poData}
+            orgData={currentOrganisation}
             onBack={() => setShowPOPreview(false)}
           />
         </>

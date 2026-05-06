@@ -80,7 +80,7 @@ const emptyForm = () => ({
 
 export default function AssetList() {
   const dispatch = useDispatch()
-  const { assetData, isLoading } = useSelector(assetSelector)
+  const { assetData, isLoading, hasLoadedOnce } = useSelector(assetSelector)
   const { assetCategoryData } = useSelector(assetCategorySelector)
   const { user } = useSelector(authSelector)
   const isAdmin = user?.is_admin
@@ -90,6 +90,7 @@ export default function AssetList() {
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [stockFilter, setStockFilter] = useState('All')
   const [taxFilter, setTaxFilter] = useState('All')
+  const [assetTypeFilter, setAssetTypeFilter] = useState('All')
   const [sortBy, setSortBy] = useState('name-asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(5)
@@ -106,10 +107,15 @@ export default function AssetList() {
   const [statusModal, setStatusModal] = useState(null)
   const [descriptionPreview, setDescriptionPreview] = useState(null)
   const [showCategoryManager, setShowCategoryManager] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(!hasLoadedOnce)
 
   useEffect(() => {
-    dispatch(fetchAssetData())
-    dispatch(fetchAssetCategories())
+    if (!hasLoadedOnce) {
+      Promise.all([
+        dispatch(fetchAssetData()),
+        dispatch(fetchAssetCategories())
+      ]).then(() => setIsInitialLoad(false))
+    }
   }, [dispatch])
 
   const categoryOptions = useMemo(() => normalizeCategoryOptions(assetCategoryData || []), [assetCategoryData])
@@ -208,7 +214,7 @@ export default function AssetList() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [search, statusFilter, categoryFilter, stockFilter, taxFilter, sortBy])
+  }, [search, statusFilter, categoryFilter, stockFilter, taxFilter, assetTypeFilter, sortBy])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -227,7 +233,8 @@ export default function AssetList() {
       const stock = stockStatus(a.stocks).toLowerCase()
       const matchStock = stockFilter === 'All' || stock.includes(stockFilter)
       const matchTax = taxFilter === 'All' || String(a.tax) === taxFilter
-      return matchSearch && matchStatus && matchCat && matchStock && matchTax
+      const matchAssetType = assetTypeFilter === 'All' || a.asset_type === assetTypeFilter
+      return matchSearch && matchStatus && matchCat && matchStock && matchTax && matchAssetType
     })
 
     const sorted = [...rows]
@@ -242,7 +249,7 @@ export default function AssetList() {
     })
 
     return sorted
-  }, [assets, search, statusFilter, categoryFilter, stockFilter, taxFilter, sortBy])
+  }, [assets, search, statusFilter, categoryFilter, stockFilter, taxFilter, assetTypeFilter, sortBy])
 
   const summary = useMemo(() => {
     const total = filtered.length
@@ -407,8 +414,88 @@ export default function AssetList() {
   const assetImageSrc = (asset) => imageCache[asset.image] || ''
   const activeModalImageSrc = assetImageFile ? assetImagePreview : imageCache[form.image] || assetImagePreview || ''
 
-  return (
+  // Loading skeleton component
+  const LoadingSkeleton = () => (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Toolbar skeleton */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="h-12 bg-slate-200 rounded-xl animate-pulse w-full md:max-w-xl"></div>
+          <div className="flex items-center gap-2">
+            <div className="h-12 w-24 bg-slate-200 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-28 bg-slate-200 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-20 bg-slate-200 rounded-xl animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="h-4 bg-slate-200 rounded animate-pulse mb-2 w-20"></div>
+            <div className="h-8 bg-slate-200 rounded animate-pulse w-16"></div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters skeleton */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="h-5 bg-slate-200 rounded animate-pulse w-12"></div>
+          <div className="flex flex-wrap gap-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-10 w-32 bg-slate-200 rounded-xl animate-pulse"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Table skeleton */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="p-4">
+          {/* Table header */}
+          <div className="grid grid-cols-9 gap-4 pb-4 border-b border-slate-200">
+            {[...Array(9)].map((_, i) => (
+              <div key={i} className="h-4 bg-slate-200 rounded animate-pulse"></div>
+            ))}
+          </div>
+          {/* Table rows */}
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="grid grid-cols-9 gap-4 py-4 border-b border-slate-100">
+              {[...Array(9)].map((_, j) => (
+                <div key={j} className="h-4 bg-slate-100 rounded animate-pulse"></div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Pagination skeleton */}
+      <div className="flex justify-between items-center">
+        <div className="h-4 bg-slate-200 rounded animate-pulse w-32"></div>
+        <div className="flex gap-2">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-10 w-10 bg-slate-200 rounded-lg animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
+  if (isInitialLoad) return <LoadingSkeleton />
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6 relative">
+      {/* Subtle loading overlay for refreshes when data exists */}
+      {isLoading && hasLoadedOnce && (
+        <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
+          <div className="bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
+            <RefreshCcw className="w-4 h-4 animate-spin text-blue-600" />
+            <span className="text-sm font-medium text-slate-700">Refreshing assets...</span>
+          </div>
+        </div>
+      )}
       {/* Toolbar */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -422,8 +509,10 @@ export default function AssetList() {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => dispatch(fetchAssetData())}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              <RefreshCcw className="w-4 h-4" /> Refresh
+              disabled={isLoading}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> 
+              {isLoading ? 'Refreshing...' : 'Refresh'}
             </button>
             {isAdmin && (
               <button onClick={() => setShowCategoryManager(true)}
@@ -449,43 +538,37 @@ export default function AssetList() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
-          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
-            <option value="All">All Categories</option>
-            {categoryOptions.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
-            <option value="All">All Statuses</option>
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-          </select>
-          <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
-            <option value="All">All Stock</option>
-            <option value="out">Out of Stock</option>
-            <option value="low">Low Stock</option>
-            <option value="in">In Stock</option>
-          </select>
-          <select value={taxFilter} onChange={(e) => setTaxFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
-            <option value="All">All Taxes</option>
-            {TAX_OPTIONS.map((tax) => <option key={tax} value={tax}>{tax}%</option>)}
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
-            <option value="name-asc">Name A-Z</option>
-            <option value="name-desc">Name Z-A</option>
-            <option value="stock-desc">Stock High-Low</option>
-            <option value="stock-asc">Stock Low-High</option>
-            <option value="price-desc">Sale Price High-Low</option>
-            <option value="price-asc">Sale Price Low-High</option>
-          </select>
+        <div className="flex flex-col gap-3 items-end justify-end">
+         
+          <div className="flex flex-wrap gap-3">
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+              <option value="All">All Categories</option>
+              {categoryOptions.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+              <option value="All">All Statuses</option>
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+            </select>
+            
+            
+            <select value={assetTypeFilter} onChange={(e) => setAssetTypeFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+              <option value="All">All Types</option>
+              <option value="owned">Owned</option>
+              <option value="rental">Rented</option>
+            </select>
+            
+          </div>
         </div>
       </div>
 
       <DataTable
-        isLoading={isLoading}
+        isLoading={isLoading && !isInitialLoad}
         data={paginated}
         rowKey={(a) => a.id}
         wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
         tbodyClass="divide-y divide-slate-200"
         emptyMessage="No assets matched your filters."
+        loadingMessage="Loading assets..."
         columns={[
           {
             label: 'Image', stopPropagation: true,
@@ -514,9 +597,9 @@ export default function AssetList() {
           {
             label: 'Status', stopPropagation: true,
             render: (a) => isAdmin ? (
-              <button type="button" onClick={() => setStatusModal({ id: a.id, current: a.asset_status })} className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold cursor-pointer ${statusColor(a.asset_status)}`}>{a.asset_status}</button>
+              <button type="button" onClick={() => setStatusModal({ id: a.id, current: a.asset_status })} className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold cursor-pointer ${statusColor(a.asset_status)}`}>{a.asset_status ? a.asset_status.charAt(0).toUpperCase() + a.asset_status.slice(1) : '-'}</button>
             ) : (
-              <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusColor(a.asset_status)}`}>{a.asset_status}</span>
+              <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusColor(a.asset_status)}`}>{a.asset_status ? a.asset_status.charAt(0).toUpperCase() + a.asset_status.slice(1) : '-'}</span>
             ),
           },
           { label: 'Purchase Price', render: (a) => <span className="text-xs font-semibold text-slate-900">Rs. {fmt(a.purchased_price)}</span> },
