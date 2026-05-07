@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Plus, Search, RefreshCcw, X } from 'lucide-react'
+import { Plus, Search, RefreshCcw, X, FileText, Eye, Download } from 'lucide-react'
 import axiosInstance from '../../utils/axiosInstance'
 import { assetSelector, fetchAssetData, createAsset, updateAsset, deleteAsset, updateAssetStatus } from '../../ReduxApi/asset'
 import { assetCategorySelector, createAssetCategory, fetchAssetCategories } from '../../ReduxApi/assetCategory'
@@ -8,7 +8,7 @@ import { authSelector } from '../../ReduxApi/auth'
 import { RowActions, Pagination, StatCard, InfoCard, Field, ConfirmModal, DataTable } from '../../shared/ui'
 import { toast } from 'react-toastify'
 import ManageAssetCategoriesModal from './ManageAssetCategoriesModal'
-
+import { isTauri, sanitizeDownloadFileName, saveBytesToDownloads, showDownloadNotification } from '../../utils/pdfUtils'
 const extractId = (item) =>
   item?.$oid ||
   item?._id?.$oid ||
@@ -69,11 +69,12 @@ const formatDate = (value) => {
   } catch { return '-' }
 }
 
-const emptyForm = () => ({
+  const emptyForm = () => ({
   name: '', description: '', hsn: '', item_code: '', category: '',
   manufacturer: '', vendor: '', payment_mode: 'bank_transfer',
   stocks: '0', warranty_period: '', asset_status: 'active',
   sale_price: '', purchased_price: '', tax: '18', image: '',
+  invoice_image: '',
   purchased_date: '', notes: '', assigned_date: '', assigned_to: '',
   serial_no: '', asset_type: 'owned',
 })
@@ -99,6 +100,8 @@ export default function AssetList() {
   const [form, setForm] = useState(emptyForm())
   const [assetImageFile, setAssetImageFile] = useState(null)
   const [assetImagePreview, setAssetImagePreview] = useState('')
+  const [invoiceImageFile, setInvoiceImageFile] = useState(null)
+  const [invoiceImagePreview, setInvoiceImagePreview] = useState('')
   const [imageCache, setImageCache] = useState({})
   const createdImageUrls = useRef(new Set())
   const [newCategoryName, setNewCategoryName] = useState('')
@@ -151,6 +154,7 @@ export default function AssetList() {
       assigned_date: a.assigned_date || '',
       assigned_to: a.assigned_to || '',
       serial_no: a.serial_no || '',
+      invoice_image: a.invoice_image || '',
       asset_type: a.asset_type || 'owned',
     }
   }), [assetData, categoryMap])
@@ -160,39 +164,35 @@ export default function AssetList() {
 
     const loadImages = async () => {
       const filenames = [...new Set(assets.map((asset) => asset.image).filter(Boolean))]
+      const invoiceFilenames = [...new Set(assets.map((asset) => asset.invoice_image).filter(Boolean))]
 
-      await Promise.all(
-        filenames.map(async (filename) => {
+      const loadFile = async (filename, urlKey) => {
           if (/^https?:\/\//i.test(filename) || /^data:/i.test(filename)) {
             setImageCache((prev) => (prev[filename] ? prev : { ...prev, [filename]: filename }))
             return
           }
-
           try {
-            const response = await axiosInstance.get(`/asset-images/${filename}`, {
-              responseType: 'blob',
-            })
+            const endpoint = urlKey === 'invoice' ? `/asset-invoice-images/${filename}` : `/asset-images/${filename}`
+            const response = await axiosInstance.get(endpoint, { responseType: 'blob' })
             const objectUrl = URL.createObjectURL(response.data)
             createdImageUrls.current.add(objectUrl)
-
             if (!cancelled) {
               setImageCache((prev) => {
-                if (prev[filename]) {
-                  URL.revokeObjectURL(objectUrl)
-                  createdImageUrls.current.delete(objectUrl)
-                  return prev
-                }
+                if (prev[filename]) { URL.revokeObjectURL(objectUrl); createdImageUrls.current.delete(objectUrl); return prev }
                 return { ...prev, [filename]: objectUrl }
               })
             } else {
-              URL.revokeObjectURL(objectUrl)
-              createdImageUrls.current.delete(objectUrl)
+              URL.revokeObjectURL(objectUrl); createdImageUrls.current.delete(objectUrl)
             }
           } catch (error) {
-            console.error('Failed to load asset image:', filename, error)
+            console.error('Failed to load image:', filename, error)
           }
-        })
-      )
+        }
+
+      await Promise.all([
+        ...filenames.map((f) => loadFile(f, 'asset')),
+        ...invoiceFilenames.map((f) => loadFile(f, 'invoice')),
+      ])
     }
 
     if (assets.length) {
@@ -271,6 +271,8 @@ export default function AssetList() {
     setForm({ ...emptyForm(), category: categoryOptions[0]?.id || '' })
     setAssetImageFile(null)
     setAssetImagePreview('')
+    setInvoiceImageFile(null)
+    setInvoiceImagePreview('')
     setNewCategoryName('')
     setShowModal(true)
   }
@@ -283,12 +285,15 @@ export default function AssetList() {
       payment_mode: a.payment_mode, stocks: String(a.stocks), warranty_period: a.warranty_period,
       asset_status: a.asset_status, sale_price: String(a.sale_price),
       purchased_price: String(a.purchased_price), tax: String(a.tax), image: a.image,
+      invoice_image: a.invoice_image,
       purchased_date: a.purchased_date, notes: a.notes,
       assigned_date: a.assigned_date, assigned_to: a.assigned_to,
       serial_no: a.serial_no, asset_type: a.asset_type,
     })
     setAssetImageFile(null)
     setAssetImagePreview(imageCache[a.image] || '')
+    setInvoiceImageFile(null)
+    setInvoiceImagePreview(imageCache[a.invoice_image] || '')
     setNewCategoryName('')
     setShowModal(true)
   }
@@ -299,13 +304,15 @@ export default function AssetList() {
     setForm(emptyForm())
     setAssetImageFile(null)
     setAssetImagePreview('')
+    setInvoiceImageFile(null)
+    setInvoiceImagePreview('')
     setNewCategoryName('')
     closePreviewModal()
   }
 
-  const openPreviewModal = (src, title = 'Image Preview') => {
+  const openPreviewModal = (src, title = 'Image Preview', isPdf = false) => {
     if (!src) return
-    setPreviewModal({ open: true, src, title })
+    setPreviewModal({ open: true, src, title, isPdf })
   }
 
   const closePreviewModal = () => {
@@ -352,9 +359,35 @@ export default function AssetList() {
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0] || null
+    if (file) {
+      const isImage = file.type.startsWith('image/')
+      if (!isImage) {
+        toast.error('Only image files are allowed for asset image')
+        e.target.value = ''
+        return
+      }
+    }
     setAssetImageFile(file)
     setAssetImagePreview(file ? URL.createObjectURL(file) : '')
   }
+
+  const handleInvoiceImageChange = (e) => {
+    const file = e.target.files?.[0] || null
+    if (file) {
+      const isImage = file.type.startsWith('image/')
+      const isPdf = file.type === 'application/pdf'
+      if (!isImage && !isPdf) {
+        toast.error('Only image or PDF files are allowed')
+        e.target.value = ''
+        return
+      }
+    }
+    setInvoiceImageFile(file)
+    setInvoiceImagePreview(file ? URL.createObjectURL(file) : '')
+  }
+
+  const isFilePdf = (file) => file?.type === 'application/pdf' || file?.name?.toLowerCase().endsWith('.pdf')
+  const isSrcPdf = (src) => typeof src === 'string' && src.toLowerCase().includes('.pdf')
 
   const handleAddCategory = async () => {
     const category_name = newCategoryName.trim()
@@ -382,6 +415,7 @@ export default function AssetList() {
     const payload = {
       ...form,
       imageFile: assetImageFile,
+      invoiceImageFile: invoiceImageFile,
       stocks: Number(form.stocks || 0),
       sale_price: Number(form.sale_price || 0),
       purchased_price: Number(form.purchased_price || 0),
@@ -408,6 +442,42 @@ export default function AssetList() {
   const handleStatusChange = async (id, status) => {
     await dispatch(updateAssetStatus(id, status))
     setStatusModal(null)
+  }
+
+  const downloadFromSource = async (src, title = 'download', isPdf = false) => {
+    if (!src) return
+    const ext = isPdf ? 'pdf' : 'jpg'
+    let fileName = sanitizeDownloadFileName(`${title || 'download'}.${ext}`)
+    let filePath = null
+    try {
+      if (isTauri()) {
+        const res = await fetch(src)
+        const buffer = await res.arrayBuffer()
+        const saved = await saveBytesToDownloads(new Uint8Array(buffer), fileName)
+        fileName = saved.fileName
+        filePath = saved.filePath
+      } else {
+        const a = document.createElement('a')
+        a.href = src
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      }
+    } catch (e) {
+      console.error('Download failed:', e)
+      const a = document.createElement('a')
+      a.href = src
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
+    showDownloadNotification(fileName, filePath)
+  }
+
+  const handleDownload = async () => {
+    await downloadFromSource(previewModal.src, previewModal.title, previewModal.isPdf)
   }
 
   const fmt = (v) => Number(v || 0).toLocaleString('en-IN')
@@ -605,13 +675,29 @@ export default function AssetList() {
           { label: 'Purchase Price', render: (a) => <span className="text-xs font-semibold text-slate-900">Rs. {fmt(a.purchased_price)}</span> },
           {
             label: 'Actions', right: true, stopPropagation: true,
-            render: (a) => <RowActions onEdit={() => openEdit(a)} onDelete={() => setDeleteModal({ id: a.id, name: a.name })} canEdit={isAdmin} canDelete={isAdmin} />,
+            render: (a) => (
+              <div className="flex items-center justify-end gap-2">
+                {/* {a.invoice_image && imageCache[a.invoice_image] && (
+                  <button
+                    type="button"
+                    title="View Invoice"
+                    onClick={() => openPreviewModal(imageCache[a.invoice_image], 'Invoice / Receipt', isSrcPdf(a.invoice_image))}
+                    className="text-gray-600 hover:text-indigo-600 transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                )} */}
+                <RowActions onEdit={() => openEdit(a)} onDelete={() => setDeleteModal({ id: a.id, name: a.name })} canEdit={isAdmin} canDelete={isAdmin} />
+              </div>
+            ),
           },
         ]}
         renderExpanded={(a) => {
           const inStock = Math.max(Number(a.stocks || 0) - Number(a.soldStocks || 0), 0)
           const pct = Number(a.stocks || 0) > 0 ? Math.round((inStock / Number(a.stocks || 0)) * 100) : 0
           const barColor = pct > 50 ? 'bg-emerald-500' : pct > 20 ? 'bg-amber-400' : 'bg-red-500'
+          const invoiceSrc = a.invoice_image ? imageCache[a.invoice_image] : ''
+          const invoiceIsPdf = isSrcPdf(a.invoice_image)
           return (
             <div className="px-4 py-4 bg-slate-50">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
@@ -629,6 +715,30 @@ export default function AssetList() {
                 <InfoCard label="Serial No" value={a.serial_no || '-'} />
                 <InfoCard label="Asset Type" value={a.asset_type ? a.asset_type.charAt(0).toUpperCase() + a.asset_type.slice(1) : '-'} />
                 <InfoCard label="Notes" value={a.notes || '-'} className="xl:col-span-3" />
+                <div className="xl:col-span-1 rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Invoice / Receipt</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{a.invoice_image ? 'Available' : '-'}</p>
+                  <div className="mt-3 flex flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => invoiceSrc && openPreviewModal(invoiceSrc, 'Invoice / Receipt', invoiceIsPdf)}
+                      disabled={!invoiceSrc}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => invoiceSrc && downloadFromSource(invoiceSrc, `${a.name || 'Asset'} Invoice Receipt`, invoiceIsPdf)}
+                      disabled={!invoiceSrc}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </button>
+                  </div>
+                </div>
                 {/* <div className="rounded-xl border border-slate-200 bg-white p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Stock Level</p>
                   <div className="mt-3 flex items-center gap-2">
@@ -651,12 +761,26 @@ export default function AssetList() {
           <div className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h3 className="text-lg font-semibold text-slate-900">{previewModal.title}</h3>
-              <button type="button" onClick={closePreviewModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handleDownload} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" title="Download">
+                  <Download className="h-5 w-5" />
+                </button>
+                <button type="button" onClick={closePreviewModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
             <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4">
-              <img src={previewModal.src} alt={previewModal.title} className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain" />
+              {previewModal.isPdf ? (
+                <iframe
+                  src={previewModal.src}
+                  title={previewModal.title}
+                  className="w-full rounded-xl"
+                  style={{ height: '75vh' }}
+                />
+              ) : (
+                <img src={previewModal.src} alt={previewModal.title} className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain" />
+              )}
             </div>
           </div>
         </div>
@@ -727,6 +851,54 @@ export default function AssetList() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Invoice / Receipt Image */}
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-slate-700">Invoice / Receipt Image</label>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={handleInvoiceImageChange}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
+                {(invoiceImagePreview || imageCache[form.invoice_image]) && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const src = invoiceImageFile ? invoiceImagePreview : imageCache[form.invoice_image]
+                        const pdf = invoiceImageFile ? isFilePdf(invoiceImageFile) : isSrcPdf(form.invoice_image)
+                        if (src) openPreviewModal(src, 'Invoice / Receipt', pdf)
+                      }}
+                      className="h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center"
+                    >
+                      {(invoiceImageFile ? isFilePdf(invoiceImageFile) : isSrcPdf(form.invoice_image)) ? (
+                        <span className="text-xs font-semibold text-red-500">PDF</span>
+                      ) : (
+                        <img
+                          src={invoiceImageFile ? invoiceImagePreview : imageCache[form.invoice_image]}
+                          alt="Invoice preview"
+                          className="h-full w-full object-cover"
+                        />
+                      )}
+                    </button>
+                    <div className="min-w-0 flex-1 text-sm text-slate-500">
+                      <p className="truncate">{invoiceImageFile ? invoiceImageFile.name : 'Existing invoice file'}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const src = invoiceImageFile ? invoiceImagePreview : imageCache[form.invoice_image]
+                          const pdf = invoiceImageFile ? isFilePdf(invoiceImageFile) : isSrcPdf(form.invoice_image)
+                          if (src) openPreviewModal(src, 'Invoice / Receipt', pdf)
+                        }}
+                        className="mt-2 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Field label="Asset Name *" name="name" value={form.name} onChange={handleChange} placeholder="Enter asset name" />
@@ -875,5 +1047,3 @@ export default function AssetList() {
     </div>
   )
 }
-
-

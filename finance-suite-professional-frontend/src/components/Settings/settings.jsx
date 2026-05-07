@@ -963,6 +963,33 @@ export default function SettingsCreation() {
                       </p>
                     )}
                   </div>
+                    <div className="relative">
+                        <label className="block text-gray-700 font-medium mb-1">
+                          LUT Number
+                        </label>
+                        <input
+                          type="text"
+                          name="lut"
+                          value={settings.lut || ""}
+                          onChange={handleChange}
+                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                          placeholder="e.g., AD070124012345T"
+                        />
+                      </div>
+
+                      <div className="relative">
+                        <label className="block text-gray-700 font-medium mb-1">
+                          IEC Code
+                        </label>
+                        <input
+                          type="text"
+                          name="iec"
+                          value={settings.iec || ""}
+                          onChange={handleChange}
+                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                          placeholder="e.g., AABCP1234C"
+                        />
+                      </div>
 
                   {/* Country */}
                   <div className="relative w-full" ref={dropdownRef}>
@@ -1464,33 +1491,7 @@ export default function SettingsCreation() {
                         />
                       </div>
 
-                      <div className="relative">
-                        <label className="block text-gray-700 font-medium mb-1">
-                          LUT Number
-                        </label>
-                        <input
-                          type="text"
-                          name="lut"
-                          value={settings.lut || ""}
-                          onChange={handleChange}
-                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-                          placeholder="e.g., AD070124012345T"
-                        />
-                      </div>
-
-                      <div className="relative">
-                        <label className="block text-gray-700 font-medium mb-1">
-                          IEC Code
-                        </label>
-                        <input
-                          type="text"
-                          name="iec"
-                          value={settings.iec || ""}
-                          onChange={handleChange}
-                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-                          placeholder="e.g., AABCP1234C"
-                        />
-                      </div>
+                    
                     </div>
                   </div>
 

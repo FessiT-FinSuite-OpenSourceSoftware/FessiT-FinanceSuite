@@ -6,6 +6,10 @@
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "opener:default",
+    "opener:allow-reveal-item-in-dir",
+    "fs:allow-write-file",
+    "fs:allow-download-write-recursive"
   ]
 }

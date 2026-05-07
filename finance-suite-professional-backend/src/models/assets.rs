@@ -49,6 +49,10 @@ pub struct Asset {
     #[serde(default)]
     pub image: String,
 
+    /// Invoice / receipt image (stored UUID filename)
+    #[serde(default)]
+    pub invoice_image: String,
+
     /// Asset name
     #[serde(default)]
     pub name: String,

@@ -80,7 +80,7 @@ async fn collect_multipart(
             (cd.get_name().unwrap_or("").to_string(), cd.get_filename().map(|s| s.to_string()))
         };
 
-        if field_name == "image" && original_name.is_some() {
+        if (field_name == "image" || field_name == "invoice_image") && original_name.is_some() {
             let original = original_name.unwrap();
             let ext = std::path::Path::new(&original).extension()
                 .and_then(|e| e.to_str()).unwrap_or("").to_string();
@@ -98,7 +98,11 @@ async fn collect_multipart(
                 f = web::block(move || f.write_all(&data).map(|_| f))
                     .await.map_err(actix_web::error::ErrorInternalServerError)??;
             }
-            stored_image = Some(stored);
+            if field_name == "invoice_image" {
+                fields.insert("__invoice_image__".to_string(), stored);
+            } else {
+                stored_image = Some(stored);
+            }
         } else {
             let mut bytes = Vec::new();
             while let Some(chunk) = field.next().await {
@@ -147,6 +151,7 @@ pub async fn create_asset(
     let asset = Asset {
         id: None,
         image: stored_image.unwrap_or_default(),
+        invoice_image: fields.remove("__invoice_image__").unwrap_or_default(),
         name,
         description: fields.remove("description").unwrap_or_default(),
         hsn: fields.remove("hsn").unwrap_or_default(),
@@ -266,10 +271,16 @@ pub async fn update_asset(
             let _ = std::fs::remove_file(std::path::Path::new(UPLOAD_DIR).join(&existing.image));
         }
     }
+    if let Some(new_inv) = fields.get("__invoice_image__") {
+        if !existing.invoice_image.is_empty() && existing.invoice_image != *new_inv {
+            let _ = std::fs::remove_file(std::path::Path::new(UPLOAD_DIR).join(&existing.invoice_image));
+        }
+    }
 
     let updated = Asset {
         id: None,
         image: stored_image.unwrap_or(existing.image),
+        invoice_image: fields.remove("__invoice_image__").unwrap_or(existing.invoice_image),
         name,
         description: fields.remove("description").unwrap_or(existing.description),
         hsn: fields.remove("hsn").unwrap_or(existing.hsn),
@@ -399,8 +410,39 @@ pub async fn get_asset_image(
     Ok(NamedFile::open(filepath).map_err(actix_web::error::ErrorInternalServerError)?)
 }
 
+#[get("/asset-invoice-images/{filename}")]
+pub async fn get_asset_invoice_image(
+    path: Path<String>,
+    service: web::Data<AssetService>,
+    http_req: HttpRequest,
+) -> actix_web::Result<impl Responder> {
+    let claims = http_req.extensions().get::<Claims>().cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
+    let user = service.get_user_by_id(&claims.sub).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+    let org_id = user.organisation_id
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
+
+    let filename = path.into_inner();
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
+        return Err(actix_web::error::ErrorBadRequest("Invalid filename"));
+    }
+
+    let assets = service.list(&org_id).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+    if !assets.iter().any(|a| a.invoice_image == filename) {
+        return Err(actix_web::error::ErrorForbidden("Access denied"));
+    }
+    let filepath = std::path::Path::new(UPLOAD_DIR).join(&filename);
+    if !filepath.exists() {
+        return Err(actix_web::error::ErrorNotFound("Invoice image not found"));
+    }
+    Ok(NamedFile::open(filepath).map_err(actix_web::error::ErrorInternalServerError)?)
+}
+
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_asset_image)
+        .service(get_asset_invoice_image)
         .service(create_asset)
         .service(list_assets)
         .service(get_asset)

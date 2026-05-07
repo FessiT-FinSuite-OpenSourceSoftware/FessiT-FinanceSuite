@@ -3,6 +3,8 @@ import axiosInstance from "../../utils/axiosInstance";
 import { formatNumber } from "../../utils/formatNumber";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
+import { toast } from "react-toastify";
+import { savePdf, showDownloadNotification } from "../../utils/pdfUtils";
 
 const getCurrencySymbol = (currencyType) => {
   const currencySymbols = {
@@ -12,7 +14,10 @@ const getCurrencySymbol = (currencyType) => {
   return currencySymbols[currencyType] || "₹";
 };
 
+const isTauri = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
 async function generatePOPdf(poNumber) {
+  const toastId = toast.loading("Generating PDF...");
   try {
     const element = document.getElementById("po-print-area");
     if (!element) throw new Error("PO area not found");
@@ -28,13 +33,17 @@ async function generatePOPdf(poNumber) {
       imgWidth *= ratio; imgHeight *= ratio;
     }
     pdf.addImage(canvas.toDataURL("image/jpeg"), "JPEG", (pageWidth - imgWidth) / 2, (pageHeight - imgHeight) / 2, imgWidth, imgHeight);
-    pdf.save(`PO-${poNumber || "purchase-order"}.pdf`);
+    const fileName = `PO-${poNumber || "purchase-order"}.pdf`;
+    const filePath = await savePdf(pdf, fileName);
+    toast.dismiss(toastId);
+    await showDownloadNotification(fileName, filePath);
   } catch (err) {
-    alert(`Failed to generate PDF: ${err.message}`);
+    toast.update(toastId, { render: `Failed to generate PDF: ${err.message}`, type: "error", isLoading: false, autoClose: 4000 });
   }
 }
 
 async function printPOPdf(poNumber) {
+  const toastId = toast.loading("Preparing print...");
   try {
     const element = document.getElementById("po-print-area");
     if (!element) throw new Error("PO area not found");
@@ -52,9 +61,16 @@ async function printPOPdf(poNumber) {
     pdf.addImage(canvas.toDataURL("image/jpeg"), "JPEG", (pageWidth - imgWidth) / 2, (pageHeight - imgHeight) / 2, imgWidth, imgHeight);
     pdf.autoPrint();
     const w = window.open(URL.createObjectURL(pdf.output("blob")));
-    if (!w) pdf.save(`PO-${poNumber || "purchase-order"}.pdf`);
+    if (!w) {
+      const fileName = `PO-${poNumber || "purchase-order"}.pdf`;
+      const filePath = await savePdf(pdf, fileName);
+      toast.dismiss(toastId);
+      await showDownloadNotification(fileName, filePath);
+    } else {
+      toast.update(toastId, { render: "Print dialog opened", type: "success", isLoading: false, autoClose: 2000 });
+    }
   } catch (err) {
-    alert(`Failed to prepare print: ${err.message}`);
+    toast.update(toastId, { render: `Failed to prepare print: ${err.message}`, type: "error", isLoading: false, autoClose: 4000 });
   }
 }
 

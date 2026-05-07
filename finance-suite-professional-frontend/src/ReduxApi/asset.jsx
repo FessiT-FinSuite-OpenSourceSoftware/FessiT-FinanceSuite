@@ -33,6 +33,7 @@ const toFormData = (d) => {
   const fd = new FormData()
 
   if (d.imageFile instanceof File) fd.append('image', d.imageFile)
+  if (d.invoiceImageFile instanceof File) fd.append('invoice_image', d.invoiceImageFile)
 
   fd.append('name', d.name || '')
   fd.append('description', d.description || '')

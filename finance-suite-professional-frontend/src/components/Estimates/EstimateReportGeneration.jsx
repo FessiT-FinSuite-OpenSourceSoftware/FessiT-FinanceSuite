@@ -3,8 +3,11 @@ import axiosInstance from "../../utils/axiosInstance";
 import { formatNumber, getCurrencySymbol } from "../../utils/formatNumber";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
+import { toast } from "react-toastify";
+import { isTauri, savePdf, showDownloadNotification } from "../../utils/pdfUtils";
 
 async function generateEstimatePdf(estimateNumber) {
+  const toastId = toast.loading("Generating PDF...");
   try {
     const element = document.getElementById("estimate-print-area");
     if (!element) throw new Error("Estimate area not found");
@@ -20,30 +23,28 @@ async function generateEstimatePdf(estimateNumber) {
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 5;
-
     const maxWidth = pageWidth - margin * 2;
     const maxHeight = pageHeight - margin * 2;
-
     let imgWidth = maxWidth;
     let imgHeight = (canvas.height * imgWidth) / canvas.width;
-
     if (imgHeight > maxHeight) {
       const ratio = maxHeight / imgHeight;
       imgWidth *= ratio;
       imgHeight *= ratio;
     }
+    pdf.addImage(canvas.toDataURL("image/jpeg"), "JPEG", (pageWidth - imgWidth) / 2, (pageHeight - imgHeight) / 2, imgWidth, imgHeight);
 
-    const x = (pageWidth - imgWidth) / 2;
-    const y = (pageHeight - imgHeight) / 2;
-
-    pdf.addImage(canvas.toDataURL("image/jpeg"), "JPEG", x, y, imgWidth, imgHeight);
-    pdf.save(`estimate-${estimateNumber || "estimate"}.pdf`);
+    const fileName = `estimate-${estimateNumber || "estimate"}.pdf`;
+    const filePath = await savePdf(pdf, fileName);
+    toast.dismiss(toastId);
+    await showDownloadNotification(fileName, filePath);
   } catch (err) {
-    alert(`Failed to generate PDF: ${err.message}`);
+    toast.update(toastId, { render: `Failed to generate PDF: ${err.message}`, type: "error", isLoading: false, autoClose: 4000 });
   }
 }
 
 async function printEstimatePdf(estimateNumber) {
+  const toastId = toast.loading("Preparing print...");
   try {
     const element = document.getElementById("estimate-print-area");
     if (!element) throw new Error("Estimate area not found");
@@ -59,32 +60,30 @@ async function printEstimatePdf(estimateNumber) {
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 5;
-
     const maxWidth = pageWidth - margin * 2;
     const maxHeight = pageHeight - margin * 2;
-
     let imgWidth = maxWidth;
     let imgHeight = (canvas.height * imgWidth) / canvas.width;
-
     if (imgHeight > maxHeight) {
       const ratio = maxHeight / imgHeight;
       imgWidth *= ratio;
       imgHeight *= ratio;
     }
-
-    const x = (pageWidth - imgWidth) / 2;
-    const y = (pageHeight - imgHeight) / 2;
-
-    pdf.addImage(canvas.toDataURL("image/jpeg"), "JPEG", x, y, imgWidth, imgHeight);
+    pdf.addImage(canvas.toDataURL("image/jpeg"), "JPEG", (pageWidth - imgWidth) / 2, (pageHeight - imgHeight) / 2, imgWidth, imgHeight);
     pdf.autoPrint();
 
     const url = URL.createObjectURL(pdf.output("blob"));
     const w = window.open(url);
     if (!w) {
-      pdf.save(`estimate-${estimateNumber || "estimate"}.pdf`);
+      const fileName = `estimate-${estimateNumber || "estimate"}.pdf`;
+      const filePath = await savePdf(pdf, fileName);
+      toast.dismiss(toastId);
+      await showDownloadNotification(fileName, filePath);
+    } else {
+      toast.update(toastId, { render: "Print dialog opened", type: "success", isLoading: false, autoClose: 2000 });
     }
   } catch (err) {
-    alert(`Failed to prepare print: ${err.message}`);
+    toast.update(toastId, { render: `Failed to prepare print: ${err.message}`, type: "error", isLoading: false, autoClose: 4000 });
   }
 }
 

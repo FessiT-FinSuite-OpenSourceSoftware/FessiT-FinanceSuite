@@ -4,9 +4,12 @@ import { sampleData } from "./sampleInvoiceData";
 import { formatNumber, getCurrencySymbol } from "../../utils/formatNumber";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
+import { toast } from "react-toastify";
+import { isTauri, savePdf, showDownloadNotification } from "../../utils/pdfUtils";
 
 /** 🔽 High-quality A4 PDF from the invoice-print-area (Download) */
 async function generateInvoicePdf(invoiceNumber) {
+  const toastId = toast.loading("Generating PDF...");
   try {
     const element = document.getElementById("invoice-print-area");
     if (!element) throw new Error("Invoice area not found");
@@ -19,37 +22,34 @@ async function generateInvoicePdf(invoiceNumber) {
     });
 
     const imgData = canvas.toDataURL("image/jpeg");
-
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-
-    const margin = 5; // mm
+    const margin = 5;
     const maxWidth = pageWidth - margin * 2;
     const maxHeight = pageHeight - margin * 2;
-
     let imgWidth = maxWidth;
     let imgHeight = (canvas.height * imgWidth) / canvas.width;
-
     if (imgHeight > maxHeight) {
       const ratio = maxHeight / imgHeight;
       imgWidth = imgWidth * ratio;
       imgHeight = imgHeight * ratio;
     }
+    pdf.addImage(imgData, "JPEG", (pageWidth - imgWidth) / 2, (pageHeight - imgHeight) / 2, imgWidth, imgHeight);
 
-    const x = (pageWidth - imgWidth) / 2;
-    const y = (pageHeight - imgHeight) / 2;
-
-    pdf.addImage(imgData, "JPEG", x, y, imgWidth, imgHeight);
-    pdf.save(`invoice-${invoiceNumber || "invoice"}.pdf`);
+    const fileName = `invoice-${invoiceNumber || "invoice"}.pdf`;
+    const filePath = await savePdf(pdf, fileName);
+    toast.dismiss(toastId);
+    await showDownloadNotification(fileName, filePath);
   } catch (err) {
     console.error("PDF generation failed:", err);
-    alert(`Failed to generate PDF: ${err.message}`);
+    toast.update(toastId, { render: `Failed to generate PDF: ${err.message}`, type: "error", isLoading: false, autoClose: 4000 });
   }
 }
 
 /** 🔽 Same capture, but opens PDF in print dialog instead of saving */
 async function printInvoicePdf(invoiceNumber) {
+  const toastId = toast.loading("Preparing print...");
   try {
     const element = document.getElementById("invoice-print-area");
     if (!element) throw new Error("Invoice area not found");
@@ -62,41 +62,36 @@ async function printInvoicePdf(invoiceNumber) {
     });
 
     const imgData = canvas.toDataURL("image/jpeg");
-
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-
     const margin = 5;
     const maxWidth = pageWidth - margin * 2;
     const maxHeight = pageHeight - margin * 2;
-
     let imgWidth = maxWidth;
     let imgHeight = (canvas.height * imgWidth) / canvas.width;
-
     if (imgHeight > maxHeight) {
       const ratio = maxHeight / imgHeight;
       imgWidth = imgWidth * ratio;
       imgHeight = imgHeight * ratio;
     }
-
-    const x = (pageWidth - imgWidth) / 2;
-    const y = (pageHeight - imgHeight) / 2;
-
-    pdf.addImage(imgData, "JPEG", x, y, imgWidth, imgHeight);
+    pdf.addImage(imgData, "JPEG", (pageWidth - imgWidth) / 2, (pageHeight - imgHeight) / 2, imgWidth, imgHeight);
     pdf.autoPrint();
 
     const blob = pdf.output("blob");
     const url = URL.createObjectURL(blob);
-
     const printWindow = window.open(url);
     if (!printWindow) {
-      // Popup blocked – fallback to download
-      pdf.save(`invoice-${invoiceNumber || "invoice"}.pdf`);
+      const fileName = `invoice-${invoiceNumber || "invoice"}.pdf`;
+      const filePath = await savePdf(pdf, fileName);
+      toast.dismiss(toastId);
+      await showDownloadNotification(fileName, filePath);
+    } else {
+      toast.update(toastId, { render: "Print dialog opened", type: "success", isLoading: false, autoClose: 2000 });
     }
   } catch (err) {
     console.error("PDF print generation failed:", err);
-    alert(`Failed to prepare print: ${err.message}`);
+    toast.update(toastId, { render: `Failed to prepare print: ${err.message}`, type: "error", isLoading: false, autoClose: 4000 });
   }
 }
 
@@ -200,22 +195,50 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
   const handlePrint = () => printInvoicePdf(data.invoice_number);
   const handleDownload = () => generateInvoicePdf(data.invoice_number);
 
+  const FieldRow = ({ label, value }) => {
+    if (value === undefined || value === null || value === "") return null;
+
+    return (
+      <div className="grid grid-cols-[7.5rem_0.5rem_minmax(0,1fr)] gap-x-1 leading-5">
+        <span className="font-semibold">{label}</span>
+        <span>:</span>
+        <span className="min-w-0 wrap-break-word" style={{ overflowWrap: "anywhere" }}>{value}</span>
+      </div>
+    );
+  };
+
+  const BankFieldRow = ({ label, value }) => {
+    if (value === undefined || value === null || value === "") return null;
+
+    return (
+      <div className="grid grid-cols-[6.5rem_0.5rem_minmax(0,1fr)] gap-x-1 leading-5">
+        <span className="font-semibold">{label}</span>
+        <span>:</span>
+        <span className="min-w-0 wrap-break-word" style={{ overflowWrap: "anywhere" }}>{value}</span>
+      </div>
+    );
+  };
+
   // 🔗 Terms & Conditions:
-  // Priority: invoice notes → org footerNote → org paymentInstructions → static fallback
+  // Priority: invoice notes → org paymentInstructions
   const customTermsLines = (data.notes || "")
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
 
   const orgTermsLines = [
-    ...(orgData?.footerNote || "").split("\n").map((l) => l.trim()).filter(Boolean),
     ...(orgData?.paymentInstructions || "").split("\n").map((l) => l.trim()).filter(Boolean),
   ];
 
   const termsToRender =
     customTermsLines.length > 0 ? customTermsLines :
-    orgTermsLines.length > 0    ? orgTermsLines :
-    [];
+      orgTermsLines.length > 0 ? orgTermsLines :
+        [];
+
+  const footerNoteLines = (orgData?.footerNote || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   return (
     <div className="bg-gray-100 min-h-screen py-6 print:bg-white invoice-wrapper">
@@ -254,7 +277,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
             onClick={handlePrint}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors cursor-pointer"
           >
-          Print
+            Print
           </button>
           <button
             onClick={handleDownload}
@@ -268,7 +291,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
       {/* ✅ A4-fitted printable area with outer border */}
       <div
         id="invoice-print-area"
-        className="invoice-a4 mx-auto bg-white shadow-lg text-sm border-[1.4px] border-gray-400"
+        className="invoice-a4 mx-auto flex flex-col bg-white shadow-lg text-sm border-[1.4px] border-gray-400"
         style={{ padding: "1rem", maxWidth: "820px" }}
       >
         {/* Header */}
@@ -315,21 +338,21 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
               <tr>
                 {/* LEFT COLUMN – Invoice side */}
                 <td className="w-1/2 align-top border-r border-gray-400 px-4 py-2">
-                  {data.invoice_number && <p><span className="font-semibold">Invoice No.</span><span className="ml-2">: {data.invoice_number}</span></p>}
-                  {data.invoice_date && <p><span className="font-semibold">Invoice Date</span><span className="ml-2">: {data.invoice_date}</span></p>}
-                  {data.invoice_terms && <p><span className="font-semibold">Terms</span><span className="ml-2">: {data.invoice_terms}</span></p>}
-                  {data.invoice_dueDate && <p><span className="font-semibold">Due Date</span><span className="ml-2">: {data.invoice_dueDate}</span></p>}
-                  {data.place_of_supply && <p><span className="font-semibold">Place of Supply</span><span className="ml-2">: {data.place_of_supply}</span></p>}
+                  <FieldRow label="Invoice No." value={data.invoice_number} />
+                  <FieldRow label="Invoice Date" value={data.invoice_date} />
+                  <FieldRow label="Terms" value={data.invoice_terms} />
+                  <FieldRow label="Due Date" value={data.invoice_dueDate} />
+                  <FieldRow label="Place of Supply" value={data.place_of_supply} />
                 </td>
 
                 {/* RIGHT COLUMN – P.O. side */}
                 <td className="w-1/2 align-top px-4 py-2">
-                  {data.po_number && <p><span className="font-semibold">P O Number</span><span className="ml-2">: {data.po_number}</span></p>}
-                  {data.po_date && <p><span className="font-semibold">P O Date</span><span className="ml-2">: {data.po_date}</span></p>}
+                  <FieldRow label="P O Number" value={data.po_number || "-"} />
+                  <FieldRow label="P O Date" value={data.po_date || "-"} />
                   {isInternational && (
                     <>
-                      {(data.lut_no || data.lutNo) && <p><span className="font-semibold">LUT No</span><span className="ml-2">: {data.lut_no || data.lutNo}</span></p>}
-                      {(data.iec_no || data.iecNo) && <p><span className="font-semibold">IEC No</span><span className="ml-2">: {data.iec_no || data.iecNo}</span></p>}
+                      <FieldRow label="LUT No" value={data.lut_no || data.lutNo} />
+                      <FieldRow label="IEC No" value={data.iec_no || data.iecNo} />
                     </>
                   )}
                 </td>
@@ -340,7 +363,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                 {/* Bill To */}
                 <td className="w-1/2 align-top border-r border-t border-gray-400 px-4 py-3">
                   <h3 className="text-xs font-semibold text-gray-800 mb-1">
-                    Bill To
+                    Bill To :
                   </h3>
                   <p className="text-sm font-medium text-gray-900">
                     {data.billcustomer_name}
@@ -358,7 +381,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                 {/* Ship To */}
                 <td className="w-1/2 align-top border-t border-gray-400 px-4 py-3">
                   <h3 className="text-xs font-semibold text-gray-800 mb-1">
-                    Ship To
+                    Ship To :
                   </h3>
                   <p className="text-sm font-medium text-gray-900">
                     {data.shipcustomer_name}
@@ -504,22 +527,22 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
               const requiredFields = [orgData?.accountHolder, orgData?.accountNumber, orgData?.bankName, orgData?.ifscCode];
               const internationalFields = isInternational ? [orgData?.accountType, orgData?.bankBranch, orgData?.swiftCode] : [];
               const domesticFields = isDomestic ? [orgData?.upiId] : [];
-              
+
               const allRequiredFields = [...requiredFields, ...internationalFields, ...domesticFields];
               const hasAllRequiredFields = allRequiredFields.every(field => field && field.trim() !== '');
-              
+
               return hasAllRequiredFields ? (
                 <div>
                   <h3 className="font-semibold mb-1">Bank Details</h3>
                   <div className="border border-gray-400 rounded p-2">
-                    {orgData?.accountHolder && <p><span className="font-semibold">Account Name:</span> {orgData.accountHolder}</p>}
-                    {orgData?.accountNumber && <p><span className="font-semibold">Account Number:</span> {orgData.accountNumber}</p>}
-                    {orgData?.accountType && <p><span className="font-semibold">Account Type:</span> {orgData.accountType}</p>}
-                    {orgData?.ifscCode && <p><span className="font-semibold">IFSC Code:</span> {orgData.ifscCode}</p>}
-                    {orgData?.bankName && <p><span className="font-semibold">Bank Name:</span> {orgData.bankName}</p>}
-                    {orgData?.bankBranch && <p><span className="font-semibold">Branch:</span> {orgData.bankBranch}</p>}
-                    {isInternational && orgData?.swiftCode && <p><span className="font-semibold">Swift Code:</span> {orgData.swiftCode}</p>}
-                    {isDomestic && orgData?.upiId && <p><span className="font-semibold">UPI ID:</span> {orgData.upiId}</p>}
+                    <BankFieldRow label="Account Name" value={orgData?.accountHolder} />
+                    <BankFieldRow label="Account Number" value={orgData?.accountNumber} />
+                    <BankFieldRow label="Account Type" value={orgData?.accountType} />
+                    <BankFieldRow label="IFSC Code" value={orgData?.ifscCode} />
+                    <BankFieldRow label="Bank Name" value={orgData?.bankName} />
+                    <BankFieldRow label="Branch" value={orgData?.bankBranch} />
+                    {isInternational && <BankFieldRow label="Swift Code" value={orgData?.swiftCode} />}
+                    {isDomestic && <BankFieldRow label="UPI ID" value={orgData?.upiId} />}
                   </div>
                 </div>
               ) : null;
@@ -656,6 +679,14 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
             </div>
           </div>
         </div>
+
+        {footerNoteLines.length > 0 && (
+          <div className="mt-auto border-t border-gray-300 pt-3 text-center text-xs leading-5 text-gray-700">
+            {footerNoteLines.map((line, index) => (
+              <p key={index}>{line}</p>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
