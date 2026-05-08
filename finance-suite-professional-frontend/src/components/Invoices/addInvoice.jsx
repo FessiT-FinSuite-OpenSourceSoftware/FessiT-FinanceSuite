@@ -11,6 +11,7 @@ import { fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector } 
 import { createInvoice, fetchNextInvoiceNumber, invoiceSelector } from "../../ReduxApi/invoice";
 import { fetchProductData, productSelector } from "../../ReduxApi/product";
 import { fetchCustomerData, customerSelector } from "../../ReduxApi/customer";
+import PlaceOfSupplyField from "./PlaceOfSupplyField";
 
 const createEmptyInvoiceItem = () => ({
   description: "",
@@ -645,8 +646,8 @@ export default function AddInvoice() {
     //   newErrors.po_number = "P.O. No is required";
     // if (!invoiceData?.po_date?.trim())
     //   newErrors.po_date = "P.O. Date is required";
-    // if (!invoiceData?.place_of_supply?.trim())
-    //   newErrors.place_of_supply = "Place of supply is required";
+    if (!invoiceData?.place_of_supply?.trim())
+      newErrors.place_of_supply = "Place of supply is required";
     if (!invoiceData?.billcustomer_name?.trim())
       newErrors.billcustomer_name = "Customer name is required";
     if (!invoiceData?.billcustomer_address?.trim())
@@ -774,7 +775,7 @@ export default function AddInvoice() {
             </div>
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                GSTIN *
+                GSTIN 
               </label>
               <input
                 type="text"
@@ -1042,24 +1043,11 @@ export default function AddInvoice() {
                 </p>
               )}
             </div>
-            <div className="relative">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Place of Supply
-              </label>
-              <input
-                type="text"
-                placeholder="Enter place of supply"
-                className="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
-                value={invoiceData.place_of_supply}
-                name="place_of_supply"
-                onChange={handleChange}
-              />
-              {inputErrors?.place_of_supply && (
-                <p className="absolute text-[13px] text-[#f10404]">
-                  {inputErrors?.place_of_supply}
-                </p>
-              )}
-            </div>
+            <PlaceOfSupplyField
+              value={invoiceData.place_of_supply}
+              onChange={handleChange}
+              error={inputErrors?.place_of_supply}
+            />
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Service Type
@@ -1250,7 +1238,7 @@ export default function AddInvoice() {
               {isDomestic && (
                 <div className="relative">
                   <label className="block text-xs font-semibold text-gray-600 mt-2 mb-1">
-                    GSTIN *
+                    GSTIN
                   </label>
                   <input
                     type="text"

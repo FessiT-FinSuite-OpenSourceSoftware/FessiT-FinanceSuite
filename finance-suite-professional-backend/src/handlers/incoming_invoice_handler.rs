@@ -150,7 +150,7 @@ pub async fn update_incoming_invoice(
             if now_paid && !was_paid {
                 if let Some(org_id) = inv.organisation_id {
                     if let Ok(inv_id) = mongodb::bson::oid::ObjectId::parse_str(&id) {
-                        let amount = parse_amount(&inv.total);
+                        let amount = if inv.tds_applicable { parse_amount(&inv.total_before_tds) } else { parse_amount(&inv.total) };
                         let currency = if inv.currency_type.is_empty() { "INR" } else { &inv.currency_type };
                         let payment_date = inv.paid_date.as_deref()
                             .or(Some(inv.invoice_date.as_str()))
@@ -287,6 +287,10 @@ pub async fn update_incoming_invoice_with_file(
         total_cgst: fields.remove("total_cgst").unwrap_or_default(),
         total_sgst: fields.remove("total_sgst").unwrap_or_default(),
         total_igst: fields.remove("total_igst").unwrap_or_default(),
+        total_before_tds: fields
+            .remove("totalBeforeTds")
+            .or_else(|| fields.remove("total_before_tds"))
+            .unwrap_or_default(),
         total: fields.remove("total").unwrap_or_default(),
         invoice_file: fields.remove("invoice_file").unwrap_or_else(|| existing.invoice_file.clone()),
         notes: fields.remove("notes").unwrap_or_default(),

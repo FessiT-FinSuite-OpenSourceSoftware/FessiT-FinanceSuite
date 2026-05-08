@@ -107,7 +107,23 @@ export default function IncomingInvoicesTab() {
     { label: "Company",      render: (bill) => <span className="text-sm text-gray-700">{bill.vendor_name}</span> },
     { label: "Invoice Date", hidden: true, render: (bill) => <span className="text-sm text-gray-600">{formatDate(bill.invoice_date)}</span> },
     { label: "Due Date",     hidden: true, render: (bill) => <span className="text-sm text-gray-600">{formatDate(bill.due_date)}</span> },
-    { label: "Amount (INR)", render: (bill) => <span className="text-sm font-semibold text-gray-800 text-center block">{bill.total}</span> },
+    {
+      label: "Amount (INR)",
+      render: (bill) => (
+        <div className="text-center">
+          <span className="text-sm font-semibold text-gray-800 block">
+            {bill.tds_applicable
+              ? (bill.totalBeforeTds || bill.total_before_tds || bill.total)
+              : bill.total}
+          </span>
+          {/* {bill.tds_applicable && (
+            <span className="text-xs text-green-700 font-medium">
+              Paid: {bill.total}
+            </span>
+          )} */}
+        </div>
+      ),
+    },
     {
       label: "TDS (INR)",
       render: (bill) => (

@@ -26,8 +26,39 @@ impl IncomingInvoiceService {
         Ok(self.user_repo.get_user_by_id(user_id).await?)
     }
 
+    fn parse_amount(value: &str) -> f64 {
+        value
+            .trim()
+            .chars()
+            .filter(|ch| ch.is_ascii_digit() || *ch == '.' || *ch == '-')
+            .collect::<String>()
+            .parse::<f64>()
+            .unwrap_or(0.0)
+    }
+
+    fn normalize_totals(invoice: &mut IncomingInvoice) {
+        if !invoice.total_before_tds.trim().is_empty() {
+            return;
+        }
+
+        let gross_total = [
+            invoice.sub_total.as_str(),
+            invoice.total_cgst.as_str(),
+            invoice.total_sgst.as_str(),
+            invoice.total_igst.as_str(),
+        ]
+        .iter()
+        .map(|value| Self::parse_amount(value))
+        .sum::<f64>();
+
+        if gross_total > 0.0 {
+            invoice.total_before_tds = gross_total.to_string();
+        }
+    }
+
     pub async fn create(&self, mut invoice: IncomingInvoice, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<IncomingInvoice> {
         invoice.organisation_id = Some(*org_id);
+        Self::normalize_totals(&mut invoice);
         Ok(self.repo.create(invoice).await?)
     }
 
@@ -39,7 +70,8 @@ impl IncomingInvoiceService {
         Ok(self.repo.get_by_id(id).await?)
     }
 
-    pub async fn update(&self, id: &str, invoice: IncomingInvoice) -> anyhow::Result<Option<IncomingInvoice>> {
+    pub async fn update(&self, id: &str, mut invoice: IncomingInvoice) -> anyhow::Result<Option<IncomingInvoice>> {
+        Self::normalize_totals(&mut invoice);
         Ok(self.repo.update(id, invoice).await?)
     }
 

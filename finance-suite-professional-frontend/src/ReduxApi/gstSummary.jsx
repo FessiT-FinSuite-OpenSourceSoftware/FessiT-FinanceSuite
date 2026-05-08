@@ -25,10 +25,11 @@ const gstSummarySlice = createSlice({
     gstSummaryRequest: (state) => { state.isLoading = true; state.isError = false; },
     gstSummarySuccess: (state, { payload }) => { state.isLoading = false; state.data = payload; },
     gstSummaryFailure: (state) => { state.isLoading = false; state.isError = true; },
+    gstSummaryClear: (state) => { state.data = null; state.isLoading = false; },
   },
 });
 
-export const { gstSummaryRequest, gstSummarySuccess, gstSummaryFailure } = gstSummarySlice.actions;
+export const { gstSummaryRequest, gstSummarySuccess, gstSummaryFailure, gstSummaryClear } = gstSummarySlice.actions;
 export const gstSummarySelector = (state) => state.gstSummary;
 export default gstSummarySlice.reducer;
 

@@ -381,7 +381,7 @@ export default function ProfitLossPage() {
             <div className="space-y-2">
               {data.notes.map((n, i) => (
                 <div key={i} className="flex gap-3 text-sm">
-                  <span className="font-semibold text-gray-700 whitespace-nowrap min-w-[160px]">{n.title}</span>
+                  <span className="font-semibold text-gray-700 whitespace-nowrap min-w-40">{n.title}</span>
                   <span className="text-gray-500">{n.rule} · Date: <span className="font-mono text-xs text-indigo-600">{n.date}</span></span>
                 </div>
               ))}

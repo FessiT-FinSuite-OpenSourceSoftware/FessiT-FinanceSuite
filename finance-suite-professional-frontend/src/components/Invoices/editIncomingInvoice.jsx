@@ -7,6 +7,7 @@ import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import PlaceOfSupplyField from "./PlaceOfSupplyField";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -29,6 +30,14 @@ function calcItem(item, isDomestic) {
   const igst = !isDomestic ? (base * (parseFloat(item.igstPercent) || 0)) / 100 : 0;
   return { base, cgst, sgst, igst, total: base + cgst + sgst + igst };
 }
+
+const TDS_NOTE_PREFIX = "TDS of ";
+
+const buildTdsNote = (pct, effective, tdsAmt, invoiceTotal) =>
+  `TDS of ${pct || 0}% is applicable. Effective amount payable to vendor is ${effective} (after deducting TDS of ${tdsAmt} from invoice total of ${invoiceTotal}).`;
+
+const stripTdsNote = (notes) =>
+  notes.split("\n").filter((l) => !l.startsWith(TDS_NOTE_PREFIX)).join("\n").trim();
 
 export default function EditIncomingInvoice() {
   const { id } = useParams();
@@ -108,14 +117,37 @@ export default function EditIncomingInvoice() {
       const tdsPercent = tdsApplicable && subTotalVal > 0
         ? ((tdsTotal / subTotalVal) * 100).toFixed(2)
         : "";
-      setForm({
+      const loadedForm = {
         ...data,
         items: data.items?.length ? data.items : [emptyItem()],
         tds_available: tdsApplicable ? "yes" : "no",
         tds_percent: tdsPercent,
         total_tds: data.tds_total || data.total_tds || "0.00",
         cost_type: data.cost_type || "indirect",
-      });
+        notes: stripTdsNote(data.notes || ""),
+      };
+      setForm(loadedForm);
+      if (tdsApplicable) {
+        const items = loadedForm.items;
+        const dom = (loadedForm.invoice_type || "domestic") === "domestic";
+        const pct = parseFloat(tdsPercent) || 0;
+        let subTotal = 0, total_cgst = 0, total_sgst = 0, total_igst = 0;
+        items.forEach((it) => {
+          const qty = parseFloat(it.quantity) || 0;
+          const rate = parseFloat(it.rate) || 0;
+          const base = qty * rate;
+          total_cgst += dom ? (base * (parseFloat(it.cgstPercent) || 0)) / 100 : 0;
+          total_sgst += dom ? (base * (parseFloat(it.sgstPercent) || 0)) / 100 : 0;
+          total_igst += !dom ? (base * (parseFloat(it.igstPercent) || 0)) / 100 : 0;
+          subTotal += base;
+        });
+        const total_tds = (subTotal * pct) / 100;
+        const total_before_tds = subTotal + total_cgst + total_sgst + total_igst;
+        const total = total_before_tds - total_tds;
+        const base = stripTdsNote(loadedForm.notes);
+        const note = buildTdsNote(pct, total.toFixed(2), total_tds.toFixed(2), total_before_tds.toFixed(2));
+        setForm((f) => ({ ...f, notes: base ? `${base}\n${note}` : note }));
+      }
     });
   }, [id]);
 
@@ -144,7 +176,12 @@ export default function EditIncomingInvoice() {
       total_igst += c.igst;
     });
     const total_tds = tdsAvailable ? (subTotal * tdsPercent) / 100 : 0;
-    const total = subTotal + total_cgst + total_sgst + total_igst - total_tds;
+    const total_before_tds = subTotal + total_cgst + total_sgst + total_igst;
+    const total = total_before_tds - total_tds;
+    const base = stripTdsNote(formOverride.notes || "");
+    const updatedNotes = tdsAvailable
+      ? (base ? `${base}\n${buildTdsNote(tdsPercent, total.toFixed(2), total_tds.toFixed(2), total_before_tds.toFixed(2))}` : buildTdsNote(tdsPercent, total.toFixed(2), total_tds.toFixed(2), total_before_tds.toFixed(2)))
+      : base;
     setForm((f) => ({
       ...f,
       items: updatedItems,
@@ -152,8 +189,10 @@ export default function EditIncomingInvoice() {
       total_cgst: total_cgst.toFixed(2),
       total_sgst: total_sgst.toFixed(2),
       total_igst: total_igst.toFixed(2),
+      totalBeforeTds: total_before_tds.toFixed(2),
       total_tds: total_tds.toFixed(2),
       total: total.toFixed(2),
+      notes: updatedNotes,
     }));
   };
 
@@ -167,6 +206,10 @@ export default function EditIncomingInvoice() {
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
+    if (!form.place_of_supply?.trim()) {
+      toast.error("Place of supply is required");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -261,10 +304,12 @@ export default function EditIncomingInvoice() {
               <label className={labelCls}>Due Date</label>
               <input type="date" className={inputCls} value={form.due_date || ""} onChange={(e) => setField("due_date", e.target.value)} />
             </div>
-            <div className="relative">
-              <label className={labelCls}>Place of Supply</label>
-              <input className={inputCls} value={form.place_of_supply || ""} onChange={(e) => setField("place_of_supply", e.target.value)} placeholder="Enter place of supply" />
-            </div>
+            <PlaceOfSupplyField
+              value={form.place_of_supply || ""}
+              onChange={(e) => setField("place_of_supply", e.target.value)}
+              labelClassName={labelCls}
+              inputClassName={inputCls}
+            />
             <div className="relative">
               <label className={labelCls}>Invoice Type</label>
               <select className={inputCls} value={form.invoice_type || "domestic"} onChange={(e) => setField("invoice_type", e.target.value)}>
@@ -463,15 +508,30 @@ export default function EditIncomingInvoice() {
                   <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={form.total_igst || "0.00"} />
                 </div>
               )}
+              <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
+                <span>Total GST</span>
+                <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-semibold text-orange-600" value={(isDomestic ? (parseFloat(form.total_cgst || 0) + parseFloat(form.total_sgst || 0)) : parseFloat(form.total_igst || 0)).toFixed(2)} />
+              </div>
               {form.tds_available === "yes" && (
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700">TDS Deduction</span>
-                  <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={form.total_tds || "0.00"} />
-                </div>
+                <>
+                 
+                  {/* <div className="flex justify-between">
+                    <span className="font-semibold text-gray-700">TDS Deduction</span>
+                    <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={form.total_tds || "0.00"} />
+                  </div>
+                   <div className="flex justify-between">
+                    <span className="font-semibold text-gray-700">Effective Total</span>
+                    <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={form.total || "0.00"} />
+                  </div> */}
+                </>
               )}
-              <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">
-                <span>Total</span>
+              {/* <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">
+                <span>Total(Excluding </span>
                 <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-bold text-indigo-700" value={form.total || "0.00"} />
+              </div> */}
+              <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">
+                <span>Total Amount</span>
+                <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-bold text-indigo-700" value={form.totalBeforeTds || form.total_before_tds || "0.00"} />
               </div>
             </div>
           </div>
@@ -484,6 +544,7 @@ export default function EditIncomingInvoice() {
             <div>
               <label className={labelCls}>Notes</label>
               <textarea rows={4} className={inputCls} value={form.notes || ""} onChange={(e) => setField("notes", e.target.value)} placeholder="Add any notes or terms" />
+
             </div>
             <div>
               <label className={labelCls}>Invoice File</label>

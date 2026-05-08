@@ -100,29 +100,45 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
     if (onBack) onBack();
   };
 
-  const [logoUrl, setLogoUrl] = useState(null);
-
-  useEffect(() => {
-    let objectUrl = null;
-    if (orgData?.logo) {
-      axiosInstance
-        .get(`/organisation-logo/${orgData.logo}`, { responseType: "blob" })
-        .then((res) => {
-          objectUrl = URL.createObjectURL(res.data);
-          setLogoUrl(objectUrl);
-        })
-        .catch(() => setLogoUrl(null));
-    } else {
-      setLogoUrl(null);
-    }
-    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [orgData?.logo]);
-
   // 🧠 Prefer actual invoiceData, fall back to sampleData
   const baseData =
     invoiceData && Object.keys(invoiceData || {}).length > 0
       ? invoiceData
       : sampleData;
+
+  const [logoUrl, setLogoUrl] = useState(null);
+  const [logoLoading, setLogoLoading] = useState(false);
+
+  useEffect(() => {
+    let objectUrl = null;
+    let cancelled = false;
+
+    const fetchLogo = async () => {
+      // Use linkedLogo stamped on the invoice at Issued time, fall back to current org logo
+      const logoFilename = baseData?.linkedLogo || orgData?.logo || "";
+
+      if (!logoFilename) { setLogoLoading(false); return; }
+
+      try {
+        const res = await axiosInstance.get(`/organisation-logo/${logoFilename}`, { responseType: "blob" });
+        if (!cancelled) {
+          objectUrl = URL.createObjectURL(res.data);
+          setLogoUrl(objectUrl);
+        }
+      } catch { if (!cancelled) setLogoUrl(null); }
+      finally { if (!cancelled) setLogoLoading(false); }
+    };
+
+    setLogoLoading(true);
+    fetchLogo();
+    return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [baseData?.linkedLogo, orgData?.logo]);
+
+  if (logoLoading) return (
+    <div className="flex justify-center items-center min-h-screen bg-gray-100">
+      <div className="text-gray-500 text-sm">Loading invoice...</div>
+    </div>
+  );
 
   const data = {
     company_logo: logoUrl,
@@ -341,8 +357,8 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                   <FieldRow label="Invoice No." value={data.invoice_number} />
                   <FieldRow label="Invoice Date" value={data.invoice_date} />
                   <FieldRow label="Terms" value={data.invoice_terms} />
-                  <FieldRow label="Due Date" value={data.invoice_dueDate} />
-                  <FieldRow label="Place of Supply" value={data.place_of_supply} />
+                  <FieldRow label="Due Date" value={data.invoice_dueDate || "-"} />
+                  <FieldRow label="Place of Supply" value={data.place_of_supply || "-"} />
                 </td>
 
                 {/* RIGHT COLUMN – P.O. side */}

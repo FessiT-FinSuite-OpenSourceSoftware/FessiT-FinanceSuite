@@ -310,7 +310,7 @@ export default function SideBar({ component }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main ref={mainRef} className="overflow-y-auto relative" id="main-scroll-container">
+        <main ref={mainRef} className="overflow-y-auto overflow-x-hidden overscroll-none relative" id="main-scroll-container">
           {showScrollTop && (
             <button
               onClick={scrollToTop}
@@ -439,7 +439,7 @@ export default function SideBar({ component }) {
             </div>
           </div>
 
-          <div className="p-6">{component}</div>
+          <div className="p-1">{component}</div>
         </main>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchTdsSummary, tdsSummarySelector } from "../../ReduxApi/tdsSummary";
+import { fetchTdsSummary, tdsSummarySelector, tdsSummaryClear } from "../../ReduxApi/tdsSummary";
 import { fetchSalaries, salarySelector } from "../../ReduxApi/salary";
 import { fetchIncomingInvoices, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
 import TDSDeductions from "./TDSDeductions";
@@ -118,11 +118,19 @@ const tdsDeductions = [
   }
 ];
 
+const StatCardSkeleton = () => (
+  <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+    <div className="skeleton-shimmer h-2.5 w-24 mb-3" />
+    <div className="skeleton-shimmer h-7 w-28 mb-2" />
+    <div className="skeleton-shimmer h-2.5 w-36" />
+  </div>
+);
+
 export default function TDSCompliance() {
   const [activeTab, setActiveTab] = useState("deductions");
   const [filterStatus, setFilterStatus] = useState("all");
   const dispatch = useDispatch()
-  const { data } = useSelector(tdsSummarySelector)
+  const { data, isLoading } = useSelector(tdsSummarySelector)
   const { salaryData } = useSelector(salarySelector)
   const { data: incomingInvoices } = useSelector(incomingInvoiceSelector)
 
@@ -137,6 +145,10 @@ export default function TDSCompliance() {
     if (!selectedMonths.length) return;
     dispatch(fetchTdsSummary(selectedMonths));
   }, [dispatch, selectedMonths])
+
+  useEffect(() => {
+    return () => { dispatch(tdsSummaryClear()); };
+  }, [dispatch]);
 
   useEffect(() => {
     if (!selectedMonths.length) return;
@@ -254,18 +266,17 @@ export default function TDSCompliance() {
   const handlePayChallan = () => {
     alert("Redirecting to TIN-NSDL portal for challan payment...");
   };
-  console.log("This is what we have received from the backend", data)
   return (
     <>
       {/* Main Content */}
-      <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-lg p-3 pb-6">
         {/* Tabs + Action Buttons */}
-        <div className="flex items-center justify-between border-b border-gray-200 mb-6">
+        <div className="flex items-center justify-between border-b border-gray-200 mb-3">
           <div className="flex">
             {[
               // { key: "returns",      label: "Returns" },
               { key: "deductions", label: "Deductions" },
-              // { key: "challans",     label: "Challans" },
+              { key: "challans",     label: "Challans" },
               // { key: "certificates", label: "Certificates" },
             ].map((t) => (
               <button
@@ -293,38 +304,44 @@ export default function TDSCompliance() {
           </div> */}
         </div>
         {/* Dashboard Stats - Always Visible */}
-        <PeriodSelector onChange={handlePeriodChange} />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-linear-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
-            <h3 className="text-sm font-medium text-blue-700 mb-2">Total TDS Deducted</h3>
-            <p className="text-3xl font-bold text-blue-900">{formatCurrency(data?.combined?.total_tds_deducted)}</p>
-            <p className="text-xs text-blue-600 mt-1">
-              Invoices: {formatCurrency(data?.incoming_invoices?.total_tds_deducted)} · Salaries: {formatCurrency(data?.salaries?.total_tds_deducted)}
-            </p>
-          </div>
-
-          <div className="bg-linear-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
-            <h3 className="text-sm font-medium text-green-700 mb-2">Total TDS Deposited</h3>
-            <p className="text-3xl font-bold text-green-900">{formatCurrency(initialTDSData.totalTDSDeposited)}</p>
-            <p className="text-xs text-green-600 mt-1">Deposited to government</p>
-            <p className="text-xs text-green-600 mt-1">(Feature Coming soon)</p>
-
-          </div>
-
-          <div className="bg-linear-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
-            <h3 className="text-sm font-medium text-orange-700 mb-2">Pending Deposit</h3>
-            <p className="text-3xl font-bold text-orange-900">{formatCurrency(initialTDSData.pendingDeposit)}</p>
-            <p className="text-xs text-orange-600 mt-1">Due for deposit</p>
-            <p className="text-xs text-orange-600 mt-1">(Feature Coming soon)</p>
-
-          </div>
-
-          <div className="bg-linear-to-br from-red-50 to-red-100 p-6 rounded-lg border border-red-200">
-            <h3 className="text-sm font-medium text-red-700 mb-2">Returns Pending</h3>
-            <p className="text-3xl font-bold text-red-900">{initialTDSData.pendingReturns}</p>
-            <p className="text-xs text-red-600 mt-1">Due this quarter</p>
-            <p className="text-xs text-red-600 mt-1">(Feature Coming soon)</p>
-          </div>
+        <div className="mb-2">
+          <PeriodSelector onChange={handlePeriodChange} />
+        </div>
+        <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2 transition-opacity duration-300 ${isLoading && data ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+          {!data ? (
+            <StatCardSkeleton count={4} />
+          ) : (
+            <>
+              <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-blue-300 transition-all">
+                <div className="relative z-10">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Total TDS Deducted</p>
+                  <h3 className="text-2xl font-black text-slate-900">{formatCurrency(data?.combined?.total_tds_deducted)}</h3>
+                  <p className="text-xs text-slate-500 mt-1">Invoices: {formatCurrency(data?.incoming_invoices?.total_tds_deducted)} · Salaries: {formatCurrency(data?.salaries?.total_tds_deducted)}</p>
+                </div>
+              </div>
+              <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
+                <div className="relative z-10">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Total TDS Deposited</p>
+                  <h3 className="text-2xl font-black text-slate-900">{formatCurrency(initialTDSData.totalTDSDeposited)}</h3>
+                  <p className="text-xs text-slate-500 mt-1">Deposited to government (Coming soon)</p>
+                </div>
+              </div>
+              <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
+                <div className="relative z-10">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Pending Deposit</p>
+                  <h3 className="text-2xl font-black text-slate-900">{formatCurrency(initialTDSData.pendingDeposit)}</h3>
+                  <p className="text-xs text-slate-500 mt-1">Due for deposit (Coming soon)</p>
+                </div>
+              </div>
+              <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-red-300 transition-all">
+                <div className="relative z-10">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Returns Pending</p>
+                  <h3 className="text-2xl font-black text-slate-900">{initialTDSData.pendingReturns}</h3>
+                  <p className="text-xs text-slate-500 mt-1">Due this quarter (Coming soon)</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Returns Tab */}

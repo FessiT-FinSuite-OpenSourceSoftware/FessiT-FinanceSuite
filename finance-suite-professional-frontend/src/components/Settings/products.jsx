@@ -479,7 +479,7 @@ export default function Products() {
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Description Preview</p>
           <h4 className="mt-1 text-base font-semibold text-slate-900">{descriptionPreview.title}</h4>
-          <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+          <p className="mt-3 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
             {descriptionPreview.description}
           </p>
         </div>
@@ -757,7 +757,7 @@ export default function Products() {
                           onBlur={closeDescriptionPreview}
                           tabIndex={0}
                         >
-                          <div className="text-sm text-slate-600 line-clamp-2 break-words">
+                          <div className="text-sm text-slate-600 line-clamp-2 wrap-break-word">
                             {product.description || "-"}
                           </div>
                         </div>

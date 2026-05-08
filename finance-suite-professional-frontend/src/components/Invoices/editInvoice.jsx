@@ -9,6 +9,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
 import { fetchOneInvoice, updateInvoice, invoiceSelector } from "../../ReduxApi/invoice";
 import axiosInstance from "../../utils/axiosInstance";
+import PlaceOfSupplyField from "./PlaceOfSupplyField";
 
 const initialInvoiceData = {
   invoice_type: "domestic", // "domestic" or "international"
@@ -495,16 +496,16 @@ export default function EditInvoice() {
     //   newErrors.po_number = "P.O. No is required";
     // if (!invoiceData?.po_date?.trim())
     //   newErrors.po_date = "P.O. Date is required";
-    // if (!invoiceData?.place_of_supply?.trim())
-    //   newErrors.place_of_supply = "Place of supply is required";
+    if (!invoiceData?.place_of_supply?.trim())
+      newErrors.place_of_supply = "Place of supply is required";
     if (!invoiceData?.billcustomer_name?.trim())
       newErrors.billcustomer_name = "Customer name is required";
     if (!invoiceData?.billcustomer_address?.trim())
       newErrors.billcustomer_address = "Address is required";
 
     // Bill-to GSTIN required only for domestic
-    if (isDomestic && !invoiceData?.billcustomer_gstin?.trim())
-      newErrors.billcustomer_gstin = "GSTIN required for domestic invoices";
+    // if (isDomestic && !invoiceData?.billcustomer_gstin?.trim())
+    //   newErrors.billcustomer_gstin = "GSTIN required for domestic invoices";
 
     if (!invoiceData?.shipcustomer_name?.trim())
       newErrors.shipcustomer_name = "Customer name required";
@@ -525,7 +526,8 @@ export default function EditInvoice() {
     setInputErrors({});
 
     try {
-      const result = await dispatch(updateInvoice(id, invoiceData));
+      const { linkedLogo, ...safePayload } = invoiceData;
+      const result = await dispatch(updateInvoice(id, safePayload));
       if (result) nav("/invoices");
     } catch (err) {
       console.error("error while updating", err);
@@ -650,7 +652,7 @@ export default function EditInvoice() {
                 </div>
                 <div className="relative">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    GSTIN *
+                    GSTIN
                   </label>
                   <input
                     type="text"
@@ -895,7 +897,7 @@ export default function EditInvoice() {
                 </div>
                 <div className="relative">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    P.O. No *
+                    P.O. No 
                   </label>
                   <input
                     type="text"
@@ -916,7 +918,7 @@ export default function EditInvoice() {
                 {/* P.O. Date */}
                 <div className="relative">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    P.O. Date *
+                    P.O. Date 
                   </label>
                   <input
                     type="date"
@@ -934,25 +936,13 @@ export default function EditInvoice() {
                   )}
                 </div>
 
-                <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Place of Supply *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter place of supply"
-                    className="border border-gray-300 rounded px-3 
-                      py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
-                    value={invoiceData.place_of_supply}
-                    name="place_of_supply"
-                    onChange={handleChange}
-                  />
-                  {inputErrors?.place_of_supply && (
-                    <p className="absolute text-[13px]  text-[#f10404]">
-                      {inputErrors?.place_of_supply}
-                    </p>
-                  )}
-                </div>
+                <PlaceOfSupplyField
+                  value={invoiceData.place_of_supply}
+                  onChange={handleChange}
+                  error={inputErrors?.place_of_supply}
+                  inputClassName="border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 placeholder:text-gray-400"
+                  errorClassName="absolute text-[13px]  text-[#f10404]"
+                />
                 <div className="relative">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Service Type
@@ -1058,7 +1048,7 @@ export default function EditInvoice() {
                   {isDomestic && (
                     <div className="relative">
                       <label className="block text-xs font-semibold text-gray-600 mt-2 mb-1">
-                        GSTIN *
+                        GSTIN 
                       </label>
                       <input
                         type="text"

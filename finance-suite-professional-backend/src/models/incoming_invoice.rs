@@ -92,6 +92,9 @@ pub struct IncomingInvoice {
     #[serde(default)]
     pub total_igst: String,
 
+    #[serde(rename = "totalBeforeTds", alias = "total_before_tds", default)]
+    pub total_before_tds: String,
+
     #[serde(default)]
     pub total: String,
 

@@ -319,9 +319,15 @@ impl OrganisationRepository{
         let object_id = ObjectId::parse_str(id)
             .map_err(|_| ApiError::ValidationError("Invalid ID format".to_string()))?;
         let filter = doc! { "_id": object_id };
-        self.collection
-            .update_one(filter.clone(), doc! { "$set": { "logo": &logo } }, None)
-            .await?;
+        // Fetch current logo to archive it
+        let old_logo = self.collection.find_one(filter.clone(), None).await?
+            .map(|org| org.logo)
+            .unwrap_or_default();
+        let mut update = doc! { "$set": { "logo": &logo } };
+        if !old_logo.is_empty() {
+            update.insert("$push", doc! { "logo_history": old_logo });
+        }
+        self.collection.update_one(filter.clone(), update, None).await?;
         self.collection
             .find_one(filter, None)
             .await?

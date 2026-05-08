@@ -194,6 +194,12 @@ export default function IncomingInvoiceView() {
               ) : (
                 <div className="flex justify-between"><span>Total IGST</span><span className="font-semibold">{sym} {formatNumber(data.total_igst || 0, currency)}</span></div>
               )}
+              {data.tds_applicable && (
+                <>
+                  <div className="flex justify-between"><span>Total Before TDS</span><span className="font-semibold">{sym} {formatNumber(data.totalBeforeTds || data.total_before_tds || 0, currency)}</span></div>
+                  <div className="flex justify-between"><span>TDS Deduction</span><span className="font-semibold">- {sym} {formatNumber(data.tds_total || data.total_tds || 0, currency)}</span></div>
+                </>
+              )}
               <div className="flex justify-between border-t border-gray-400 pt-2 mt-2 text-sm">
                 <span className="font-bold">Grand Total / Balance Due</span>
                 <span className="font-extrabold text-indigo-700">{sym} {formatNumber(data.total || 0, currency)}</span>

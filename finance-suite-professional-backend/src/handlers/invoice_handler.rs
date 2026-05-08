@@ -161,6 +161,8 @@ fn merge_invoice_update(existing: &Invoice, mut incoming: Invoice) -> Invoice {
     if incoming.customer_id.is_none() { incoming.customer_id = existing.customer_id; }
     if incoming.organisation_id.is_none() { incoming.organisation_id = existing.organisation_id; }
     if incoming.service_type_id.is_none() { incoming.service_type_id = existing.service_type_id; }
+    // always preserve the stamped logo — it must only be set once on Issued transition
+    if existing.linked_logo.is_some() { incoming.linked_logo = existing.linked_logo.clone(); }
     incoming
 }
 
@@ -185,7 +187,18 @@ pub async fn create_invoice(
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
 
-    let invoice = service.create_invoice(req.into_inner(), &org_id).await
+    let mut invoice = req.into_inner();
+
+    // Stamp org logo if created directly as Issued
+    if invoice.status == InvoiceStatus::Issued && invoice.linked_logo.is_none() {
+        if let Ok(org) = service.get_organisation_by_id(&org_id.to_string()).await {
+            if !org.logo.is_empty() {
+                invoice.linked_logo = Some(org.logo);
+            }
+        }
+    }
+
+    let invoice = service.create_invoice(invoice, &org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
     // For a brand-new invoice, previous status is Ne
@@ -329,7 +342,16 @@ pub async fn update_invoice(
     }
 
     let previous_status = existing.status.clone();
-    let merged = merge_invoice_update(&existing, req.into_inner());
+    let mut merged = merge_invoice_update(&existing, req.into_inner());
+
+    // Stamp the org logo when first transitioning to Issued
+    if merged.status == InvoiceStatus::Issued && previous_status != InvoiceStatus::Issued && merged.linked_logo.is_none() {
+        if let Ok(org) = service.get_organisation_by_id(&org_id.to_string()).await {
+            if !org.logo.is_empty() {
+                merged.linked_logo = Some(org.logo);
+            }
+        }
+    }
 
     let maybe_updated = service.update_invoice(&id, merged).await
         .map_err(actix_web::error::ErrorInternalServerError)?;

@@ -198,10 +198,6 @@ pub async fn upload_org_logo(
         }
     };
 
-    if old_logo != filename {
-        remove_logo_file(&old_logo);
-    }
-
     Ok(HttpResponse::Ok().json(org))
 }
 

@@ -16,7 +16,7 @@ export function StatCard({ label, value, valueClass = "text-gray-900" }) {
 // children = filter selects + action buttons on the right side
 export function TabActionBar({ searchValue, onSearchChange, searchPlaceholder = "Search...", children }) {
   return (
-    <div className="sticky top-[88px] z-10 rounded-lg bg-white border border-gray-300 py-4 shadow-sm mb-6">
+    <div className="sticky top-[88px] z-10 rounded-lg bg-white border border-gray-300 py-4 shadow-sm mb-2">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -250,7 +250,7 @@ export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wr
                 {columns.map((col) => (
                   <td
                     key={col.label}
-                    className={`px-4 py-2 whitespace-nowrap${col.right ? " text-right" : ""}${col.hidden ? " hidden lg:table-cell" : ""}`}
+                    className={`px-4 py-2 whitespace-nowrap${col.right ? " text-right" : ""}${col.hidden ? " hidden lg:table-cell" : ""} text-sm`}
                     onClick={col.stopPropagation ? (e) => e.stopPropagation() : undefined}
                   >
                     {col.render ? col.render(row) : row[col.key] ?? "-"}
@@ -272,6 +272,7 @@ export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wr
 
 // ── Pagination Bar ────────────────────────────────────────────────────────────
 export function Pagination({ currentPage, totalPages, pageSize, totalCount, onPageChange, onPageSizeChange }) {
+  if (totalCount <= 5) return null;
   const start = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const end   = Math.min(currentPage * pageSize, totalCount);
 

@@ -6,6 +6,7 @@ import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { fetchIncomingInvoices } from "../../ReduxApi/incomingInvoice";
 import { fetchCustomerData, customerSelector, updateCustomerData } from "../../ReduxApi/customer";
+import PlaceOfSupplyField from "./PlaceOfSupplyField";
 
 const emptyItem = () => ({
   description: "",
@@ -101,7 +102,8 @@ export default function AddIncomingInvoice() {
   const [form, setForm] = useState({ ...initialForm, invoice_type: initialType });
   const isDomestic = form.invoice_type === "domestic";
   const [items, setItems] = useState([emptyItem()]);
-  const [totals, setTotals] = useState({ subTotal: "0.00", total_cgst: "0.00", total_sgst: "0.00", total_igst: "0.00", total_tds: "0.00", total: "0.00" });
+  const [totals, setTotals] = useState({ subTotal: "0.00", total_cgst: "0.00", total_sgst: "0.00", total_igst: "0.00", total_before_tds: "0.00", total_tds: "0.00", total: "0.00" });
+
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [invoiceFileName, setInvoiceFileName] = useState("");
   const [invoiceFilePreview, setInvoiceFilePreview] = useState("");
@@ -118,6 +120,12 @@ export default function AddIncomingInvoice() {
     });
   };
 
+  const buildTdsNote = (pct, effective, tdsAmt, invoiceTotal) =>
+    `TDS of ${pct || 0}% is applicable. Effective amount payable to vendor is ${effective} (after deducting TDS of ${tdsAmt} from invoice total of ${invoiceTotal}).`;
+
+  const stripTdsNote = (notes) =>
+    notes.split("\n").filter((l) => !l.startsWith("TDS of ")).join("\n").trim();
+
   const recalc = (updatedItems, formOverride = form) => {
     const dom = (formOverride.invoice_type || "domestic") === "domestic";
     const tdsAvailable = (formOverride.tds_available || "no") === "yes";
@@ -131,16 +139,23 @@ export default function AddIncomingInvoice() {
       total_igst += c.igst;
     });
     const total_tds = tdsAvailable ? (subTotal * tdsPercent) / 100 : 0;
-    const total = subTotal + total_cgst + total_sgst + total_igst - total_tds;
+    const total_before_tds = subTotal + total_cgst + total_sgst + total_igst;
+    const total = total_before_tds - total_tds;
+    const base = stripTdsNote(formOverride.notes || "");
+    const updatedNotes = tdsAvailable
+      ? (base ? `${base}\n${buildTdsNote(tdsPercent, total.toFixed(2), total_tds.toFixed(2), total_before_tds.toFixed(2))}` : buildTdsNote(tdsPercent, total.toFixed(2), total_tds.toFixed(2), total_before_tds.toFixed(2)))
+      : base;
     setItems(updatedItems);
     setTotals({
       subTotal: subTotal.toFixed(2),
       total_cgst: total_cgst.toFixed(2),
       total_sgst: total_sgst.toFixed(2),
       total_igst: total_igst.toFixed(2),
+      total_before_tds: total_before_tds.toFixed(2),
       total_tds: total_tds.toFixed(2),
       total: total.toFixed(2),
     });
+    setForm((f) => ({ ...f, notes: updatedNotes }));
   };
 
   const setItem = (idx, field, value) => {
@@ -170,6 +185,7 @@ export default function AddIncomingInvoice() {
     if (!form.vendor_name.trim()) e.vendor_name = "Vendor name is required";
     if (!form.invoice_number.trim()) e.invoice_number = "Invoice number is required";
     if (!form.invoice_date.trim()) e.invoice_date = "Invoice date is required";
+    if (!form.place_of_supply.trim()) e.place_of_supply = "Place of supply is required";
     return e;
   };
 
@@ -191,6 +207,7 @@ export default function AddIncomingInvoice() {
         total_cgst: totals.total_cgst,
         total_sgst: totals.total_sgst,
         total_igst: totals.total_igst,
+        totalBeforeTds: totals.total_before_tds,
         tds_applicable: form.tds_available === "yes",
         tds_total: totals.total_tds,
         total_tds: totals.total_tds,
@@ -324,10 +341,14 @@ export default function AddIncomingInvoice() {
               <label className={labelCls}>Due Date</label>
               <input type="date" className={inputCls} value={form.due_date} onChange={(e) => setField("due_date", e.target.value)} />
             </div>
-            <div className="relative">
-              <label className={labelCls}>Place of Supply</label>
-              <input className={inputCls} value={form.place_of_supply} onChange={(e) => setField("place_of_supply", e.target.value)} placeholder="Enter place of supply" />
-            </div>
+            <PlaceOfSupplyField
+              value={form.place_of_supply}
+              onChange={(e) => setField("place_of_supply", e.target.value)}
+              error={errors.place_of_supply}
+              labelClassName={labelCls}
+              inputClassName={inputCls}
+              errorClassName={errCls}
+            />
             <div className="relative">
               <label className={labelCls}>Invoice Type</label>
               <select className={inputCls} value={form.invoice_type} onChange={(e) => setField("invoice_type", e.target.value)}>
@@ -498,15 +519,25 @@ export default function AddIncomingInvoice() {
                   <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={totals.total_igst} />
                 </div>
               )}
+              <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
+                <span>Total GST</span>
+                <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-semibold text-orange-600" value={(isDomestic ? (parseFloat(totals.total_cgst) + parseFloat(totals.total_sgst)) : parseFloat(totals.total_igst)).toFixed(2)} />
+              </div>
               {form.tds_available === "yes" && (
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-700">TDS Deduction</span>
-                  <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={totals.total_tds} />
-                </div>
+                <>
+                  {/* <div className="flex justify-between">
+                    <span className="font-semibold text-gray-700">TDS Deduction</span>
+                    <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={totals.total_tds} />
+                  </div> */}
+                  {/* <div className="flex justify-between">
+                    <span className="font-semibold text-gray-700">Effective Total</span>
+                    <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right text-sm" value={totals.total} />
+                  </div> */}
+                </>
               )}
               <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2">
-                <span>Total</span>
-                <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-bold text-indigo-700" value={totals.total} />
+                <span>Total Amount</span>
+                <input readOnly className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-bold text-indigo-700" value={totals.total_before_tds} />
               </div>
             </div>
           </div>
@@ -519,6 +550,7 @@ export default function AddIncomingInvoice() {
             <div>
               <label className={labelCls}>Notes</label>
               <textarea rows={4} className={inputCls} value={form.notes} onChange={(e) => setField("notes", e.target.value)} placeholder="Add any notes or terms" />
+
             </div>
             <div>
               <label className={labelCls}>Upload Invoice File</label>

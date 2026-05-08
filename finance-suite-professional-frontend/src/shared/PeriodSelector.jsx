@@ -177,7 +177,7 @@ export default function PeriodSelector({ onChange }) {
   }
 
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className=" flex flex-wrap items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
 
       {/* FY pill */}

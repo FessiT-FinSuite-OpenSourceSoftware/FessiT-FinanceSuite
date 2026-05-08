@@ -182,6 +182,10 @@ pub struct Organisation {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub logo: String,
 
+    /// History of all previous logo filenames
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub logo_history: Vec<String>,
+
     #[serde(default)]
     pub lut: String,
 
@@ -471,6 +475,7 @@ impl Organisation {
             service_ids: Vec::new(),
             services: Vec::new(),
             logo: String::new(),
+            logo_history: Vec::new(),
             lut: req.lut,
             iec: req.iec,
             account_type: req.account_type,

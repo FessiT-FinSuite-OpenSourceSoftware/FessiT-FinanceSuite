@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchGstSummary, gstSummarySelector } from "../../ReduxApi/gstSummary";
+import { fetchGstSummary, gstSummarySelector, gstSummaryClear } from "../../ReduxApi/gstSummary";
 import { fetchInvoiceData, invoiceSelector } from "../../ReduxApi/invoice";
 import { fetchIncomingInvoices, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
 import RecentGSTTransactions from "./RecentGSTTransactions";
@@ -108,6 +108,14 @@ const sumInvoiceTaxes = (items = []) => {
   );
 };
 
+const StatCardSkeleton = ({ colorClass = "bg-gray-100", borderClass = "border-gray-200" }) => (
+  <div className={`${colorClass} p-6 rounded-lg border ${borderClass}`}>
+    <div className="skeleton-shimmer h-3 w-28 mb-4" />
+    <div className="skeleton-shimmer h-9 w-36 mb-3" />
+    <div className="skeleton-shimmer h-3 w-44" />
+  </div>
+);
+
 export default function GSTCompliance() {
   const dispatch = useDispatch();
   const { data, isLoading } = useSelector(gstSummarySelector);
@@ -127,6 +135,10 @@ export default function GSTCompliance() {
     if (!selectedMonths.length) return;
     dispatch(fetchGstSummary(selectedMonths));
   }, [dispatch, selectedMonths]);
+
+  useEffect(() => {
+    return () => { dispatch(gstSummaryClear()); };
+  }, [dispatch]);
 
   useEffect(() => {
     if (!selectedMonths.length) return;
@@ -229,9 +241,9 @@ export default function GSTCompliance() {
 
   return (
     <>
-      <div className="bg-white rounded-lg border-g shadow-lg p-8 pb-6">
+      <div className="bg-white rounded-lg border-g shadow-lg p-3 pb-6">
         {/* Tabs + Action Buttons */}
-        <div className="flex items-center justify-between border-b border-gray-200 mb-6">
+        <div className="flex items-center justify-between border-b border-gray-200 mb-3">
           <div className="flex">
             {[
               // { key: "returns",      label: "Returns" },
@@ -264,39 +276,62 @@ export default function GSTCompliance() {
             </button>
           </div> */}
         </div>
-        <PeriodSelector onChange={handlePeriodChange} />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-linear-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
-            <h3 className="text-sm font-medium text-blue-700 mb-2">Total GST Collected</h3>
-            <p className="text-3xl font-bold text-blue-900">{formatCurrency(outgoing.total_gst_collected || 0)}</p>
-            {/* <p className="text-xs text-blue-600 mt-1">{`${Number(outgoing.invoice_count || 0)} invoices`}</p> */}
-          </div>
+        <div className="mb-2">
+          <PeriodSelector onChange={handlePeriodChange} />
+        </div>
+        
+        <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2 transition-opacity duration-300 ${isLoading && data ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+  {!data ? (
+    <StatCardSkeleton count={4} /> 
+  ) : (
+    <>
+      {/* Total GST Collected */}
+      <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-blue-300 transition-all">
+        
+        <div className="relative z-10">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Total GST Collected</p>
+          <h3 className="text-2xl font-black text-slate-900">{formatCurrency(outgoing.total_gst_collected || 0)}</h3>
+         
+        </div>
+      </div>
 
-          <div className="bg-linear-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
-            <h3 className="text-sm font-medium text-green-700 mb-2">Input Tax Credit</h3>
-            <p className="text-3xl font-bold text-green-900">{formatCurrency(incoming.total_gst_collected || 0)}</p>
-            {/* <p className="text-xs text-green-600 mt-1">{`${Number(incoming.invoice_count || 0)} invoices`}</p> */}
-          </div>
+      {/* Input Tax Credit */}
+      <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
+       
+        <div className="relative z-10">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Input Tax Credit</p>
+          <h3 className="text-2xl font-black text-slate-900">{formatCurrency(incoming.total_gst_collected || 0)}</h3>
+          
+        </div>
+      </div>
 
-            <div className="bg-linear-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200">
-              <h3 className="text-sm font-medium text-purple-700 mb-2">Net GST Payable</h3>
-              <p className="text-3xl font-bold text-purple-900">{formatCurrency(netPayable)}</p>
-              {/* <p className="text-xs text-red-600 mt-1">
-              Outgoing: {formatCurrency(net.outgoing_gst_collected || 0)} | Incoming: {formatCurrency(net.incoming_gst_collected || 0)}
-              {net.expense_gst_collected != null ? ` | Expenses: ${formatCurrency(net.expense_gst_collected || 0)}` : ""}
-              </p> */}
-            </div>
+      {/* Net GST Payable */}
+      <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-purple-300 transition-all">
+        
+        <div className="relative z-10">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Net GST Payable</p>
+          <h3 className="text-2xl font-black text-slate-900">{formatCurrency(netPayable)}</h3>
+         
+        </div>
+      </div>
 
-          <div className="bg-linear-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
-            <h3 className="text-sm font-medium text-orange-700 mb-2">Returns Pending</h3>
-            <p className="text-3xl font-bold text-orange-900">{pendingReturnCount}</p>
-            <p className="text-xs text-orange-600 mt-1">Due this month</p>
+      {/* Returns Pending */}
+      <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
+        
+        <div className="relative z-10">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Returns Pending</p>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-2xl font-black text-slate-900">{pendingReturnCount}</h3>
           </div>
         </div>
+      </div>
+    </>
+  )}
+</div>
 
         {activeTab === "returns" && (
           <>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-2">GST Returns</h2>
 
               <div className="flex gap-2">

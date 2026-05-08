@@ -22,10 +22,11 @@ const tdsSummarySlice = createSlice({
     tdsSummaryRequest: (state) => { state.isLoading = true; state.isError = false; },
     tdsSummarySuccess: (state, { payload }) => { state.isLoading = false; state.data = payload; },
     tdsSummaryFailure: (state) => { state.isLoading = false; state.isError = true; },
+    tdsSummaryClear: (state) => { state.data = null; state.isLoading = false; },
   },
 });
 
-export const { tdsSummaryRequest, tdsSummarySuccess, tdsSummaryFailure } = tdsSummarySlice.actions;
+export const { tdsSummaryRequest, tdsSummarySuccess, tdsSummaryFailure, tdsSummaryClear } = tdsSummarySlice.actions;
 export const tdsSummarySelector = (state) => state.tdsSummary;
 export default tdsSummarySlice.reducer;
 

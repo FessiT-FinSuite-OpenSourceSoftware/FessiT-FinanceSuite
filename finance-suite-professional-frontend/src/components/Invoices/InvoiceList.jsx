@@ -165,14 +165,14 @@ export default function InvoiceList() {
       label: "Customer",
       render: (invoice) => <TruncatedCell text={invoice.billcustomer_name || invoice.customer_name || "-"} />,
     },
-    {
-      label: "Type",
-      render: (invoice) => {
-        const t = invoice.invoice_type === "international" ? "international" : "domestic";
-        return <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeBadgeClass(t)}`}>{getTypeLabel(t)}</span>;
-      },
-    },
-    { label: "Date",     hidden: true, render: (invoice) => formatDate(invoice.invoice_date || invoice.date || "") },
+    // {
+    //   label: "Type",
+    //   render: (invoice) => {
+    //     const t = invoice.invoice_type === "international" ? "international" : "domestic";
+    //     return <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeBadgeClass(t)}`}>{getTypeLabel(t)}</span>;
+    //   },
+    // },
+    { label: "Invoice Date",     hidden: true, render: (invoice) => formatDate(invoice.invoice_date || invoice.date || "") },
     { label: "Due Date", hidden: true, render: (invoice) => formatDate(invoice.invoice_dueDate || invoice.due_date || "") },
     {
       label: "Amount",

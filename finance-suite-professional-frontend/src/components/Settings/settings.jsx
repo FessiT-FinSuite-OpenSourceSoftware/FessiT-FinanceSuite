@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Cropper from "react-easy-crop";
 import { toast } from "react-toastify";
 import { countriesData } from "../../utils/countriesData";
 import { Eye, Pencil, Save, Search, X } from "lucide-react";
@@ -7,7 +8,76 @@ import axiosInstance from "../../utils/axiosInstance";
 import { createOrganisation, fetchOrganisationByEmail, fetchOneOrganisation, orgamisationSelector, updateOrganisationData, clearLoading, uploadOrgLogo } from "../../ReduxApi/organisation";
 import ServicesTab from "./ServicesTab";
 import Products from "./products";
+import TdsReferenceAccordion from "./TdsReferenceAccordion";
 
+
+async function getCroppedImg(imageSrc, croppedAreaPixels) {
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = imageSrc;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = croppedAreaPixels.width;
+  canvas.height = croppedAreaPixels.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, croppedAreaPixels.x, croppedAreaPixels.y, croppedAreaPixels.width, croppedAreaPixels.height, 0, 0, croppedAreaPixels.width, croppedAreaPixels.height);
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
+
+function LogoCropModal({ imageSrc, onConfirm, onCancel }) {
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  const handleConfirm = useCallback(async () => {
+    const blob = await getCroppedImg(imageSrc, croppedAreaPixels);
+    onConfirm(blob);
+  }, [imageSrc, croppedAreaPixels, onConfirm]);
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900">Crop logo</h3>
+          <button onClick={onCancel} className="p-1.5 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Crop area */}
+        <div className="relative w-full bg-black" style={{ height: 300 }}>
+          <Cropper
+            image={imageSrc}
+            crop={crop}
+            zoom={zoom}
+            aspect={16 / 9}
+            cropShape="rect"
+            showGrid={false}
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropComplete={(_, areaPixels) => setCroppedAreaPixels(areaPixels)}
+            style={{
+              containerStyle: { background: "#000" },
+              cropAreaStyle: { border: "none", boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)", borderRadius: 4 },
+            }}
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
+          <p className="text-xs text-gray-400">Scroll to zoom &middot; Drag to reposition</p>
+          <div className="flex gap-2">
+            <button onClick={onCancel} className="px-4 py-1.5 text-sm rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+            <button onClick={handleConfirm} className="px-4 py-1.5 text-sm rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const initialSettings = {
   organizationName: "",
@@ -121,6 +191,7 @@ export default function SettingsCreation() {
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState('');
   const [isLogoPreviewOpen, setIsLogoPreviewOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState(null);
   const dispatch = useDispatch();
 
   // Debug logging
@@ -669,7 +740,7 @@ export default function SettingsCreation() {
       if (currentOrganisation.logo) {
         axiosInstance.get(`/organisation-logo/${currentOrganisation.logo}`, { responseType: 'blob' })
           .then((res) => setLogoPreview(URL.createObjectURL(res.data)))
-          .catch(() => {})
+          .catch(() => { })
       } else {
         setLogoPreview('')
       }
@@ -687,10 +758,21 @@ export default function SettingsCreation() {
   }, [currentOrganisation]);
 
   const handleLogoChange = (e) => {
-    const file = e.target.files?.[0] || null
-    setLogoFile(file)
-    setLogoPreview(file ? URL.createObjectURL(file) : logoPreview)
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setCropSrc(url);
+    e.target.value = "";
   }
+
+  const handleCropConfirm = useCallback((blob) => {
+    const croppedFile = new File([blob], "logo.png", { type: "image/png" });
+    setLogoFile(croppedFile);
+    setLogoPreview(URL.createObjectURL(blob));
+    setCropSrc(null);
+  }, []);
+
+  const handleCropCancel = useCallback(() => setCropSrc(null), []);
 
   const handleLogoUpload = async () => {
     if (!logoFile || !orgId) return
@@ -717,6 +799,10 @@ export default function SettingsCreation() {
   );
   return (
     <>
+      {cropSrc && (
+        <LogoCropModal imageSrc={cropSrc} onConfirm={handleCropConfirm} onCancel={handleCropCancel} />
+      )}
+
       {isLogoPreviewOpen && logoPreview && (
         <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/70 p-4" onClick={() => setIsLogoPreviewOpen(false)}>
           <div
@@ -755,7 +841,7 @@ export default function SettingsCreation() {
               { key: "invoice", label: "Invoice Settings" },
               { key: "tax", label: "Tax Settings" },
               { key: "payment", label: "Payment Methods" },
-                            { key: "services", label: "Services" },
+              { key: "services", label: "Services" },
 
               { key: "users", label: "Users & Roles" },
               // { key: "services", label: "Services" },
@@ -963,33 +1049,33 @@ export default function SettingsCreation() {
                       </p>
                     )}
                   </div>
-                    <div className="relative">
-                        <label className="block text-gray-700 font-medium mb-1">
-                          LUT Number
-                        </label>
-                        <input
-                          type="text"
-                          name="lut"
-                          value={settings.lut || ""}
-                          onChange={handleChange}
-                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-                          placeholder="e.g., AD070124012345T"
-                        />
-                      </div>
+                  <div className="relative">
+                    <label className="block text-gray-700 font-medium mb-1">
+                      LUT Number
+                    </label>
+                    <input
+                      type="text"
+                      name="lut"
+                      value={settings.lut || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., AD070124012345T"
+                    />
+                  </div>
 
-                      <div className="relative">
-                        <label className="block text-gray-700 font-medium mb-1">
-                          IEC Code
-                        </label>
-                        <input
-                          type="text"
-                          name="iec"
-                          value={settings.iec || ""}
-                          onChange={handleChange}
-                          className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
-                          placeholder="e.g., AABCP1234C"
-                        />
-                      </div>
+                  <div className="relative">
+                    <label className="block text-gray-700 font-medium mb-1">
+                      IEC Code
+                    </label>
+                    <input
+                      type="text"
+                      name="iec"
+                      value={settings.iec || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., AABCP1234C"
+                    />
+                  </div>
 
                   {/* Country */}
                   <div className="relative w-full" ref={dropdownRef}>
@@ -1491,7 +1577,7 @@ export default function SettingsCreation() {
                         />
                       </div>
 
-                    
+
                     </div>
                   </div>
 
@@ -1665,6 +1751,10 @@ export default function SettingsCreation() {
                     />
                   </div>
                 </div>
+
+                {/* TDS Reference Accordion */}
+                <TdsReferenceAccordion />
+
               </>
             )}
 

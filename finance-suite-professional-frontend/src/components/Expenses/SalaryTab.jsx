@@ -87,6 +87,8 @@ export default function SalaryTab() {
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const totalNet = filtered.reduce((s, r) => s + (parseFloat(r.net_salary) || 0), 0);
+  const totalTds = filtered.reduce((s, r) => s + (parseFloat(r.tds) || 0), 0);
+  const totalGross = filtered.reduce((s, r) => s + (parseFloat(r.gross_salary) || 0), 0);
   const netAuto = (parseFloat(form.gross_salary) || 0) + (parseFloat(form.reimbursement) || 0) - (parseFloat(form.tds) || 0);
 
   const columns = [
@@ -135,8 +137,9 @@ export default function SalaryTab() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total Records"    value={filtered.length} />
-        <StatCard label="Total Net Payout" value={`₹ ${totalNet.toLocaleString("en-IN")}`} valueClass="text-indigo-700" />
-        <StatCard label="Yet To Be Paid"   value={filtered.filter((r) => r.status === "YetToBePaid").length} valueClass="text-yellow-600" />
+        <StatCard label="Total Gross"      value={`₹ ${totalGross.toLocaleString("en-IN")}`} valueClass="text-gray-700" />
+        <StatCard label="Total TDS"        value={`₹ ${totalTds.toLocaleString("en-IN")}`}  valueClass="text-red-600" />
+        <StatCard label="Total Net Payout" value={`₹ ${totalNet.toLocaleString("en-IN")}`}  valueClass="text-indigo-700" />
       </div>
 
       <DataTable isLoading={isLoading} data={paginated} rowKey={getId} columns={columns} />

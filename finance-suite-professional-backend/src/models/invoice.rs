@@ -252,6 +252,10 @@ pub struct Invoice {
 
     #[serde(rename = "service_type_id", alias = "serviceTypeId", alias = "serviceId", skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_object_id", default)]
     pub service_type_id: Option<ObjectId>,
+
+    /// Logo of the org at the time the invoice was issued
+    #[serde(rename = "linkedLogo", default, skip_serializing_if = "Option::is_none")]
+    pub linked_logo: Option<String>,
 }
 
 

@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Receipt, TrendingUp, IndianRupee, CheckCircle, Clock, TrendingUpDown, TrendingUpIcon, LucideTrendingUp } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchInvoiceData, invoiceSelector } from "../../ReduxApi/invoice";
+import axiosInstance from "../../utils/axiosInstance";
 import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
 import { fetchGstSummary, gstSummarySelector } from "../../ReduxApi/gstSummary";
 import { fetchTdsSummary, tdsSummarySelector } from "../../ReduxApi/tdsSummary";
@@ -24,7 +24,7 @@ const toINR = (inv) => {
 
 export default function Stats() {
   const dispatch = useDispatch();
-  const { invoiceData } = useSelector(invoiceSelector);
+  const [fyInvoices, setFyInvoices] = useState([]);
   const { currentOrganisation } = useSelector(orgamisationSelector);
   const { data: gstData, isLoading: gstLoading } = useSelector(gstSummarySelector);
   const { data: tdsData } = useSelector(tdsSummarySelector);
@@ -39,7 +39,13 @@ export default function Stats() {
 
   useEffect(() => {
     const currentMonth = [{ year: now.getFullYear(), month: now.getMonth() + 1 }];
-    dispatch(fetchInvoiceData(fyStartYear, "fy")); // pass fy flag
+    // Fetch FY invoices directly — isolated from shared Redux invoiceData
+    const params = new URLSearchParams();
+    params.set("start_date", `${fyStartYear}-04-01`);
+    params.set("end_date", `${fyStartYear + 1}-03-31`);
+    axiosInstance.get(`/invoices?${params.toString()}`).then(({ data }) => {
+      setFyInvoices(Array.isArray(data) ? data : []);
+    }).catch(() => setFyInvoices([]));
     dispatch(fetchGstSummary(currentMonth));
     dispatch(fetchTdsSummary(currentMonth));
     dispatch(fetchEstimates());
@@ -47,13 +53,13 @@ export default function Stats() {
     if (email) dispatch(fetchOrganisationByEmail(email));
   }, [dispatch]);
 
-  const paid    = invoiceData.filter(inv => inv.status === "Paid");
-  const pending = invoiceData.filter(inv =>
+  const paid    = fyInvoices.filter(inv => inv.status === "Paid");
+  const pending = fyInvoices.filter(inv =>
     inv.status === "New" || inv.status === "Issued" || inv.status === "On Hold" || !inv.status
   );
 
   // Total revenue using stored conversion rates — no live API needed
-  const totalRevenue = invoiceData.reduce((sum, inv) => sum + toINR(inv), 0);
+  const totalRevenue = fyInvoices.reduce((sum, inv) => sum + toINR(inv), 0);
 
   const fmt = (n) => formatCurrency(n, "INR");
 
@@ -91,7 +97,7 @@ export default function Stats() {
     {
       label: `Current Year revenue`,
       value: fmt(totalRevenue),
-      change: `${invoiceData.length} invoices`,
+      change: `${fyInvoices.length} invoices`,
       trend: "up",
       icon: TrendingUp,
     },
@@ -112,7 +118,7 @@ export default function Stats() {
     {
       label: "Pending",
       value: String(pending.length),
-      change: `of ${invoiceData.length} invoices`,
+      change: `of ${fyInvoices.length} invoices`,
       trend: "danger",
       icon: Clock,
     },
@@ -146,7 +152,7 @@ export default function Stats() {
 
   return (
     <div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-5 lg:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (
