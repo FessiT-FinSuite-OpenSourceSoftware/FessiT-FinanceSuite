@@ -40,6 +40,7 @@ const initialInvoiceData = {
   items: [
     {
       description: "",
+      hsn_code: "",
       hours: "",
       rate: "",
       cgst: { cgstPercent: "", cgstAmount: "" },
@@ -114,42 +115,13 @@ export default function EditInvoice() {
     return grouped;
   };
 
-  // Recalculate totals when items or invoice_type change
-  // Recalculate totals when items or invoice_type change
-  // Add this new useEffect after the fetchInvoice useEffect
-  // Recalculate totals when items or invoice_type change
-  useEffect(() => {
-    if (!invoiceData || !Array.isArray(invoiceData.items)) return;
-
-    // Calculate subTotal as sum of all itemTotal values (hours * rate for each item)
-    const subTotal = invoiceData.items.reduce((sum, item) => {
-      return sum + (parseFloat(item.itemTotal) || 0);
-    }, 0);
-
-    const grouped = groupTaxValues(invoiceData.items);
-
-    let totalCgst = 0;
-    let totalSgst = 0;
-    let totalIgst = 0;
-
-    if (isDomestic) {
-      totalCgst = Object.values(grouped.cgst).reduce((sum, val) => sum + val, 0);
-      totalSgst = Object.values(grouped.sgst).reduce((sum, val) => sum + val, 0);
-    } else if (isInternational) {
-      totalIgst = Object.values(grouped.igst).reduce((sum, val) => sum + val, 0);
-    }
-
-    const total = subTotal + totalCgst + totalSgst + totalIgst;
-
-    setInvoiceData((prev) => ({
-      ...prev,
-      subTotal: subTotal.toFixed(2),
-      totalcgst: totalCgst.toFixed(2),
-      totalsgst: totalSgst.toFixed(2),
-      totaligst: totalIgst.toFixed(2),
-      total: total.toFixed(2),
-    }));
-  }, [invoiceData.items, invoiceData.invoice_type, isDomestic, isInternational]);
+  // Totals computed inline — no useEffect to avoid re-render loops
+  const grouped = groupTaxValues(invoiceData.items || []);
+  const _subTotal = (invoiceData.items || []).reduce((s, it) => s + (parseFloat(it.itemTotal) || 0), 0);
+  const _totalCgst = isDomestic ? Object.values(grouped.cgst).reduce((s, v) => s + v, 0) : 0;
+  const _totalSgst = isDomestic ? Object.values(grouped.sgst).reduce((s, v) => s + v, 0) : 0;
+  const _totalIgst = isInternational ? Object.values(grouped.igst).reduce((s, v) => s + v, 0) : 0;
+  const _total = _subTotal + _totalCgst + _totalSgst + _totalIgst;
 
   // Load invoice by id
   useEffect(() => {
@@ -163,6 +135,7 @@ export default function EditInvoice() {
           Array.isArray(data.items) && data.items.length > 0
             ? data.items.map((item) => ({
               description: item.description || "",
+              hsn_code: item.hsn_code || "",
               hours: item.hours || "",
               rate: item.rate || "",
               cgst: item.cgst || { cgstPercent: "", cgstAmount: "" },
@@ -317,127 +290,41 @@ export default function EditInvoice() {
     return;
   };
 
-  /*const handleItemChange = (index, e) => {
-    const { name, value } = e.target;
-    const updatedItems = [...invoiceData.items];
-    const item = updatedItems[index];
-
-    if (
-      [
-        "hours",
-        "rate",
-        "cgstPercent",
-        "cgstAmount",
-        "sgstPercent",
-        "sgstAmount",
-        "igstPercent",
-        "igstAmount",
-        "itemTotal",
-      ].includes(name)
-    ) {
-      if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
-        if (name.startsWith("cgst")) {
-          item.cgst[name] = value;
-        } else if (name.startsWith("sgst")) {
-          item.sgst[name] = value;
-        } else if (name.startsWith("igst")) {
-          item.igst[name] = value;
-        } else {
-          item[name] = value;
-        }
-      }
-    } else {
-      item[name] = value;
-    }
-
-    const hours = parseFloat(item.hours) || 0;
-    const rate = parseFloat(item.rate) || 0;
-    const baseSubTotal = hours * rate;
-
-    const cgstPercent = parseFloat(item.cgst?.cgstPercent) || 0;
-    const sgstPercent = parseFloat(item.sgst?.sgstPercent) || 0;
-    const igstPercent = parseFloat(item.igst?.igstPercent) || 0;
-
-    let total = baseSubTotal;
-
-    if (isDomestic) {
-      if (name === "cgstPercent") {
-        item.cgst.cgstAmount = ((baseSubTotal * cgstPercent) / 100).toFixed(2);
-      }
-      if (name === "sgstPercent") {
-        item.sgst.sgstAmount = ((baseSubTotal * sgstPercent) / 100).toFixed(2);
-      }
-
-      total =
-        baseSubTotal +
-        (parseFloat(item.cgst.cgstAmount) || 0) +
-        (parseFloat(item.sgst.cgstAmount) || 0);
-    } else if (isInternational) {
-      if (name === "igstPercent") {
-        item.igst.igstAmount = ((baseSubTotal * igstPercent) / 100).toFixed(2);
-      }
-
-      total = baseSubTotal + (parseFloat(item.igst.igstAmount) || 0);
-    }
-
-    item.itemTotal = total.toFixed(2);
-
-    setInvoiceData({ ...invoiceData, items: updatedItems });
-  };*/
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
-    const updatedItems = [...invoiceData.items];
-    const item = updatedItems[index];
-
-    if (
-      [
-        "hours",
-        "rate",
-        "cgstPercent",
-        "cgstAmount",
-        "sgstPercent",
-        "sgstAmount",
-        "igstPercent",
-        "igstAmount",
-        "itemTotal",
-      ].includes(name)
-    ) {
-      if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
-        if (name.startsWith("cgst")) {
-          item.cgst[name] = value;
-        } else if (name.startsWith("sgst")) {
-          item.sgst[name] = value;
-        } else if (name.startsWith("igst")) {
-          item.igst[name] = value;
+    setInvoiceData((prev) => {
+      const updatedItems = prev.items.map((it, i) => {
+        if (i !== index) return it;
+        const item = {
+          ...it,
+          cgst: { ...it.cgst },
+          sgst: { ...it.sgst },
+          igst: { ...it.igst },
+        };
+        const numericFields = ["hours","rate","cgstPercent","cgstAmount","sgstPercent","sgstAmount","igstPercent","igstAmount","itemTotal"];
+        if (numericFields.includes(name)) {
+          if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
+            if (name.startsWith("cgst")) item.cgst[name] = value;
+            else if (name.startsWith("sgst")) item.sgst[name] = value;
+            else if (name.startsWith("igst")) item.igst[name] = value;
+            else item[name] = value;
+          }
         } else {
           item[name] = value;
         }
-      }
-    } else {
-      item[name] = value;
-    }
-
-    const hours = parseFloat(item.hours) || 0;
-    const rate = parseFloat(item.rate) || 0;
-    const baseSubTotal = hours * rate;
-
-    // Always recalculate tax amounts based on current percentages
-    if (isDomestic) {
-      const cgstPercent = parseFloat(item.cgst?.cgstPercent) || 0;
-      const sgstPercent = parseFloat(item.sgst?.sgstPercent) || 0;
-
-      item.cgst.cgstAmount = ((baseSubTotal * cgstPercent) / 100).toFixed(2);
-      item.sgst.sgstAmount = ((baseSubTotal * sgstPercent) / 100).toFixed(2);
-    } else if (isInternational) {
-      const igstPercent = parseFloat(item.igst?.igstPercent) || 0;
-
-      item.igst.igstAmount = ((baseSubTotal * igstPercent) / 100).toFixed(2);
-    }
-
-    // itemTotal should be ONLY hours * rate (no GST)
-    item.itemTotal = baseSubTotal.toFixed(2);
-
-    setInvoiceData({ ...invoiceData, items: updatedItems });
+        const base = (parseFloat(item.hours) || 0) * (parseFloat(item.rate) || 0);
+        const dom = (prev.invoice_type || "domestic") === "domestic";
+        if (dom) {
+          item.cgst.cgstAmount = ((base * (parseFloat(item.cgst.cgstPercent) || 0)) / 100).toFixed(2);
+          item.sgst.sgstAmount = ((base * (parseFloat(item.sgst.sgstPercent) || 0)) / 100).toFixed(2);
+        } else {
+          item.igst.igstAmount = ((base * (parseFloat(item.igst.igstPercent) || 0)) / 100).toFixed(2);
+        }
+        item.itemTotal = base.toFixed(2);
+        return item;
+      });
+      return { ...prev, items: updatedItems };
+    });
   };
 
   const addItem = () => {
@@ -447,6 +334,7 @@ export default function EditInvoice() {
         ...prev.items,
         {
           description: "",
+          hsn_code: "",
           hours: "",
           rate: "",
           cgst: { cgstPercent: "", cgstAmount: "" },
@@ -527,7 +415,14 @@ export default function EditInvoice() {
 
     try {
       const { linkedLogo, ...safePayload } = invoiceData;
-      const result = await dispatch(updateInvoice(id, safePayload));
+      const result = await dispatch(updateInvoice(id, {
+        ...safePayload,
+        subTotal: _subTotal.toFixed(2),
+        totalcgst: _totalCgst.toFixed(2),
+        totalsgst: _totalSgst.toFixed(2),
+        totaligst: _totalIgst.toFixed(2),
+        total: _total.toFixed(2),
+      }));
       if (result) nav("/invoices");
     } catch (err) {
       console.error("error while updating", err);
@@ -1155,6 +1050,12 @@ export default function EditInvoice() {
                         rowSpan="2"
                         className="border border-gray-300 px-3 py-2 text-center"
                       >
+                        HSN
+                      </th>
+                      <th
+                        rowSpan="2"
+                        className="border border-gray-300 px-3 py-2 text-center"
+                      >
                         Hours
                       </th>
                       <th
@@ -1204,27 +1105,15 @@ export default function EditInvoice() {
                     <tr>
                       {isDomestic ? (
                         <>
-                          <th className="border border-gray-300 px-3 py-2 text-center">
-                            %
-                          </th>
-                          <th className="border border-gray-300 px-3 py-2 text-center">
-                            Amt
-                          </th>
-                          <th className="border border-gray-300 px-3 py-2 text-center">
-                            %
-                          </th>
-                          <th className="border border-gray-300 px-3 py-2 text-center">
-                            Amt
-                          </th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">%</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">Amt</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">%</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">Amt</th>
                         </>
                       ) : (
                         <>
-                          <th className="border border-gray-300 px-3 py-2 text-center">
-                            %
-                          </th>
-                          <th className="border border-gray-300 px-3 py-2 text-center">
-                            Amt
-                          </th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">%</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">Amt</th>
                         </>
                       )}
                     </tr>
@@ -1244,6 +1133,16 @@ export default function EditInvoice() {
                             onChange={(e) => handleItemChange(index, e)}
                             className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700 placeholder:text-gray-400"
                             placeholder="Enter description"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-3 py-2 text-center">
+                          <input
+                            type="text"
+                            name="hsn_code"
+                            value={item.hsn_code || ""}
+                            onChange={(e) => handleItemChange(index, e)}
+                            className="w-20 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
+                            placeholder="HSN"
                           />
                         </td>
                         <td className="border border-gray-300 px-3 py-2 text-center">
@@ -1358,7 +1257,7 @@ export default function EditInvoice() {
                     <input
                       type="text"
                       className="border border-gray-300 rounded px-2 py-1 w-32 text-right"
-                      value={formatNumber(invoiceData.subTotal, invoiceData.currency_type)}
+                      value={formatNumber(_subTotal.toFixed(2), invoiceData.currency_type)}
                       disabled
                     />
                   </div>
@@ -1444,14 +1343,12 @@ export default function EditInvoice() {
                   })()}
 
                   <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
-                    <span>Total Tax</span>
+                    <span>Total GST</span>
                     <input
                       type="text"
                       className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-semibold text-orange-600"
                       value={formatNumber(
-                        (parseFloat(invoiceData.totalcgst) || 0) +
-                        (parseFloat(invoiceData.totalsgst) || 0) +
-                        (parseFloat(invoiceData.totaligst) || 0),
+                        (_totalCgst + _totalSgst + _totalIgst).toFixed(2),
                         invoiceData.currency_type
                       )}
                       disabled
@@ -1463,7 +1360,7 @@ export default function EditInvoice() {
                     <input
                       type="text"
                       className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-bold text-indigo-700"
-                      value={formatNumber(invoiceData.total, invoiceData.currency_type) || formatNumber(0, invoiceData.currency_type)}
+                      value={formatNumber(_total.toFixed(2), invoiceData.currency_type)}
                       disabled
                     />
                   </div>

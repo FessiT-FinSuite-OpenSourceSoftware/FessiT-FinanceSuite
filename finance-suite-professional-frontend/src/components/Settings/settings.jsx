@@ -37,7 +37,7 @@ function LogoCropModal({ imageSrc, onConfirm, onCancel }) {
   }, [imageSrc, croppedAreaPixels, onConfirm]);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">

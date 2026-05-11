@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus, IndianRupee } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { updateIncomingInvoice, deleteIncomingInvoice, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
@@ -44,6 +44,14 @@ const formatDate = (value) => {
 
 export default function IncomingInvoicesTab() {
   const nav = useNavigate();
+  const location = useLocation();
+  const navWithTab = (path) => {
+    // Ensure the expenses list URL has ?tab=incoming before pushing the new route
+    if (!location.search.includes("tab=incoming")) {
+      window.history.replaceState(null, "", "/expenses?tab=incoming");
+    }
+    nav(path);
+  };
   const dispatch = useDispatch();
   const { data: incomingData, isLoading } = useSelector(incomingInvoiceSelector);
   const { user } = useSelector(authSelector);
@@ -101,7 +109,7 @@ export default function IncomingInvoicesTab() {
       label: "Invoice No",
       render: (bill) => {
         const bid = getIncomingId(bill);
-        return <span className="text-sm font-medium text-blue-600 cursor-pointer" onClick={() => bid && nav(`/expenses/editIncomingInvoice/${bid}`)}>{bill.invoice_number}</span>;
+        return <span className="text-sm font-medium text-blue-600 cursor-pointer" onClick={() => bid && navWithTab(`/expenses/editIncomingInvoice/${bid}`)}>{bill.invoice_number}</span>;
       },
     },
     { label: "Company",      render: (bill) => <span className="text-sm text-gray-700">{bill.vendor_name}</span> },
@@ -127,9 +135,14 @@ export default function IncomingInvoicesTab() {
     {
       label: "TDS (INR)",
       render: (bill) => (
-        <span className="text-sm text-red-600 text-center block">
-          {bill.tds_applicable ? Number(bill.tds_total || 0).toLocaleString() : "—"}
-        </span>
+        <div className="text-center">
+          <span className="text-sm text-red-600 block">
+            {bill.tds_applicable ? `₹ ${Number(bill.tds_total || 0).toLocaleString()}` : "—"}
+          </span>
+          {bill.tds_applicable && bill.tds_percent && parseFloat(bill.tds_percent) > 0 && (
+            <span className="text-xs text-gray-400">{parseFloat(bill.tds_percent)}%</span>
+          )}
+        </div>
       ),
     },
     {
@@ -165,7 +178,7 @@ export default function IncomingInvoicesTab() {
               </button>
             )}
             <RowActions
-              onEdit={() => bid && nav(`/expenses/editIncomingInvoice/${bid}`)}
+              onEdit={() => bid && navWithTab(`/expenses/editIncomingInvoice/${bid}`)}
               onDelete={() => bid && handleDelete(bid)}
               canEdit={hasWrite} canDelete={hasDelete}
             />
@@ -191,8 +204,8 @@ export default function IncomingInvoicesTab() {
             </button>
             {showTypeMenu && (
               <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                <button onClick={() => { setShowTypeMenu(false); nav("/expenses/addIncomingInvoice?type=domestic"); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">🏠 Domestic</button>
-                <button onClick={() => { setShowTypeMenu(false); nav("/expenses/addIncomingInvoice?type=international"); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">🌍 International</button>
+                <button onClick={() => { setShowTypeMenu(false); navWithTab("/expenses/addIncomingInvoice?type=domestic"); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">🏠 Domestic</button>
+                <button onClick={() => { setShowTypeMenu(false); navWithTab("/expenses/addIncomingInvoice?type=international"); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">🌍 International</button>
               </div>
             )}
           </div>
@@ -264,7 +277,12 @@ export default function IncomingInvoicesTab() {
               <div className="flex justify-between text-sm"><span className="text-gray-500">Vendor</span><span className="font-medium text-gray-800">{paymentDetail.vendor_name || "—"}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">Total Amount</span><span className="font-semibold text-gray-900">₹ {Number(paymentDetail.total || 0).toLocaleString("en-IN")}</span></div>
               {paymentDetail.tds_applicable && (
-                <div className="flex justify-between text-sm"><span className="text-gray-500">TDS Deducted</span><span className="font-medium text-red-600">₹ {Number(paymentDetail.tds_total || 0).toLocaleString("en-IN")}</span></div>
+                <>
+                  <div className="flex justify-between text-sm"><span className="text-gray-500">TDS Deducted</span><span className="font-medium text-red-600">₹ {Number(paymentDetail.tds_total || 0).toLocaleString("en-IN")}</span></div>
+                  {paymentDetail.tds_percent && parseFloat(paymentDetail.tds_percent) > 0 && (
+                    <div className="flex justify-between text-sm"><span className="text-gray-500">TDS Rate</span><span className="font-medium text-red-500">{parseFloat(paymentDetail.tds_percent)}%</span></div>
+                  )}
+                </>
               )}
               <div className="border-t border-gray-100 pt-3 space-y-3">
                 <div className="flex justify-between text-sm"><span className="text-gray-500">Paid Date</span><span className="font-medium text-gray-800">{formatDate(paymentDetail.paid_date)}</span></div>

@@ -98,6 +98,9 @@ pub struct InvoiceItem {
     pub product_id: Option<ObjectId>,
 
     #[serde(default)]
+    pub hsn_code: String,
+
+    #[serde(default)]
     pub hours: String,
 
     #[serde(default)]

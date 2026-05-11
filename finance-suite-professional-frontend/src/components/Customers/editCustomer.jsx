@@ -374,6 +374,8 @@ export default function EditCustomer() {
     { label: "Customer", value: "Customer" },
     { label: "Vendor", value: "Vendor" },
     { label: "Customer & Vendor", value: "Both" },
+    { label: "Consultant", value: "Consultant" },
+
   ];
 
   return (

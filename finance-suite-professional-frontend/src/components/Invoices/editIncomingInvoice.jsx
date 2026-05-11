@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { CirclePlus, CircleMinus, ArrowLeft, Eye, Download } from "lucide-react";
 import { updateIncomingInvoice } from "../../ReduxApi/incomingInvoice";
+import { fetchCustomerData, customerSelector } from "../../ReduxApi/customer";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import PlaceOfSupplyField from "./PlaceOfSupplyField";
+import { TDS_FLAT_LIST } from "../../utils/tdsData";
+import { TdsSectionSelect } from "../../shared/ui";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const emptyItem = () => ({
   description: "",
+  hsn_code: "",
   quantity: "",
   rate: "",
   cgstPercent: "",
@@ -43,12 +47,36 @@ export default function EditIncomingInvoice() {
   const { id } = useParams();
   const nav = useNavigate();
   const dispatch = useDispatch();
+  const { customersData } = useSelector(customerSelector);
+  const allCustomers = Array.isArray(customersData) ? customersData : [];
+  const [vendorSearch, setVendorSearch] = useState("");
+  const [showVendorDrop, setShowVendorDrop] = useState(false);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [paidWarningDismissed, setPaidWarningDismissed] = useState(false);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const [filePreviewType, setFilePreviewType] = useState(null); // "pdf" | "image"
   const [showFilePreview, setShowFilePreview] = useState(false);
   const [newFile, setNewFile] = useState(null);
+
+  useEffect(() => { dispatch(fetchCustomerData()); }, [dispatch]);
+
+  const isVendorOrConsultant = (c) => c.isvendor === true || c.is_vendor_too === true || c.role === "Vendor" || c.role === "Both" || c.role === "Consultant";
+  const getVendorLabel = (c) => {
+    if (c.role === "Consultant") return { label: "Consultant", cls: "bg-orange-100 text-orange-700" };
+    if (isVendorOrConsultant(c)) return { label: "Vendor", cls: "bg-green-100 text-green-700" };
+    return null;
+  };
+  const filteredVendors = allCustomers.filter((c) => {
+    const label = `${c.companyName || ""} ${c.customerName || ""}`.toLowerCase();
+    return label.includes(vendorSearch.toLowerCase());
+  });
+  const handleVendorSelect = (c) => {
+    const address = c.addresses?.find((a) => a.value)?.value || c.addresses?.[0]?.value || "";
+    setForm((f) => ({ ...f, vendor_name: c.companyName || c.customerName || "", vendor_gstin: c.gstIN || "", vendor_address: address }));
+    setVendorSearch(c.companyName || c.customerName || "");
+    setShowVendorDrop(false);
+  };
 
   const viewInvoiceFile = async (filename) => {
     if (!filename) return;
@@ -114,14 +142,27 @@ export default function EditIncomingInvoice() {
       const tdsApplicable = data.tds_applicable === true;
       const tdsTotal = parseFloat(data.tds_total || data.total_tds || 0);
       const subTotalVal = parseFloat(data.subTotal || 0);
-      const tdsPercent = tdsApplicable && subTotalVal > 0
-        ? ((tdsTotal / subTotalVal) * 100).toFixed(2)
-        : "";
+      // Use stored tds_percent directly if available, fall back to reverse-calculation
+      const tdsPercent = data.tds_percent && parseFloat(data.tds_percent) > 0
+        ? data.tds_percent
+        : tdsApplicable && subTotalVal > 0
+          ? ((tdsTotal / subTotalVal) * 100).toFixed(2)
+          : "";
+      const savedKey = data.tds_section_key || "";
+      const matchedKey = savedKey || (
+        tdsApplicable && tdsPercent
+          ? (TDS_FLAT_LIST.find((s) => String(s.rateNum) === String(parseFloat(tdsPercent)))?.code || "")
+          : ""
+      );
       const loadedForm = {
         ...data,
         items: data.items?.length ? data.items : [emptyItem()],
         tds_available: tdsApplicable ? "yes" : "no",
         tds_percent: tdsPercent,
+        tds_section_key: matchedKey,
+        tds_section_new: data.tds_section_new || "",
+        tds_section_old: data.tds_section_old || "",
+        tds_section_nature: data.tds_section_nature || "",
         total_tds: data.tds_total || data.total_tds || "0.00",
         cost_type: data.cost_type || "indirect",
         notes: stripTdsNote(data.notes || ""),
@@ -153,6 +194,7 @@ export default function EditIncomingInvoice() {
 
   if (!form) return <div className="p-6 text-gray-500">Loading...</div>;
 
+  const isPaid = (form.status || "").toLowerCase() === "paid";
   const isDomestic = (form.invoice_type || "domestic") === "domestic";
 
   const setField = (field, value) => {
@@ -212,10 +254,17 @@ export default function EditIncomingInvoice() {
     }
     setSaving(true);
     try {
+      const { tds_editing_section, tds_available, ...rest } = form;
+      const selectedSection = TDS_FLAT_LIST.find((s) => s.code === form.tds_section_key);
       const payload = {
-        ...form,
+        ...rest,
         tds_applicable: form.tds_available === "yes",
         tds_total: form.total_tds || "0.00",
+        tds_percent: form.tds_available === "yes" ? String(form.tds_percent || "0") : "0",
+        tds_section_key: form.tds_available === "yes" ? (form.tds_section_key || "") : "",
+        tds_section_new: selectedSection?.newSection || form.tds_section_new || "",
+        tds_section_old: selectedSection?.oldSection || form.tds_section_old || "",
+        tds_section_nature: selectedSection?.nature || form.tds_section_nature || "",
       };
       if (newFile) {
         const fd = new FormData();
@@ -229,7 +278,7 @@ export default function EditIncomingInvoice() {
       } else {
         await dispatch(updateIncomingInvoice(id, payload));
       }
-      nav("/expenses");
+      nav(-1);
     } catch {
       toast.error("Failed to update invoice");
     } finally {
@@ -266,6 +315,24 @@ export default function EditIncomingInvoice() {
         </div>
       </div>
 
+      {/* Paid Invoice Warning */}
+      {isPaid && !paidWarningDismissed && (
+        <div className="mt-4 mx-0 flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-lg px-5 py-4">
+          <span className="text-amber-500 text-xl shrink-0">⚠️</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-800">You are editing a Paid invoice</p>
+            <p className="text-xs text-amber-700 mt-0.5">Changes to a paid invoice may affect financial records and TDS calculations. Proceed with caution.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPaidWarningDismissed(true)}
+            className="text-amber-400 hover:text-amber-600 text-lg leading-none shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Form Body */}
       <div className="bg-white rounded-lg shadow-lg p-8 pb-6 mt-5 space-y-8">
 
@@ -273,6 +340,37 @@ export default function EditIncomingInvoice() {
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">Vendor Details</h2>
           <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 relative">
+              <label className={labelCls}>Search Vendor / Consultant</label>
+              <div className="relative w-full sm:w-1/2 lg:w-1/3">
+                <input
+                  type="text"
+                  placeholder="Search vendors or consultants..."
+                  className={inputCls}
+                  value={vendorSearch}
+                  onChange={(e) => { setVendorSearch(e.target.value); setShowVendorDrop(true); }}
+                  onFocus={() => setShowVendorDrop(true)}
+                  onBlur={() => setTimeout(() => setShowVendorDrop(false), 200)}
+                />
+                {showVendorDrop && vendorSearch && (
+                  <div className="absolute z-50 top-full left-0 w-full bg-white border border-gray-300 rounded shadow-lg max-h-56 overflow-y-auto">
+                    {filteredVendors.length > 0 ? filteredVendors.map((c) => {
+                      const cid = c?._id?.$oid || c?._id || c?.id || "";
+                      const vLabel = getVendorLabel(c);
+                      return (
+                        <div key={cid} className="flex items-center px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0 cursor-pointer" onMouseDown={() => handleVendorSelect(c)}>
+                          <span className="text-sm font-medium text-gray-800 flex-1">{c.companyName || c.customerName}</span>
+                          {c.gstIN && <span className="text-xs text-gray-400 ml-2">{c.gstIN}</span>}
+                          {vLabel && <span className={`ml-2 px-1.5 py-0.5 text-[10px] font-semibold ${vLabel.cls} rounded-full`}>{vLabel.label}</span>}
+                        </div>
+                      );
+                    }) : (
+                      <div className="px-3 py-2 text-sm text-gray-400">No results found</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="relative">
               <label className={labelCls}>Vendor Name *</label>
               <input className={inputCls} value={form.vendor_name || ""} onChange={(e) => setField("vendor_name", e.target.value)} placeholder="Enter vendor name" />
@@ -346,17 +444,62 @@ export default function EditIncomingInvoice() {
               </select>
             </div>
             {form.tds_available === "yes" && (
-              <div className="relative">
-                <label className={labelCls}>TDS Percentage</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  className={inputCls}
-                  value={form.tds_percent || ""}
-                  onChange={(e) => setField("tds_percent", e.target.value)}
-                  placeholder="Enter TDS %"
-                />
+              <div className="relative col-span-2">
+                <label className={labelCls}>TDS Section & Rate</label>
+                {form.tds_editing_section ? (
+                  <>
+                    <TdsSectionSelect
+                      value={form.tds_section_key || ""}
+                      onChange={(key, rate, section) => {
+                        const next = {
+                          ...form,
+                          tds_section_key: key,
+                          tds_percent: String(rate),
+                          tds_section_new: section?.newSection || "",
+                          tds_section_old: section?.oldSection || "",
+                          tds_section_nature: section?.nature || "",
+                          tds_editing_section: false,
+                        };
+                        setForm(next);
+                        recalc(next.items || form.items, next);
+                      }}
+                      inputCls={inputCls}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setField("tds_editing_section", false)}
+                      className="mt-1 text-xs text-gray-400 underline"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3">
+                      <div className={`${inputCls} bg-gray-50 text-gray-700 font-semibold`}>
+                        {form.tds_percent ? `${form.tds_percent}%` : "Not set"}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setField("tds_editing_section", true)}
+                        className="text-xs text-blue-600 underline whitespace-nowrap"
+                      >
+                        Change
+                      </button>
+                    </div>
+                    {form.tds_section_key && (() => {
+                      const s = TDS_FLAT_LIST.find((s) => s.code === form.tds_section_key);
+                      const display = s || (form.tds_section_new ? { newSection: form.tds_section_new, oldSection: form.tds_section_old, nature: form.tds_section_nature, rate: `${form.tds_percent}%` } : null);
+                      return display ? (
+                        <p className="text-xs text-gray-500">
+                          <span className="font-semibold text-blue-700">{display.newSection}</span>
+                          <span className="text-gray-400 ml-1">({display.oldSection})</span>
+                          {" — "}{display.nature}
+                        </p>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
               </div>
             )}
             <div className="relative">
@@ -398,6 +541,7 @@ export default function EditIncomingInvoice() {
               <tr>
                 <th className="border border-gray-300 px-3 py-2 text-center">Sl No</th>
                 <th className="border border-gray-300 px-3 py-2 text-left">Description</th>
+                <th className="border border-gray-300 px-3 py-2 text-center">HSN</th>
                 <th className="border border-gray-300 px-3 py-2 text-center">Qty</th>
                 <th className="border border-gray-300 px-3 py-2 text-center">Rate</th>
                 {isDomestic ? (
@@ -412,6 +556,7 @@ export default function EditIncomingInvoice() {
                 <th className="border border-gray-300 px-3 py-2 text-center">Action</th>
               </tr>
               <tr className="bg-gray-50 text-xs text-gray-500">
+                <th className="border border-gray-300 px-2 py-1"></th>
                 <th className="border border-gray-300 px-2 py-1"></th>
                 <th className="border border-gray-300 px-2 py-1"></th>
                 <th className="border border-gray-300 px-2 py-1"></th>
@@ -441,6 +586,9 @@ export default function EditIncomingInvoice() {
                     <td className="border border-gray-300 px-3 py-2 text-center">{idx + 1}</td>
                     <td className="border border-gray-300 px-3 py-2">
                       <input className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700" value={item.description} onChange={(e) => setItem(idx, "description", e.target.value)} placeholder="Description" />
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2 text-center">
+                      <input className="w-20 border border-gray-300 rounded px-2 py-1 text-center text-gray-700" value={item.hsn_code || ""} onChange={(e) => setItem(idx, "hsn_code", e.target.value)} placeholder="HSN" />
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       <input type="number" min="0" className="w-16 border border-gray-300 rounded px-2 py-1 text-right text-gray-700" value={item.quantity} onChange={(e) => setItem(idx, "quantity", e.target.value)} />

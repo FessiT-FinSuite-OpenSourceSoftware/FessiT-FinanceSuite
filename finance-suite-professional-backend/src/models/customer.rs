@@ -12,6 +12,8 @@ pub enum CustomerRole {
     Vendor,
     #[serde(rename = "Both")]
     Both,
+    #[serde(rename = "Consultant")]
+    Consultant,
 }
 
 impl Default for CustomerRole {

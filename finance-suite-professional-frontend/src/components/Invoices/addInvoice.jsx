@@ -17,6 +17,7 @@ const createEmptyInvoiceItem = () => ({
   description: "",
   isManual: false,
   ProductId: "",
+  hsn_code: "",
   hours: "",
   rate: "",
   cgst: { cgstPercent: "", cgstAmount: "" },
@@ -593,8 +594,27 @@ export default function AddInvoice() {
       item.description = selectedName;
       item.isManual = false;
       item.ProductId = selectedProductId;
+      item.hsn_code = typeof selectedProduct === "object" ? (selectedProduct?.hsn || "") : "";
+      const tax = typeof selectedProduct === "object" ? (selectedProduct?.tax ?? "") : "";
+      if (tax !== "" && parseFloat(tax) > 0) {
+        const half = (parseFloat(tax) / 2).toString();
+        if (isDomestic) {
+          item.cgst = { cgstPercent: half, cgstAmount: "" };
+          item.sgst = { sgstPercent: half, sgstAmount: "" };
+        } else {
+          item.igst = { igstPercent: String(tax), igstAmount: "" };
+        }
+      }
       if (selectedRate !== "") {
         item.rate = String(selectedRate);
+        // recalc tax amounts now that rate and percent are both set
+        const base = parseFloat(selectedRate) * (parseFloat(item.hours) || 0);
+        if (isDomestic) {
+          item.cgst.cgstAmount = ((base * (parseFloat(item.cgst.cgstPercent) || 0)) / 100).toFixed(2);
+          item.sgst.sgstAmount = ((base * (parseFloat(item.sgst.sgstPercent) || 0)) / 100).toFixed(2);
+        } else {
+          item.igst.igstAmount = ((base * (parseFloat(item.igst.igstPercent) || 0)) / 100).toFixed(2);
+        }
       }
     }
 
@@ -1340,6 +1360,12 @@ export default function AddInvoice() {
                     rowSpan="2"
                     className="border border-gray-300 px-3 py-2 text-center"
                   >
+                    HSN
+                  </th>
+                  <th
+                    rowSpan="2"
+                    className="border border-gray-300 px-3 py-2 text-center"
+                  >
                     Hours/Qty
                   </th>
                   <th
@@ -1388,29 +1414,18 @@ export default function AddInvoice() {
                   </th>
                 </tr>
                 <tr>
+                  <th className="border border-gray-300 px-3 py-2"></th>
                   {isDomestic ? (
                     <>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        %
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        Amt
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        %
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        Amt
-                      </th>
+                      <th className="border border-gray-300 px-3 py-2 text-center">%</th>
+                      <th className="border border-gray-300 px-3 py-2 text-center">Amt</th>
+                      <th className="border border-gray-300 px-3 py-2 text-center">%</th>
+                      <th className="border border-gray-300 px-3 py-2 text-center">Amt</th>
                     </>
                   ) : (
                     <>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        %
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center">
-                        Amt
-                      </th>
+                      <th className="border border-gray-300 px-3 py-2 text-center">%</th>
+                      <th className="border border-gray-300 px-3 py-2 text-center">Amt</th>
                     </>
                   )}
                 </tr>
@@ -1422,7 +1437,7 @@ export default function AddInvoice() {
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       {index + 1}
                     </td>
-                    <td className="border border-gray-300 px-3 py-2 min-w-[220px]">
+                    <td className="border border-gray-300 px-3 py-2 min-w-[200px]">
                       {!item.isManual ? (
                         <div className="relative">
                           <input
@@ -1515,6 +1530,16 @@ export default function AddInvoice() {
                           </button>
                         </div>
                       )}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2 text-center">
+                      <input
+                        type="text"
+                        name="hsn_code"
+                        value={item.hsn_code || ""}
+                        onChange={(e) => handleItemChange(index, e)}
+                        className="w-20 border border-gray-300 rounded px-2 py-1 text-center text-gray-700"
+                        placeholder="HSN"
+                      />
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       <input
@@ -1709,7 +1734,7 @@ export default function AddInvoice() {
               })()}
 
               <div className="flex justify-between font-bold text-lg border-t border-gray-400 pt-2 mt-2">
-                    <span>Total Tax</span>
+                    <span>Total GST</span>
                     <input
                       type="text"
                       className="border border-gray-300 rounded px-2 py-1 w-32 text-right font-semibold text-orange-600"

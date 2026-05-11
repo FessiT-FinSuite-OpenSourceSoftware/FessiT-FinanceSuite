@@ -59,6 +59,7 @@ export default function InvoiceList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currencyFilter, setCurrencyFilter] = useState("All");
+  const [typeFilter, setTypeFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
@@ -70,7 +71,7 @@ export default function InvoiceList() {
   const [paymentReference, setPaymentReference] = useState("");
 
   useEffect(() => { dispatch(fetchInvoiceData()); }, [dispatch]);
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, currencyFilter]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, currencyFilter, typeFilter]);
 
   const invoices = Array.isArray(invoiceData) ? invoiceData : [];
 
@@ -85,7 +86,10 @@ export default function InvoiceList() {
     const matchCurrency =
       currencyFilter === "All" ||
       (currencyFilter === "Others" ? !["INR", "USD", "EUR"].includes(cur) : cur === currencyFilter);
-    return matchSearch && matchStatus && matchCurrency;
+    const matchType =
+      typeFilter === "All" ||
+      (typeFilter === "international" ? invoice.invoice_type === "international" : invoice.invoice_type !== "international");
+    return matchSearch && matchStatus && matchCurrency && matchType;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -198,7 +202,7 @@ export default function InvoiceList() {
       render: (invoice) => (invoice.status || "New") === "Paid" ? (
         <div className="flex flex-col gap-0.5">
           {invoice.payment_type && <span className="font-medium text-gray-800">{invoice.payment_type}</span>}
-          {invoice.payment_reference && <span className="text-xs text-indigo-600 font-mono">{invoice.payment_reference}</span>}
+          {/* {invoice.payment_reference && <span className="text-xs text-indigo-600 font-mono">{invoice.payment_reference}</span>} */}
         </div>
       ) : "—",
     },
@@ -239,6 +243,11 @@ export default function InvoiceList() {
           <option value="USD">USD</option>
           <option value="EUR">EUR</option>
           <option value="Others">Others</option>
+        </FilterSelect>
+        <FilterSelect value={typeFilter} onChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
+          <option value="All">All Types</option>
+          <option value="domestic">Domestic</option>
+          <option value="international">International</option>
         </FilterSelect>
         <div className="relative">
           <button

@@ -127,7 +127,7 @@ export default function CustomerList() {
     {
       label: "Business Type",
       render: (item) => (
-        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+        <span className={`inline-flex items-center justify-center w-20 px-2 py-0.5 text-xs font-semibold rounded-full ${
           (item?.role === "Customer" || (!item?.role && !item?.is_vendor_too)) ? "bg-blue-100 text-blue-700" :
           item?.role === "Vendor" ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"
         }`}>
@@ -144,7 +144,7 @@ export default function CustomerList() {
             setSelectedStatus(item?.isActive || "New");
             setStatusModal({ id: item?._id?.$oid, customerName: item?.customerName });
           }}
-          className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${getStatusColor(item?.isActive)} ${hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
+          className={`inline-flex items-center justify-center w-20 px-2 py-0.5 text-xs font-semibold rounded-full capitalize ${getStatusColor(item?.isActive)} ${hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
         >
           {item?.isActive || "New"}
         </span>

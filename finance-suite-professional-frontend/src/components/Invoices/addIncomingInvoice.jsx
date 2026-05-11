@@ -7,9 +7,12 @@ import { toast } from "react-toastify";
 import { fetchIncomingInvoices } from "../../ReduxApi/incomingInvoice";
 import { fetchCustomerData, customerSelector, updateCustomerData } from "../../ReduxApi/customer";
 import PlaceOfSupplyField from "./PlaceOfSupplyField";
+import { TDS_FLAT_LIST } from "../../utils/tdsData";
+import { TdsSectionSelect } from "../../shared/ui";
 
 const emptyItem = () => ({
   description: "",
+  hsn_code: "",
   quantity: "",
   rate: "",
   cgstPercent: "",
@@ -66,7 +69,13 @@ export default function AddIncomingInvoice() {
     return label.includes(vendorSearch.toLowerCase());
   });
 
-  const isVendor = (c) => c.isvendor === true || c.is_vendor_too === true;
+  const isVendor = (c) => c.isvendor === true || c.is_vendor_too === true || c.role === "Vendor" || c.role === "Both" || c.role === "Consultant";
+
+  const getVendorLabel = (c) => {
+    if (c.role === "Consultant") return { label: "Consultant", cls: "bg-orange-100 text-orange-700" };
+    if (c.role === "Vendor" || c.role === "Both" || c.isvendor || c.is_vendor_too) return { label: "Vendor", cls: "bg-green-100 text-green-700" };
+    return null;
+  };
 
   const getCustomerId = (c) => c?._id?.$oid || c?._id || c?.id || "";
 
@@ -200,6 +209,7 @@ export default function AddIncomingInvoice() {
       if (invoiceFile) {
         storedFilename = await uploadFile(invoiceFile);
       }
+      const selectedSection = TDS_FLAT_LIST.find((s) => s.code === form.tds_section_key);
       const payload = {
         ...form,
         items,
@@ -210,6 +220,11 @@ export default function AddIncomingInvoice() {
         totalBeforeTds: totals.total_before_tds,
         tds_applicable: form.tds_available === "yes",
         tds_total: totals.total_tds,
+        tds_percent: form.tds_available === "yes" ? String(form.tds_percent || "0") : "0",
+        tds_section_key: form.tds_available === "yes" ? (form.tds_section_key || "") : "",
+        tds_section_new: form.tds_available === "yes" ? (selectedSection?.newSection || "") : "",
+        tds_section_old: form.tds_available === "yes" ? (selectedSection?.oldSection || "") : "",
+        tds_section_nature: form.tds_available === "yes" ? (selectedSection?.nature || "") : "",
         total_tds: totals.total_tds,
         total: totals.total,
         invoice_file: storedFilename,
@@ -263,7 +278,7 @@ export default function AddIncomingInvoice() {
 
             {/* Customer/Vendor search */}
             <div className="col-span-2 relative">
-              <label className={labelCls}>Select Vendor/Customer</label>
+              <label className={labelCls}>Select Vendor/Customer/Consultant</label>
               <div className="relative w-full sm:w-1/2 lg:w-1/3">
                 <input
                   type="text"
@@ -284,9 +299,7 @@ export default function AddIncomingInvoice() {
                         >
                           <span className="text-sm font-medium text-gray-800">{c.companyName || c.customerName}</span>
                           {c.gstIN && <span className="text-xs text-gray-400 ml-2">{c.gstIN}</span>}
-                          {isVendor(c) && (
-                            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold bg-green-100 text-green-700 rounded-full">Vendor</span>
-                          )}
+                          {(() => { const v = getVendorLabel(c); return v ? <span className={`ml-2 px-1.5 py-0.5 text-[10px] font-semibold ${v.cls} rounded-full`}>{v.label}</span> : null; })()}
                         </div>
                         {!isVendor(c) && (
                           <button
@@ -385,17 +398,37 @@ export default function AddIncomingInvoice() {
               </select>
             </div>
             {form.tds_available === "yes" && (
-              <div className="relative">
-                <label className={labelCls}>TDS Percentage</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  className={inputCls}
-                  value={form.tds_percent}
-                  onChange={(e) => setField("tds_percent", e.target.value)}
-                  placeholder="Enter TDS %"
+              <div className="relative col-span-2">
+                <label className={labelCls}>TDS Section & Rate</label>
+                <TdsSectionSelect
+                  value={form.tds_section_key || ""}
+                  onChange={(key, rate, section) => {
+                    setForm((f) => {
+                      const next = {
+                        ...f,
+                        tds_section_key: key,
+                        tds_percent: String(rate),
+                        tds_section_new: section?.newSection || "",
+                        tds_section_old: section?.oldSection || "",
+                        tds_section_nature: section?.nature || "",
+                      };
+                      recalc(items, next);
+                      return next;
+                    });
+                  }}
+                  inputCls={inputCls}
                 />
+                {form.tds_section_key && (() => {
+                  const s = TDS_FLAT_LIST.find((s) => s.code === form.tds_section_key);
+                  return s ? (
+                    <p className="mt-1 text-xs text-gray-500">
+                      <span className="font-semibold text-blue-700">{s.newSection}</span>
+                      <span className="text-gray-400 ml-1">({s.oldSection})</span>
+                      {" — "}{s.nature}
+                      {" — TDS: "}<span className="font-semibold text-indigo-600">{s.rate}</span>
+                    </p>
+                  ) : null;
+                })()}
               </div>
             )}
           </div>
@@ -409,6 +442,7 @@ export default function AddIncomingInvoice() {
               <tr>
                 <th className="border border-gray-300 px-3 py-2 text-center">Sl No</th>
                 <th className="border border-gray-300 px-3 py-2 text-left">Description</th>
+                <th className="border border-gray-300 px-3 py-2 text-center">HSN</th>
                 <th className="border border-gray-300 px-3 py-2 text-center">Qty</th>
                 <th className="border border-gray-300 px-3 py-2 text-center">Rate</th>
                 {isDomestic ? (
@@ -423,6 +457,7 @@ export default function AddIncomingInvoice() {
                 <th className="border border-gray-300 px-3 py-2 text-center">Action</th>
               </tr>
               <tr className="bg-gray-50 text-xs text-gray-500">
+                <th className="border border-gray-300 px-2 py-1"></th>
                 <th className="border border-gray-300 px-2 py-1"></th>
                 <th className="border border-gray-300 px-2 py-1"></th>
                 <th className="border border-gray-300 px-2 py-1"></th>
@@ -452,6 +487,9 @@ export default function AddIncomingInvoice() {
                     <td className="border border-gray-300 px-3 py-2 text-center">{idx + 1}</td>
                     <td className="border border-gray-300 px-3 py-2">
                       <input className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700" value={item.description} onChange={(e) => setItem(idx, "description", e.target.value)} placeholder="Description" />
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2 text-center">
+                      <input className="w-20 border border-gray-300 rounded px-2 py-1 text-center text-gray-700" value={item.hsn_code || ""} onChange={(e) => setItem(idx, "hsn_code", e.target.value)} placeholder="HSN" />
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       <input type="number" min="0" className="w-16 border border-gray-300 rounded px-2 py-1 text-right text-gray-700" value={item.quantity} onChange={(e) => setItem(idx, "quantity", e.target.value)} />

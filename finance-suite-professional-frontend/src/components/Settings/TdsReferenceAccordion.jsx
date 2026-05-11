@@ -1,146 +1,50 @@
 import React, { useState } from "react";
-import { Briefcase, Users, Gamepad2, ShoppingBag, ChevronDown } from "lucide-react";
+import { Briefcase, Users, Gamepad2, ShoppingBag, ChevronDown, ChevronRight } from "lucide-react";
+import { TDS_SECTION_GROUPS } from "../../utils/tdsData";
 
-const TDS_SECTIONS = [
-  {
-    group: "SALARY PAYMENTS | Section 392 | Form 138",
-    icon: Briefcase,
-    rows: [
-      { code: "1001", newSection: "392",    nature: "Salary — Government employees (other than Union Govt.)",                                                                                         oldSection: "192",  rate: "Slab" },
-      { code: "1002", newSection: "392",    nature: "Salary — Employees other than Government employees",                                                                                             oldSection: "192",  rate: "Slab" },
-      { code: "1003", newSection: "392",    nature: "Salary — Indian Government employees (Union Govt.)",                                                                                             oldSection: "192",  rate: "Slab" },
-      { code: "1004", newSection: "392(7)", nature: "EPF Withdrawal — accumulated balance due to employee (EPF Scheme 1952). Also applicable for non-resident employees in Form 144.", oldSection: "192A", rate: "10%"  },
-    ],
-  },
-  {
-    group: "PAYMENTS TO RESIDENTS | Section 393(1) | Form 140",
-    icon: Users,
-    rows: [
-      { code: "1005", newSection: "393(1)[Sl.1(i)]",         nature: "Insurance Commission",                                                                                                         oldSection: "194D",    rate: "5%"   },
-      { code: "1006", newSection: "393(1)[Sl.1(ii)]",        nature: "Commission or Brokerage (other than insurance)",                                                                               oldSection: "194H",    rate: "5%"   },
-      { code: "1007", newSection: "393(1)[Sl.2(i)]",         nature: "Rent — Individual/HUF (non-audit), ₹50,000/month or more",                                                                    oldSection: "194IB",   rate: "2%"   },
-      { code: "1008", newSection: "393(1)[Sl.2(ii).D(a)]",   nature: "Rent of Plant, Machinery or Furniture",                                                                                        oldSection: "194I(a)", rate: "2%"   },
-      { code: "1009", newSection: "393(1)[Sl.2(ii).D(b)]",   nature: "Rent of Land, Building or Furniture (other than plant/machinery)",                                                             oldSection: "194I(b)", rate: "10%"  },
-      { code: "1010", newSection: "393(1)[Sl.3(i)]",         nature: "Transfer of Immovable Property (buyer deducts TDS on consideration)",                                                          oldSection: "194IA",   rate: "1%"   },
-      { code: "1011", newSection: "393(1)[Sl.3(ii)]",        nature: "Monetary consideration under Joint Development Agreement — Section 67(14)",                                                    oldSection: "194IC",   rate: "10%"  },
-      { code: "1012", newSection: "393(1)[Sl.3(iii)]",       nature: "Compensation on compulsory acquisition of immovable property",                                                                 oldSection: "194LA",   rate: "10%"  },
-      { code: "1013", newSection: "393(1)[Sl.4(i)]",         nature: "Income from units of specified Mutual Fund / Administrator of specified undertaking / specified company",                      oldSection: "194K",    rate: "10%"  },
-      { code: "1014", newSection: "393(1)[Sl.4(ii)]",        nature: "Income from units of Business Trust — Interest (to resident unit holder)",                                                    oldSection: "194LBA",  rate: "10%"  },
-      { code: "1015", newSection: "393(1)[Sl.4(ii)]",        nature: "Income from units of Business Trust — Dividend (to resident unit holder)",                                                    oldSection: "194LBA",  rate: "10%"  },
-      { code: "1016", newSection: "393(1)[Sl.4(ii)]",        nature: "Income from units of Business Trust — Rent (REIT, to resident unit holder)",                                                  oldSection: "194LBA",  rate: "10%"  },
-      { code: "1017", newSection: "393(1)[Sl.4(iii)]",       nature: "Income from AIF (Category I or II, Section 224) to resident unit holders — non-exempt portion",                              oldSection: "194LBB",  rate: "10%"  },
-      { code: "1018", newSection: "393(1)[Sl.4(iv)]",        nature: "Income from Securitisation Trust (Section 221) to resident investors",                                                        oldSection: "194LBC",  rate: "25%"  },
-      { code: "1019", newSection: "393(1)[Sl.5(i)]",         nature: "Interest on Securities",                                                                                                       oldSection: "193",     rate: "10%"  },
-      { code: "1020", newSection: "393(1)[Sl.5(ii).D(a)]",   nature: "Interest from Bank/Post Office deposits — payee is a Senior Citizen",                                                         oldSection: "194A",    rate: "10%"  },
-      { code: "1021", newSection: "393(1)[Sl.5(ii).D(b)]",   nature: "Interest from Bank/Post Office deposits — payee is not a Senior Citizen",                                                     oldSection: "194A",    rate: "10%"  },
-      { code: "1022", newSection: "393(1)[Sl.5(iii)]",       nature: "Interest by other specified payers — not a Bank or Post Office (non-bank interest)",                                          oldSection: "194A",    rate: "10%"  },
-      { code: "1023", newSection: "393(1)[Sl.6(i).D(a)]",    nature: "Contract Payment — contractor is an Individual or HUF",                                                                       oldSection: "194C",    rate: "1%"   },
-      { code: "1024", newSection: "393(1)[Sl.6(i).D(b)]",    nature: "Contract Payment — contractor is a person other than Individual or HUF",                                                      oldSection: "194C",    rate: "2%"   },
-      { code: "1025", newSection: "393(1)[Sl.6(ii)]",        nature: "Payment by Individual/HUF (non-audit) to Contractor, Professional, or for Commission",                                        oldSection: "194M",    rate: "2%"   },
-      { code: "1026", newSection: "393(1)[Sl.6(iii).D(a)]",  nature: "Fees for Technical Services (non-professional); Royalty on Cinematographic Films; Call Centre operations",                   oldSection: "194J",    rate: "2%"   },
-      { code: "1027", newSection: "393(1)[Sl.6(iii).D(b)]",  nature: "Fees for Professional Services; sum referred to in Section 26(2)(h)",                                                        oldSection: "194J",    rate: "10%"  },
-      { code: "1028", newSection: "393(1)[Sl.6(iii).D(b)]",  nature: "Remuneration, fees or commission paid to a Director of a company (other than salary under Section 392)",                     oldSection: "194J",    rate: "10%"  },
-      { code: "1029", newSection: "393(1)[Sl.7]",            nature: "Dividends declared by a domestic company (including on Preference Shares)",                                                   oldSection: "194",     rate: "10%"  },
-      { code: "1030", newSection: "393(1)[Sl.8(i)]",         nature: "Life Insurance Policy sum (taxable portion), including bonus — other than exempt amounts under Schedule II",                  oldSection: "194DA",   rate: "5%"   },
-      { code: "1031", newSection: "393(1)[Sl.8(ii)]",        nature: "Purchase of Goods (by specified buyer, turnover >₹10 cr)",                                                                    oldSection: "194Q",    rate: "0.1%" },
-      { code: "1032", newSection: "393(1)[Sl.8(iii)]",       nature: "Payment to Specified Senior Citizen — bank deducts TDS and files return on their behalf",                                     oldSection: "194P",    rate: "Slab" },
-      { code: "1033", newSection: "393(1)[Sl.8(iv)]",        nature: "Business/Profession Perquisite or Benefit arising from business — in cash",                                                   oldSection: "194R",    rate: "10%"  },
-      { code: "1034", newSection: "393(1)[Sl.8(iv) Note 6]", nature: "Business/Profession Perquisite or Benefit — in kind, or partly in cash and partly in kind",                                  oldSection: "194R",    rate: "10%"  },
-      { code: "1035", newSection: "393(1)[Sl.8(v)]",         nature: "Sales by e-commerce participant through e-commerce operator platform",                                                         oldSection: "194O",    rate: "1%"   },
-      { code: "1036", newSection: "393(1)[Sl.8(vi)]",        nature: "VDA Transfer — by Individual or HUF (non-audit)",                                                                             oldSection: "194S",    rate: "1%"   },
-      { code: "1037", newSection: "393(1)[Sl.8(vi)]",        nature: "VDA Transfer — by persons other than Individual or HUF (cash)",                                                              oldSection: "194S",    rate: "1%"   },
-      { code: "1038", newSection: "393(1)[Sl.8(vi) Note 6]", nature: "VDA Transfer — consideration in cash, kind, or partly in cash and partly in kind",                                           oldSection: "194S",    rate: "1%"   },
-    ],
-  },
-  {
-    group: "PAYMENTS TO ANY PERSON | Section 393(3) | Forms 140 & 144",
-    icon: Gamepad2,
-    rows: [
-      { code: "1058", newSection: "393(3)[Sl.1]",          nature: "Winnings from lottery, crossword puzzle, card game, gambling or betting — cash payment",                                        oldSection: "194B",  rate: "30%" },
-      { code: "1059", newSection: "393(3)[Sl.1 Note 2]",   nature: "Winnings from lottery/crossword/card game/gambling — consideration in kind; tax paid before release of winnings",              oldSection: "194B",  rate: "30%" },
-      { code: "1060", newSection: "393(3)[Sl.2]",          nature: "Winnings from online games — cash payment",                                                                                     oldSection: "194BA", rate: "30%" },
-      { code: "1061", newSection: "393(3)[Sl.2 Note 2]",   nature: "Winnings from online games — in kind or partly in cash; tax paid before release of winnings",                                  oldSection: "194BA", rate: "30%" },
-      { code: "1062", newSection: "393(3)[Sl.3]",          nature: "Winnings from horse race (deductor: bookmaker or licensed person)",                                                             oldSection: "194BB", rate: "30%" },
-      { code: "1063", newSection: "393(3)[Sl.5.D(a)]",     nature: "Cash withdrawal from bank/post office/co-operative society — deductee is a co-operative society",                              oldSection: "194N",  rate: "2%"  },
-      { code: "1064", newSection: "393(3)[Sl.5.D(b)]",     nature: "Cash withdrawal from bank/post office/co-operative society — deductee is other than a co-operative society",                   oldSection: "194N",  rate: "2%"  },
-      { code: "1065", newSection: "393(3)[Sl.6]",          nature: "Payment under Section 80CCA(2)(a) of the IT Act, 1961 as it existed before repeal (NSS deposits)",                             oldSection: "194EE", rate: "10%" },
-      { code: "1066", newSection: "393(3)[Sl.7]",          nature: "Payment to partners of a firm — salary, remuneration, commission, bonus or interest (credited or paid)",                       oldSection: "194T",  rate: "10%" },
-    ],
-  },
-  {
-    group: "TAX COLLECTED AT SOURCE | Section 394 | Form 143",
-    icon: ShoppingBag,
-    rows: [
-      { code: "1068", newSection: "394(1)[Sl.1]",        nature: "Sale of Alcoholic Liquor for human consumption",                                                                                  oldSection: "206C(1)",   rate: "1%"   },
-      { code: "1069", newSection: "394(1)[Sl.2]",        nature: "Sale of Tendu Leaves",                                                                                                            oldSection: "206C(1)",   rate: "5%"   },
-      { code: "1070", newSection: "394(1)[Sl.3]",        nature: "Sale of Timber — obtained under a forest lease",                                                                                  oldSection: "206C(1)",   rate: "2.5%" },
-      { code: "1071", newSection: "394(1)[Sl.3]",        nature: "Sale of Timber — obtained by any mode other than a forest lease",                                                                 oldSection: "206C(1)",   rate: "2.5%" },
-      { code: "1072", newSection: "394(1)[Sl.3]",        nature: "Sale of any other Forest Produce (not timber or tendu leaves) — under a forest lease",                                           oldSection: "206C(1)",   rate: "2.5%" },
-      { code: "1073", newSection: "394(1)[Sl.4]",        nature: "Sale of Scrap",                                                                                                                   oldSection: "206C(1)",   rate: "1%"   },
-      { code: "1074", newSection: "394(1)[Sl.5]",        nature: "Sale of Minerals — coal, lignite, or iron ore",                                                                                   oldSection: "206C(1)",   rate: "1%"   },
-      { code: "1075", newSection: "394(1)[Sl.6.D(a)]",   nature: "Sale of Motor Vehicle — sale consideration exceeding prescribed threshold",                                                       oldSection: "206C(1F)",  rate: "1%"   },
-      { code: "1076", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Wrist Watch — consideration exceeding threshold",                                                                         oldSection: "No equiv.", rate: "1%"   },
-      { code: "1077", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Art Piece (antiques, painting, sculpture) — consideration exceeding threshold",                                          oldSection: "No equiv.", rate: "1%"   },
-      { code: "1078", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Collectibles (coin, stamp) — consideration exceeding threshold",                                                         oldSection: "No equiv.", rate: "1%"   },
-      { code: "1079", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Yacht, Rowing Boat, Canoe or Helicopter — consideration exceeding threshold",                                            oldSection: "No equiv.", rate: "1%"   },
-      { code: "1080", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Pair of Sunglasses — consideration exceeding threshold",                                                                  oldSection: "No equiv.", rate: "1%"   },
-      { code: "1081", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Bag (handbag, purse) — consideration exceeding threshold",                                                               oldSection: "No equiv.", rate: "1%"   },
-      { code: "1082", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Pair of Shoes — consideration exceeding threshold",                                                                       oldSection: "No equiv.", rate: "1%"   },
-      { code: "1083", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Sportswear and Equipment (golf kit, ski-wear) — consideration exceeding threshold",                                      oldSection: "No equiv.", rate: "1%"   },
-      { code: "1084", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Home Theatre System — consideration exceeding threshold",                                                                 oldSection: "No equiv.", rate: "1%"   },
-      { code: "1085", newSection: "394(1)[Sl.6.D(b)]",   nature: "Sale of Horse for horse racing in race clubs, or horse for polo — consideration exceeding threshold",                            oldSection: "No equiv.", rate: "1%"   },
-      { code: "1086", newSection: "394(1)[Sl.7.D(a)]",   nature: "LRS Remittance — for the purpose of education or medical treatment (amount exceeding threshold)",                                oldSection: "206C(1G)",  rate: "0.5%" },
-      { code: "1087", newSection: "394(1)[Sl.7.D(b)]",   nature: "LRS Remittance — for purposes other than education or medical treatment (amount exceeding threshold)",                           oldSection: "206C(1G)",  rate: "20%"  },
-      { code: "1088", newSection: "394(1)[Sl.8.D(a)]",   nature: "Sale of Overseas Tour Programme Package — amount up to prescribed threshold limit",                                              oldSection: "206C(1G)",  rate: "5%"   },
-      { code: "1089", newSection: "394(1)[Sl.8.D(b)]",   nature: "Sale of Overseas Tour Programme Package — amount above prescribed threshold limit",                                              oldSection: "206C(1G)",  rate: "20%"  },
-      { code: "1090", newSection: "394(1)[Sl.9]",        nature: "Use of Parking Lot for business purposes (excluding mineral oil/petroleum/gas mining)",                                          oldSection: "206C(1)",   rate: "2%"   },
-      { code: "1091", newSection: "394(1)[Sl.9]",        nature: "Use of Toll Plaza for business purposes (excluding mineral oil/petroleum/gas mining)",                                           oldSection: "206C(1)",   rate: "2%"   },
-      { code: "1092", newSection: "394(1)[Sl.9]",        nature: "Use of Mine or Quarry for business purposes (excluding mineral oil, petroleum and natural gas)",                                 oldSection: "206C(1)",   rate: "2%"   },
-    ],
-  },
-  // Add more sections here as needed
-];
-
+const ICONS = { 0: Briefcase, 1: Users, 2: Gamepad2, 3: ShoppingBag };
 const COLUMNS = ["Code", "New Section (Act 2025)", "Nature of Payment", "Old Section (Act 1961)", "Rate"];
 
 export default function TdsReferenceAccordion() {
-  const [openIdx, setOpenIdx] = useState(null);
+  const [openIdx, setOpenIdx] = useState(0);
 
   return (
-    <div className="mt-6 space-y-2">
-      <p className="text-sm font-semibold text-gray-700 mb-3">TDS Section Reference (Income Tax Act, 2025)</p>
-      {TDS_SECTIONS.map((sec, idx) => {
-        const Icon = sec.icon;
+    <div className="mt-6 space-y-3">
+      <p className="text-lg font-bold text-gray-900 mb-3">TDS Section Reference (Income Tax Act, 2025)</p>
+      {TDS_SECTION_GROUPS.map((sec, idx) => {
         const isOpen = openIdx === idx;
         return (
-          <div key={sec.group} className="border border-gray-200 rounded-lg overflow-hidden">
+          <div key={sec.group} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <button
               type="button"
               onClick={() => setOpenIdx(isOpen ? null : idx)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors text-left"
             >
-              <div className="flex items-center gap-3">
-                {/* <div className="p-1.5 rounded-md bg-orange-100">
-                  <Icon className="w-4 h-4 text-orange-600" />
-                </div> */}
-                <span className="text-sm font-semibold text-orange-700">{sec.group}</span>
+              <div className="flex items-center gap-2">
+                {isOpen
+                  ? <ChevronDown className="w-4 h-4 text-gray-400" />
+                  : <ChevronRight className="w-4 h-4 text-gray-400" />
+                }
+                <span className="font-semibold text-gray-800">{sec.group}</span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+              <span className="px-3 py-1 rounded-full text-sm font-bold border bg-orange-50 border-orange-200 text-orange-700">
+                {sec.rows.length} entries
+              </span>
             </button>
             {isOpen && (
-              <div className="overflow-x-auto">
+              <div className="border-t border-gray-100 overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       {COLUMNS.map((h) => (
-                        <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-gray-600 whitespace-nowrap">{h}</th>
+                        <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-50">
                     {sec.rows.map((row) => (
-                      <tr key={row.code} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 font-mono text-gray-700">{row.code}</td>
+                      <tr key={row.code} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-2 font-mono text-xs text-indigo-600">{row.code}</td>
                         <td className="px-4 py-2 text-gray-700 whitespace-nowrap">{row.newSection}</td>
                         <td className="px-4 py-2 text-gray-600">{row.nature}</td>
                         <td className="px-4 py-2 text-gray-700 whitespace-nowrap">{row.oldSection}</td>

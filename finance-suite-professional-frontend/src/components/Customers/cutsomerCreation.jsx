@@ -474,6 +474,8 @@ export default function CustomerCreation() {
                 { label: "Customer", value: "Customer" },
                 { label: "Vendor", value: "Vendor" },
                 { label: "Customer & Vendor", value: "Both" },
+                { label: "Consultant", value: "Consultant" },
+
               ].map((r) => (
                 <label key={r.value} className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
                   <input

@@ -6,6 +6,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
 import { toast } from "react-toastify";
 import { isTauri, savePdf, showDownloadNotification } from "../../utils/pdfUtils";
+import fallbackLogo from "../../assets/FessiTLogoTrans.png";
 
 /** 🔽 High-quality A4 PDF from the invoice-print-area (Download) */
 async function generateInvoicePdf(invoiceNumber) {
@@ -106,7 +107,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
       ? invoiceData
       : sampleData;
 
-  const [logoUrl, setLogoUrl] = useState(null);
+  const [logoUrl, setLogoUrl] = useState(fallbackLogo);
   const [logoLoading, setLogoLoading] = useState(false);
 
   useEffect(() => {
@@ -114,8 +115,8 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
     let cancelled = false;
 
     const fetchLogo = async () => {
-      // Use linkedLogo stamped on the invoice at Issued time, fall back to current org logo
-      const logoFilename = baseData?.linkedLogo || orgData?.logo || "";
+      // Only use linkedLogo stamped on the invoice — fall back to local asset, not org logo
+      const logoFilename = baseData?.linkedLogo || "";
 
       if (!logoFilename) { setLogoLoading(false); return; }
 
@@ -125,7 +126,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
           objectUrl = URL.createObjectURL(res.data);
           setLogoUrl(objectUrl);
         }
-      } catch { if (!cancelled) setLogoUrl(null); }
+      } catch { if (!cancelled) setLogoUrl(fallbackLogo); }
       finally { if (!cancelled) setLogoLoading(false); }
     };
 
@@ -437,6 +438,9 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                 Item &amp; Description
               </th>
               <th className="border border-gray-400 px-2 py-1 text-center w-16">
+                HSN
+              </th>
+              <th className="border border-gray-400 px-2 py-1 text-center w-16">
                 Items
               </th>
               <th className="border border-gray-400 px-2 py-1 text-center w-20">
@@ -484,6 +488,9 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                   <td className="border border-gray-400 px-2 py-1">
                     {item.description}
                   </td>
+                  <td className="border border-gray-400 px-2 py-1 text-center">
+                    {item.hsn_code || "-"}
+                  </td>
                   <td className="border border-gray-400 px-2 py-1 text-right">
                     {item.hours}
                   </td>
@@ -525,7 +532,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
             ) : (
               <tr>
                 <td
-                  colSpan={isDomestic ? 9 : 7}
+                  colSpan={isDomestic ? 10 : 8}
                   className="border border-gray-400 px-2 py-4 text-center text-gray-500"
                 >
                   No items added

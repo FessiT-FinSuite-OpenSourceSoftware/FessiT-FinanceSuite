@@ -13,7 +13,6 @@ export function StatCard({ label, value, valueClass = "text-gray-900" }) {
 }
 
 // ── Tab Action Bar ────────────────────────────────────────────────────────────
-// children = filter selects + action buttons on the right side
 export function TabActionBar({ searchValue, onSearchChange, searchPlaceholder = "Search...", children }) {
   return (
     <div className="sticky top-[88px] z-10 rounded-lg bg-white border border-gray-300 py-4 shadow-sm mb-2">
@@ -223,10 +222,6 @@ export function Field({ label, name, value, onChange, placeholder, type = "text"
 }
 
 // ── Data Table ───────────────────────────────────────────────────────────────
-// columns: [{ label, key?, render?, right?, hidden?, stopPropagation? }]
-// data: array of row objects
-// rowKey: fn(row) => unique key
-// renderExpanded: fn(row) => JSX — enables expandable rows
 export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wrapperClass, tbodyClass = "divide-y divide-gray-200", emptyMessage }) {
   const [openId, setOpenId] = React.useState(null);
   const expandable = typeof renderExpanded === "function";
@@ -270,13 +265,94 @@ export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wr
   );
 }
 
+// ── TDS Section Select ───────────────────────────────────────────────────────
+// Single input field — typing searches, blurring closes, selecting fills the input
+export function TdsSectionSelect({ value, onChange, inputCls: cls }) {
+  const [search, setSearch] = React.useState("");
+  const [open, setOpen] = React.useState(false);
+  const fieldCls = cls || "border border-gray-300 rounded px-3 py-2 w-full text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400";
+
+  const [list, setList] = React.useState([]);
+  React.useEffect(() => {
+    import("../utils/tdsData").then((m) => setList(m.TDS_FLAT_LIST || []));
+  }, []);
+
+  const selected = list.find((s) => s.code === value);
+  const q = search.toLowerCase();
+  const filtered = q
+    ? list.filter(
+        (s) =>
+          s.newSection.toLowerCase().includes(q) ||
+          s.oldSection.toLowerCase().includes(q) ||
+          s.nature.toLowerCase().includes(q) ||
+          s.rate.toLowerCase().includes(q) ||
+          s.code.toLowerCase().includes(q)
+      )
+    : list;
+
+  const displayText = selected
+    ? `${selected.newSection} (${selected.oldSection}) — ${selected.nature} (${selected.rate})`
+    : "";
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <input
+          type="text"
+          className={`${fieldCls} pr-8`}
+          placeholder="Search TDS section by code, section, nature or rate..."
+          value={open ? search : displayText}
+          onFocus={() => { setOpen(true); setSearch(""); }}
+          onBlur={() => setTimeout(() => { setOpen(false); setSearch(""); }, 150)}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">▾</span>
+      </div>
+
+      {open && (
+        <div className="absolute z-50 top-full left-0 w-full bg-white border border-gray-300 rounded-lg shadow-xl mt-1">
+          <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
+            <span className="text-xs text-gray-400">{filtered.length} section{filtered.length !== 1 ? "s" : ""} found</span>
+            {selected && <span className="text-xs text-blue-600 font-medium">{selected.newSection} selected</span>}
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-gray-400">No matching section found</div>
+            ) : filtered.map((s) => (
+              <div
+                key={s.code}
+                onMouseDown={() => { onChange(s.code, s.rateNum, s); setOpen(false); setSearch(""); }}
+                className={`px-4 py-2 text-sm cursor-pointer hover:bg-blue-50 border-b border-gray-50 last:border-0 ${
+                  s.code === value ? "bg-blue-50" : ""
+                }`}
+              >
+                <div className="flex items-center gap-3 whitespace-nowrap overflow-hidden">
+                                   <span className="font-mono text-xs text-gray-400 shrink-0">#{s.code}</span>
+
+                  <span className="font-semibold text-blue-700 text-xs shrink-0">{s.newSection}</span>
+                  <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">{s.oldSection}</span>
+                  <span className="text-xs text-gray-600 truncate flex-1">{s.nature}</span>
+                  <span className={`text-xs font-bold shrink-0 px-2 py-0.5 rounded ${
+                    s.slab ? "bg-orange-100 text-orange-600" : "bg-green-100 text-green-700"
+                  }`}>
+                    {s.rate}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Pagination Bar ────────────────────────────────────────────────────────────
 export function Pagination({ currentPage, totalPages, pageSize, totalCount, onPageChange, onPageSizeChange }) {
   if (totalCount <= 5) return null;
   const start = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const end   = Math.min(currentPage * pageSize, totalCount);
 
-  // Build page numbers with ellipsis for large page counts
   const getPages = () => {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
     const pages = [];

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { deleteExpense, updateExpense, expenseSelector, fetchExpenseData } from "../../ReduxApi/expense";
@@ -77,7 +77,9 @@ const TABS = [
 ];
 
 export default function ExpenseList() {
-  const [activeTab,     setActiveTab]     = useState("expenses");
+  const location = useLocation();
+  const initialTab = new URLSearchParams(location.search).get("tab") || "expenses";
+  const [activeTab,     setActiveTab]     = useState(initialTab);
   const [searchTerm,    setSearchTerm]    = useState("");
   const [projectFilter, setProjectFilter] = useState("All");
   const [currentPage,   setCurrentPage]   = useState(1);
@@ -172,9 +174,9 @@ export default function ExpenseList() {
 
   return (
     <div>
-      <div className="flex border-b border-gray-200 mb-6">
+      <div className="flex border-b border-gray-200 mb-2">
         {TABS.map((t) => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
+          <button key={t.key} onClick={() => { setActiveTab(t.key); nav(`/expenses?tab=${t.key}`, { replace: true }); }}
             className={`px-5 py-2 text-md font-medium transition-colors ${activeTab === t.key ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
             {t.label}
           </button>

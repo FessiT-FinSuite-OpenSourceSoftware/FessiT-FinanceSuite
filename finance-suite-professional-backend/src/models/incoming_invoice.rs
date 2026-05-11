@@ -18,6 +18,9 @@ pub struct IncomingInvoiceItem {
     pub description: String,
 
     #[serde(default)]
+    pub hsn_code: String,
+
+    #[serde(default)]
     pub quantity: String,
 
     #[serde(default)]
@@ -112,6 +115,21 @@ pub struct IncomingInvoice {
 
     #[serde(default)]
     pub tds_total: String,
+
+    #[serde(default)]
+    pub tds_percent: String,
+
+    #[serde(default)]
+    pub tds_section_key: String,
+
+    #[serde(default)]
+    pub tds_section_new: String,
+
+    #[serde(default)]
+    pub tds_section_old: String,
+
+    #[serde(default)]
+    pub tds_section_nature: String,
 
     #[serde(default)]
     pub payment_type: String,
