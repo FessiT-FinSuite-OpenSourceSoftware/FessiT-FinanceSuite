@@ -18,6 +18,7 @@ pub mod service_handler;
 pub mod report_handler;
 pub mod asset_handler;
 pub mod asset_category_handler;
+pub mod delivery_challan_handler;
 
 pub use customer_handler::configure_routes as configure_customer_routes;
 pub use organisation_handler::{configure_routes as configure_organisation_routes, configure_public_routes as configure_organisation_public_routes};
@@ -39,3 +40,4 @@ pub use service_handler::configure_routes as configure_service_routes;
 pub use report_handler::configure_routes as configure_report_routes;
 pub use asset_handler::configure_routes as configure_asset_routes;
 pub use asset_category_handler::configure_routes as configure_asset_category_routes;
+pub use delivery_challan_handler::configure_routes as configure_delivery_challan_routes;

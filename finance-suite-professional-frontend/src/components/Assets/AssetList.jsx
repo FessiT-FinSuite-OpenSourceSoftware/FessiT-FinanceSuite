@@ -25,7 +25,7 @@ const normalizeCategoryOptions = (items) =>
   items.map((item) => ({ id: extractId(item), label: extractCategoryName(item) || 'Unnamed' }))
 
 const STATUS_OPTIONS = ['active', 'repair', 'obsolete', 'maintenance']
-const PAYMENT_OPTIONS = ['cash', 'bank_transfer', 'upi', 'card', 'cheque', 'other']
+const PAYMENT_OPTIONS = ['cash', 'bank_transfer', 'upi', 'card', 'cheque', 'others']
 const DESCRIPTION_WORD_LIMIT = 25
 const NOTES_WORD_LIMIT = 25
 const TAX_OPTIONS = ['0', '5', '12', '18', '28']
@@ -660,7 +660,7 @@ export default function AssetList() {
               <div className="text-xs text-slate-600 line-clamp-2 cursor-help max-w-[140px]" onMouseEnter={(e) => openDescriptionPreview(e, a)} onMouseLeave={closeDescriptionPreview}>{a.description || '-'}</div>
             ),
           },
-          { label: 'HSN', render: (a) => <span className="text-xs text-slate-700">{a.hsn || '-'}</span> },
+          { label: 'HSN/CAC', render: (a) => <span className="text-xs text-slate-700">{a.hsn || '-'}</span> },
           { label: 'Item Code', render: (a) => <span className="text-xs text-slate-700">{a.item_code || '-'}</span> },
           { label: 'Category', render: (a) => <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">{textValue(a.categoryLabel, 'Unassigned') || 'Unassigned'}</span> },
 
@@ -903,7 +903,7 @@ export default function AssetList() {
 
               <Field label="Asset Name *" name="name" value={form.name} onChange={handleChange} placeholder="Enter asset name" />
               <Field label="Description" name="description" value={form.description} onChange={handleChange} placeholder={`Enter description, up to ${DESCRIPTION_WORD_LIMIT} words`} />
-              <Field label="HSN" name="hsn" value={form.hsn} onChange={handleChange} placeholder="HSN code" />
+              <Field label="HSN/CAC" name="hsn" value={form.hsn} onChange={handleChange} placeholder="HSN code" />
               <Field label="Item Code" name="item_code" value={form.item_code} onChange={handleChange} placeholder="Item / SKU code" />
 
               <div>

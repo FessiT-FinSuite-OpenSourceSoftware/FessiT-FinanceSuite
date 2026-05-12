@@ -117,4 +117,8 @@ impl MongoDbClient {
     pub fn get_asset_category_collection(&self) -> Collection<AssetCategory> {
         self.database.collection::<AssetCategory>("asset_categories")
     }
+
+    pub fn get_delivery_challan_collection(&self) -> Collection<crate::models::delivery_challan::DeliveryChallan> {
+        self.database.collection("delivery_challans")
+    }
 }

@@ -1028,7 +1028,7 @@ export default function EditInvoice() {
 
               {/* Items */}
               <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
-                Hours
+                Line Items
               </h2>
               <div>
                 <table className="w-full border border-gray-300 border-collapse text-sm">

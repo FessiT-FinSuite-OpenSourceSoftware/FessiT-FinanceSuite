@@ -27,6 +27,7 @@ import {
   ReceiptText,
   BarChart2,
   Package,
+  Truck,
 } from "lucide-react";
 
 function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
@@ -112,6 +113,7 @@ export default function SideBar({ component }) {
     { id: "profit-loss", label: "P&L Statement", icon: BarChart2, module: Module.Invoice },
     { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
     { id: "expenses", label: "Expenses", icon: Receipt, module: Module.Expenses },
+    { id: "delivery-challans", label: "Delivery Challans", icon: Truck, module: Module.Invoice },
     { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: Module.Invoice },
     { id: "tdscompliance", label: "TDS Compliance", icon: Receipt, module: Module.Invoice },
     { id: "customers", label: "Customers", icon: Users, module: Module.Customers },
@@ -331,6 +333,7 @@ export default function SideBar({ component }) {
                     {location.pathname.includes("/estimates") && <p>Estimates</p>}
                     {location.pathname.includes("/ledger") && <p>Ledger</p>}
                     {location.pathname.includes("/profit-loss") && <p>P&L Statement</p>}
+                    {location.pathname.includes("/delivery-challans") && <p>Delivery Challans</p>}
                     {location.pathname.includes("/invoices") && <p>Invoices</p>}
                     {location.pathname.includes("/purchases") && (
                       <p>Purchases</p>

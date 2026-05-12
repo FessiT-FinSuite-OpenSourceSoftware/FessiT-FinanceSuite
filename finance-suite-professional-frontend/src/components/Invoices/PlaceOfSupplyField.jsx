@@ -196,7 +196,7 @@ export default function PlaceOfSupplyField({
                 isOther ? "text-blue-700" : "text-gray-700"
               }`}
             >
-              <span>Other</span>
+              <span>Others</span>
               <span className="text-xs font-normal text-gray-400">Type manually</span>
             </button>
           </div>

@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Search, Filter, Edit2, Trash2, X } from "lucide-react";
+import { Search, Filter, Edit2, Trash2, X, ChevronDown } from "lucide-react";
 
 // ── Stat Card ────────────────────────────────────────────────────────────────
 export function StatCard({ label, value, valueClass = "text-gray-900" }) {
@@ -338,6 +338,164 @@ export function TdsSectionSelect({ value, onChange, inputCls: cls }) {
                     {s.rate}
                   </span>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Unit Select ─────────────────────────────────────────────────────────────
+const UNIT_GROUPS = [
+  { label: "Count",      units: ["Pcs", "Nos", "Units", "Dozen", "Gross"] },
+  { label: "Weight",     units: ["Kg", "Grams", "Tonnes"] },
+  { label: "Volume",     units: ["Liters", "ML", "Cubic Meters"] },
+  { label: "Length",     units: ["Meters", "CM", "MM", "Feet", "Inches"] },
+  { label: "Area",       units: ["Sq. Meters", "Sq. Feet"] },
+  { label: "Packaging",  units: ["Boxes", "Cartons", "Bags", "Bundles", "Rolls", "Pairs", "Sets"] },
+  { label: "Time",       units: ["Hours", "Days"] },
+  { label: "Other",      units: ["Others"] },
+];
+const ALL_UNITS = UNIT_GROUPS.flatMap((g) => g.units);
+
+export function UnitSelect({ value, onChange }) {
+  const [open, setOpen]     = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [customInput, setCustomInput] = React.useState(false);
+  const [customVal, setCustomVal]     = React.useState("");
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // If current value is not in any group, it's a custom value
+  const isCustom = value && !UNIT_GROUPS.flatMap(g => g.units).includes(value);
+
+  React.useEffect(() => {
+    if (isCustom) { setCustomInput(true); setCustomVal(value); }
+  }, []);
+
+  const q = search.toLowerCase();
+  const filtered = q
+    ? UNIT_GROUPS.map((g) => ({ ...g, units: g.units.filter((u) => u.toLowerCase().includes(q)) })).filter((g) => g.units.length > 0)
+    : UNIT_GROUPS;
+
+  const handleSelect = (u) => {
+    if (u === "Others") {
+      setCustomInput(true);
+      setCustomVal("");
+      onChange("");
+      setOpen(false);
+      setSearch("");
+    } else {
+      setCustomInput(false);
+      onChange(u);
+      setOpen(false);
+      setSearch("");
+    }
+  };
+
+  if (customInput) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          autoFocus
+          type="text"
+          value={customVal}
+          onChange={(e) => { setCustomVal(e.target.value); onChange(e.target.value); }}
+          placeholder="Type unit..."
+          className="w-20 border border-blue-400 ring-2 ring-blue-100 rounded px-2 py-1 text-xs text-gray-700 focus:outline-none"
+        />
+        <button
+          type="button"
+          title="Pick from list"
+          onClick={() => { setCustomInput(false); setCustomVal(""); onChange(""); }}
+          className="text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => { setOpen((p) => !p); setSearch(""); }}
+        className={`w-full flex items-center justify-between gap-1 border rounded px-2 py-1 text-sm transition-all ${
+          open ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-300 hover:border-gray-400"
+        } bg-white text-gray-700`}
+      >
+        <span className={value ? "text-gray-800 font-medium" : "text-gray-400"}>
+          {value || "Unit"}
+        </span>
+        <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 w-52 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+          {/* Search */}
+          <div className="px-3 pt-2.5 pb-2 border-b border-gray-100">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search unit..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
+              />
+            </div>
+          </div>
+
+          {/* Clear option */}
+          {value && (
+            <div
+              onMouseDown={() => { onChange(""); setOpen(false); }}
+              className="px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 cursor-pointer border-b border-gray-100 flex items-center gap-1.5"
+            >
+              <X className="w-3 h-3" /> Clear selection
+            </div>
+          )}
+
+          {/* Grouped list */}
+          <div className="max-h-56 overflow-y-auto overscroll-contain"
+            style={{ scrollbarWidth: "thin", scrollbarColor: "#cbd5e1 transparent" }}>
+            {filtered.length === 0 ? (
+              <p className="px-3 py-4 text-xs text-gray-400 text-center">No units found</p>
+            ) : filtered.map((group) => (
+              <div key={group.label}>
+                <p className="px-3 pt-2 pb-0.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">{group.label}</p>
+                {group.units.map((u) => (
+                  <div
+                    key={u}
+                    onMouseDown={() => handleSelect(u)}
+                    className={`mx-1.5 mb-0.5 px-2.5 py-1.5 text-xs rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
+                      value === u
+                        ? "bg-blue-600 text-white font-semibold"
+                        : u === "Others"
+                        ? "text-indigo-600 font-medium hover:bg-indigo-50"
+                        : "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                    }`}
+                  >
+                    <span>{u === "Others" ? " Others (type custom)" : u}</span>
+                    {value === u && (
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
           </div>

@@ -39,6 +39,9 @@ const emptyChallan = () => ({
   payment_date: "",
   date_of_challan: "",
   amount_paid: "",
+  tax_year: "",
+  payment_type: "",
+  bank_reference_no: "",
   file: "",
 });
 
@@ -141,6 +144,9 @@ export default function ChallansTab() {
       payment_date: row.payment_date || "",
       date_of_challan: row.date_of_challan || "",
       amount_paid: row.amount_paid ?? "",
+      tax_year: row.tax_year || "",
+      payment_type: row.payment_type || "",
+      bank_reference_no: row.bank_reference_no || "",
       file: filename,
     });
     setDocFile(null);
@@ -227,6 +233,9 @@ export default function ChallansTab() {
         payment_date: form.payment_date,
         date_of_challan: form.date_of_challan,
         amount_paid: parseFloat(form.amount_paid) || 0,
+        tax_year: form.tax_year,
+        payment_type: form.payment_type,
+        bank_reference_no: form.bank_reference_no,
       }).forEach(([key, value]) => {
         if (value !== null && value !== undefined && value !== "") {
           payload.append(key, String(value));
@@ -438,6 +447,36 @@ export default function ChallansTab() {
               className={inputCls}
               placeholder="0.00"
               min="0"
+            />
+          </FormField>
+          <FormField label="Tax Year (Financial Year)">
+            <input
+              type="text"
+              name="tax_year"
+              value={form.tax_year}
+              onChange={handleChange}
+              className={inputCls}
+              placeholder="e.g. 2024-25"
+            />
+          </FormField>
+          <FormField label="Type of Payment">
+            <input
+              type="text"
+              name="payment_type"
+              value={form.payment_type}
+              onChange={handleChange}
+              className={inputCls}
+              placeholder="e.g. TDS/TCS payable by taxpayer"
+            />
+          </FormField>
+          <FormField label="Bank Reference Number">
+            <input
+              type="text"
+              name="bank_reference_no"
+              value={form.bank_reference_no}
+              onChange={handleChange}
+              className={inputCls}
+              placeholder="Enter bank reference number"
             />
           </FormField>
           <FormField label="Challan File *" colSpan>

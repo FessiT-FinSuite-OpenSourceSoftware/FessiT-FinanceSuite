@@ -17,6 +17,7 @@ pub mod account_repository;
 pub mod service_repository;
 pub mod asset_repository;
 pub mod asset_category_repository;
+pub mod delivery_challan_repository;
 
 pub use customer_repository::CustomerRepository;
 pub use organisation_repository::OrganisationRepository;
@@ -37,3 +38,4 @@ pub use account_repository::AccountRepository;
 pub use service_repository::ServiceRepository;
 pub use asset_repository::AssetRepository;
 pub use asset_category_repository::AssetCategoryRepository;
+pub use delivery_challan_repository::DeliveryChallanRepository;

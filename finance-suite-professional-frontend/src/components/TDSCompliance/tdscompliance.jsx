@@ -316,28 +316,24 @@ export default function TDSCompliance() {
                 <div className="relative z-10">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Total TDS Deducted</p>
                   <h3 className="text-2xl font-black text-slate-900">{formatCurrency(data?.combined?.total_tds_deducted)}</h3>
-                  <p className="text-xs text-slate-500 mt-1">Invoices: {formatCurrency(data?.incoming_invoices?.total_tds_deducted)} · Salaries: {formatCurrency(data?.salaries?.total_tds_deducted)}</p>
                 </div>
               </div>
               <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
                 <div className="relative z-10">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Total TDS Deposited</p>
                   <h3 className="text-2xl font-black text-slate-900">{formatCurrency(initialTDSData.totalTDSDeposited)}</h3>
-                  <p className="text-xs text-slate-500 mt-1">Deposited to government (Coming soon)</p>
                 </div>
               </div>
               <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
                 <div className="relative z-10">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Pending Deposit</p>
                   <h3 className="text-2xl font-black text-slate-900">{formatCurrency(initialTDSData.pendingDeposit)}</h3>
-                  <p className="text-xs text-slate-500 mt-1">Due for deposit (Coming soon)</p>
                 </div>
               </div>
               <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-red-300 transition-all">
                 <div className="relative z-10">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Returns Pending</p>
                   <h3 className="text-2xl font-black text-slate-900">{initialTDSData.pendingReturns}</h3>
-                  <p className="text-xs text-slate-500 mt-1">Due this quarter (Coming soon)</p>
                 </div>
               </div>
             </>

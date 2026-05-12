@@ -537,7 +537,7 @@ export default function Expense() {
                       <option value="Meals">Meals</option>
                       <option value="Supplies">Supplies</option>
                       <option value="Software">Software</option>
-                      <option value="Other">Other</option>
+                      <option value="Other">Others</option>
                     </select>
                     {inputErrors[`${prefix}expenseCategory`] && (
                       <p className="absolute text-[13px] top-15 text-[#f10404]">

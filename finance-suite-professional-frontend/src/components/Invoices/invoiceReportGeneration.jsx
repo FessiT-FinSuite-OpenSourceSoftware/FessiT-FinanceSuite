@@ -438,7 +438,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                 Item &amp; Description
               </th>
               <th className="border border-gray-400 px-2 py-1 text-center w-16">
-                HSN
+                HSN/CAC
               </th>
               <th className="border border-gray-400 px-2 py-1 text-center w-16">
                 Items

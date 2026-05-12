@@ -554,7 +554,7 @@ export default function Products() {
                 onChange={handleFormChange}
                 placeholder={`Enter description, up to ${DESCRIPTION_WORD_LIMIT} words`}
               />
-              <Field label="HSN" name="hsn" value={form.hsn} onChange={handleFormChange} placeholder="Enter HSN" />
+              <Field label="HSN/CAC" name="hsn" value={form.hsn} onChange={handleFormChange} placeholder="Enter HSN" />
               <Field label="Item Code" name="itemCode" value={form.itemCode} onChange={handleFormChange} placeholder="Enter item code" />
 
               <div>
@@ -697,7 +697,7 @@ export default function Products() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Image</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Description</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">HSN</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">HSN/CAC</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Item Code</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Category</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Stock</th>

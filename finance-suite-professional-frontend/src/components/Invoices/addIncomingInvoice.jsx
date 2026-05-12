@@ -442,7 +442,7 @@ export default function AddIncomingInvoice() {
               <tr>
                 <th className="border border-gray-300 px-3 py-2 text-center">Sl No</th>
                 <th className="border border-gray-300 px-3 py-2 text-left">Description</th>
-                <th className="border border-gray-300 px-3 py-2 text-center">HSN</th>
+                <th className="border border-gray-300 px-3 py-2 text-center">HSN/CAC</th>
                 <th className="border border-gray-300 px-3 py-2 text-center">Qty</th>
                 <th className="border border-gray-300 px-3 py-2 text-center">Rate</th>
                 {isDomestic ? (

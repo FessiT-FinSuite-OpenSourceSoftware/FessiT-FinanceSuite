@@ -16,6 +16,7 @@ import challanReducer from './challan';
 import categoryReducer from './category';
 import assetCategoryReducer from './assetCategory';
 import estimateReducer from './estimate';
+import deliveryChallanReducer from './deliveryChallan';
 import ledgerReducer from './ledger';
 import productReducer from './product';
 import gstSummaryReducer from './gstSummary';
@@ -45,6 +46,7 @@ const store = configureStore({
     tdsSummary: tdsSummaryReducer,
   asset: assetReducer,
   assetCategory: assetCategoryReducer,
+  deliveryChallan: deliveryChallanReducer,
   },
 });
 

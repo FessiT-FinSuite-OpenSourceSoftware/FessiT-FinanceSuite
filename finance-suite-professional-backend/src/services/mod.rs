@@ -17,6 +17,7 @@ pub mod account_service;
 pub mod service_service;
 pub mod asset_service;
 pub mod asset_category_service;
+pub mod delivery_challan_service;
 
 pub use customer_service::CustomerService;
 pub use organisation_service::OrganisationService;
@@ -37,3 +38,4 @@ pub use account_service::AccountService;
 pub use service_service::ServiceService;
 pub use asset_service::AssetService;
 pub use asset_category_service::AssetCategoryService;
+pub use delivery_challan_service::DeliveryChallanService;

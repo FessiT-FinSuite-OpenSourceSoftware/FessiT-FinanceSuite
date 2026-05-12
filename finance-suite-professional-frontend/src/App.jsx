@@ -40,6 +40,10 @@ const AddExpense = lazy(() => import("./components/Expenses"));
 const EditExpense = lazy(() => import("./components/Expenses/editExpense"));
 const Projects = lazy(() => import('./components/Projects'));
 
+const DeliveryChallans    = lazy(() => import("./components/DeliveryChallans"));
+const AddDeliveryChallan  = lazy(() => import("./components/DeliveryChallans/AddDeliveryChallan"));
+const EditDeliveryChallan = lazy(() => import("./components/DeliveryChallans/EditDeliveryChallan"));
+
 const CreateOrganization = lazy(() => import("./pages/Auth Pages/create_org"));
 const CostCenterList = lazy(() => import("./components/CostCenter/CostCenterList"));
 const AddCostCenter = lazy(() => import("./components/CostCenter/AddCostCenter"));
@@ -152,6 +156,11 @@ export default function App() {
               <Route path="/expenses/editIncomingInvoice/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditIncomingInvoice /></ProtectedRoute>} />
               <Route path="/expenses/viewIncomingInvoice/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><IncomingInvoiceView /></ProtectedRoute>} />
               <Route path="/invoices/editInvoice/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditInvoices /></ProtectedRoute>} />
+
+              {/* Delivery Challan Routes */}
+              <Route path="/delivery-challans" element={<ProtectedRoute user={user} module={Module.Invoice}><DeliveryChallans /></ProtectedRoute>} />
+              <Route path="/delivery-challans/create" element={<ProtectedRoute user={user} module={Module.Invoice}><AddDeliveryChallan /></ProtectedRoute>} />
+              <Route path="/delivery-challans/edit/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditDeliveryChallan /></ProtectedRoute>} />
 
               {/* Purchase Orders */}
               <Route path="/purchases" element={<ProtectedRoute user={user} module={Module.PurchaseOrders}><PurchaseOrders /></ProtectedRoute>} />

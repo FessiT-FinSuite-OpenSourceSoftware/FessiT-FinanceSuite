@@ -1338,7 +1338,7 @@ export default function AddInvoice() {
 
           {/* Items */}
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2 border-gray-300">
-            Hours
+            Line Items
           </h2>
           <div>
             <table className="w-full border border-gray-300 border-collapse text-sm">
@@ -1414,7 +1414,6 @@ export default function AddInvoice() {
                   </th>
                 </tr>
                 <tr>
-                  <th className="border border-gray-300 px-3 py-2"></th>
                   {isDomestic ? (
                     <>
                       <th className="border border-gray-300 px-3 py-2 text-center">%</th>

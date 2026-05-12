@@ -679,7 +679,7 @@ export default function Products() {
                 onChange={handleFormChange}
                 placeholder={`Enter description, up to ${DESCRIPTION_WORD_LIMIT} words`}
               />
-              <Field label="HSN" name="hsn" value={form.hsn} onChange={handleFormChange} placeholder="Enter HSN" />
+              <Field label="HSN/CAC" name="hsn" value={form.hsn} onChange={handleFormChange} placeholder="Enter HSN" />
               <Field label="Item Code" name="itemCode" value={form.itemCode} onChange={handleFormChange} placeholder="Enter item code" />
 
               <div>
@@ -890,7 +890,7 @@ export default function Products() {
               <div className="text-xs text-slate-600 line-clamp-2 cursor-help max-w-[140px]" onMouseEnter={(e) => openDescriptionPreview(e, product)} onMouseLeave={closeDescriptionPreview}>{product.description || '-'}</div>
             ),
           },
-          { label: 'HSN',       render: (p) => <span className="text-xs text-slate-700">{p.hsn || '-'}</span> },
+          { label: 'HSN/CAC',       render: (p) => <span className="text-xs text-slate-700">{p.hsn || '-'}</span> },
           { label: 'Item Code', render: (p) => <span className="text-xs text-slate-700">{p.itemCode || '-'}</span> },
           { label: 'Category',  render: (p) => <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">{textValue(p.categoryLabel, 'Unassigned') || 'Unassigned'}</span> },
           { label: 'Stock',     render: (p) => <span className={`text-xs font-semibold ${stockCountClass(p.stocks)}`}>{fmt(p.stocks) - fmt(p.soldStocks)}</span> },

@@ -331,7 +331,7 @@ export default function InvoiceList() {
                     <option value="Cash">Cash</option>
                     <option value="Cheque">Cheque</option>
                     <option value="NEFT/RTGS">NEFT/RTGS</option>
-                    <option value="Other">Other</option>
+                    <option value="Other">Others</option>
                   </select>
                 </div>
                 <div>

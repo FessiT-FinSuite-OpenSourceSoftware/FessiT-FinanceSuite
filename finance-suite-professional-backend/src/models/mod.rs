@@ -19,6 +19,7 @@ pub mod account;
 pub mod service;
 pub mod assets;
 pub mod asset_category;
+pub mod delivery_challan;
 
 pub use customer::{CreateCustomerRequest, Customer, UpdateCustomerRequest};
 pub use organisation::{CreateOrganisationRequest, Organisation, UpdateOrganizationRequest};
@@ -40,3 +41,4 @@ pub use account::{Account, AccountType, AccountCategory, OrganizationBalance, Ac
 pub use service::{CreateServiceRequest, Service, UpdateServiceRequest};
 pub use assets::Asset;
 pub use asset_category::AssetCategory;
+pub use delivery_challan::DeliveryChallan;

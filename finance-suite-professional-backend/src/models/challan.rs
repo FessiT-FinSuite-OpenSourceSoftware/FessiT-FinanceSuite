@@ -26,6 +26,18 @@ pub struct Challan {
     #[serde(default)]
     pub amount_paid: f64,
 
+    /// Financial year (e.g., "2024-25")
+    #[serde(default)]
+    pub tax_year: String,
+
+    /// Type of payment (e.g., "TDS/TCS payable by taxpayer")
+    #[serde(default)]
+    pub payment_type: String,
+
+    /// Bank reference number
+    #[serde(default)]
+    pub bank_reference_no: String,
+
     /// Stored filename (UUID) of the uploaded challan file
     #[serde(default)]
     pub file: String,

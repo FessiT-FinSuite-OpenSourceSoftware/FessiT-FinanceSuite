@@ -12,7 +12,7 @@ import axiosInstance from "../../utils/axiosInstance";
 import { KeyUri } from "../../shared/key";
 import { toast } from "react-toastify";
 
-const CATEGORIES = ["Supplies", "Meals", "Software", "Travel", "Utilities", "Other"];
+const CATEGORIES = ["Supplies", "Meals", "Software", "Travel", "Utilities", "Others"];
 const empty = () => ({ title: "", category: "Supplies", date: "", amount: "", cgstPct: "", sgstPct: "", igstPct: "", paid_by: "", billed_to: "", status: "Pending", approved_date: "", document: "", cost_type: "indirect" });
 const formatDateForApi = (dateStr) => dateStr || "";
 

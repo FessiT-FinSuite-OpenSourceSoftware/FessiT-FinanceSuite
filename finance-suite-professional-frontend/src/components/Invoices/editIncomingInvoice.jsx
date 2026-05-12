@@ -521,7 +521,7 @@ export default function EditIncomingInvoice() {
                     <option value="Cash">Cash</option>
                     <option value="Cheque">Cheque</option>
                     <option value="Card">Card</option>
-                    <option value="Other">Other</option>
+                    <option value="Other">Others</option>
                   </select>
                 </div>
                 <div className="relative">
@@ -541,7 +541,7 @@ export default function EditIncomingInvoice() {
               <tr>
                 <th className="border border-gray-300 px-3 py-2 text-center">Sl No</th>
                 <th className="border border-gray-300 px-3 py-2 text-left">Description</th>
-                <th className="border border-gray-300 px-3 py-2 text-center">HSN</th>
+                <th className="border border-gray-300 px-3 py-2 text-center">HSN/CAC</th>
                 <th className="border border-gray-300 px-3 py-2 text-center">Qty</th>
                 <th className="border border-gray-300 px-3 py-2 text-center">Rate</th>
                 {isDomestic ? (
@@ -588,7 +588,7 @@ export default function EditIncomingInvoice() {
                       <input className="w-full border border-gray-300 rounded px-2 py-1 text-gray-700" value={item.description} onChange={(e) => setItem(idx, "description", e.target.value)} placeholder="Description" />
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
-                      <input className="w-20 border border-gray-300 rounded px-2 py-1 text-center text-gray-700" value={item.hsn_code || ""} onChange={(e) => setItem(idx, "hsn_code", e.target.value)} placeholder="HSN" />
+                      <input className="w-20 border border-gray-300 rounded px-2 py-1 text-center text-gray-700" value={item.hsn_code || ""} onChange={(e) => setItem(idx, "hsn_code", e.target.value)} placeholder="HSN/CAC" />
                     </td>
                     <td className="border border-gray-300 px-3 py-2 text-center">
                       <input type="number" min="0" className="w-16 border border-gray-300 rounded px-2 py-1 text-right text-gray-700" value={item.quantity} onChange={(e) => setItem(idx, "quantity", e.target.value)} />

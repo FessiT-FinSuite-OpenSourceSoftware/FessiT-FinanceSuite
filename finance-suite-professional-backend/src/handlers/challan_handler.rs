@@ -84,6 +84,9 @@ pub async fn create_challan(
         payment_date: fields.remove("payment_date").unwrap_or_default(),
         date_of_challan: fields.remove("date_of_challan").unwrap_or_default(),
         amount_paid: parse_f64(&fields.remove("amount_paid").unwrap_or_default()),
+        tax_year: fields.remove("tax_year").unwrap_or_default(),
+        payment_type: fields.remove("payment_type").unwrap_or_default(),
+        bank_reference_no: fields.remove("bank_reference_no").unwrap_or_default(),
         file: stored_filename,
         organisation_id: None,
     };
@@ -212,6 +215,9 @@ pub async fn update_challan(
         payment_date: fields.remove("payment_date").unwrap_or(existing.payment_date),
         date_of_challan: fields.remove("date_of_challan").unwrap_or(existing.date_of_challan),
         amount_paid: fields.remove("amount_paid").map(|v| parse_f64(&v)).unwrap_or(existing.amount_paid),
+        tax_year: fields.remove("tax_year").unwrap_or(existing.tax_year),
+        payment_type: fields.remove("payment_type").unwrap_or(existing.payment_type),
+        bank_reference_no: fields.remove("bank_reference_no").unwrap_or(existing.bank_reference_no),
         file: new_filename.unwrap_or(existing.file),
         organisation_id: existing.organisation_id,
     };
