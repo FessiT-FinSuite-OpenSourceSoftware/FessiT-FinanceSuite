@@ -160,7 +160,11 @@ async fn main() -> std::io::Result<()> {
     log::info!("Starting server at http://{}:{}", host, port);
 
     HttpServer::new(move || {
-        let cors = Cors::permissive();
+        let cors = Cors::default()
+            .allowed_origin(&cors_origin)
+            .allow_any_method()
+            .allow_any_header()
+            .max_age(3600);
 
         App::new()
             .wrap(cors)

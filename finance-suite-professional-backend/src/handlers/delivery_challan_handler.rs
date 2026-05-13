@@ -8,7 +8,7 @@ use std::io::Write;
 use uuid::Uuid;
 
 use crate::{
-    models::delivery_challan::{DeliveryChallan, DeliveryChallanItem},
+    models::delivery_challan::{DeliveryChallan, DeliveryChallanItem, DeliveryChallanStatus},
     services::delivery_challan_service::DeliveryChallanService,
     utils::auth::Claims,
 };
@@ -79,7 +79,13 @@ fn dc_from_fields(
     let consignee_address = fields.remove("consignee_address").unwrap_or_else(|| ex.map(|e| e.consignee_address.clone()).unwrap_or_default());
     let consignee_gstin   = fields.remove("consignee_gstin").unwrap_or_else(|| ex.map(|e| e.consignee_gstin.clone()).unwrap_or_default());
     let delivery_notes    = fields.remove("delivery_notes").unwrap_or_else(|| ex.map(|e| e.delivery_notes.clone()).unwrap_or_default());
-    let status            = fields.remove("status").unwrap_or_else(|| ex.map(|e| e.status.clone()).unwrap_or_default());
+    let status: DeliveryChallanStatus = fields.remove("status")
+        .and_then(|s| serde_json::from_value(serde_json::Value::String(s)).ok())
+        .unwrap_or_else(|| ex.map(|e| e.status.clone()).unwrap_or_default());
+    let returned_date = fields.remove("returned_date").filter(|s| !s.is_empty())
+        .or_else(|| ex.and_then(|e| e.returned_date.clone()));
+    let return_notes = fields.remove("return_notes").filter(|s| !s.is_empty())
+        .or_else(|| ex.and_then(|e| e.return_notes.clone()));
 
     DeliveryChallan {
         id: None,
@@ -98,6 +104,8 @@ fn dc_from_fields(
         consignee_gstin,
         delivery_notes,
         status,
+        returned_date,
+        return_notes,
         dispatched_copy:   dispatched_copy.unwrap_or_else(|| ex.map(|e| e.dispatched_copy.clone()).unwrap_or_default()),
         acknowledged_copy: acknowledged_copy.unwrap_or_else(|| ex.map(|e| e.acknowledged_copy.clone()).unwrap_or_default()),
         items,

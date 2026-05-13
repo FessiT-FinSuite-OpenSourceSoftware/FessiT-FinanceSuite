@@ -135,6 +135,10 @@ export function RowActions({ onEdit, onDelete, canEdit = true, canDelete = true 
 
 // ── Modal Wrapper ─────────────────────────────────────────────────────────────
 export function Modal({ title, onClose, onSave, saveLabel = "Save", children }) {
+  React.useEffect(() => {
+    document.body.setAttribute("data-modal-open", "1");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, []);
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 backdrop-blur-[2px] overflow-y-auto p-4">
       <div className="bg-white rounded-xl shadow-2xl ring-1 ring-black/10 p-6 w-full max-w-lg relative max-h-[calc(100vh-2rem)] overflow-y-auto">
@@ -180,6 +184,10 @@ export const inputCls = "border border-gray-300 rounded px-3 py-2 w-full text-sm
 
 // ── Confirm Delete Modal ─────────────────────────────────────────────────────
 export function ConfirmModal({ title = "Confirm Delete", message, onConfirm, onClose, confirmLabel = "Delete", confirmClass = "bg-red-600 hover:bg-red-700" }) {
+  React.useEffect(() => {
+    document.body.setAttribute("data-modal-open", "1");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, []);
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl p-6 w-96">

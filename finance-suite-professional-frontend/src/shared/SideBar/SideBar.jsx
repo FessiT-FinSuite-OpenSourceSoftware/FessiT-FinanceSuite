@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import ReactDOM from "react-dom";
 import { useLocation, useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
@@ -58,6 +58,11 @@ function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
   );
 }
 
+// Stable wrapper so sidebar state changes never re-render the page content
+const PageContent = memo(({ component }) => (
+  <div className="p-1">{component}</div>
+));
+
 export default function SideBar({ component }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -65,6 +70,33 @@ export default function SideBar({ component }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const sidebarRef = useRef(null);
+
+  // Watch for any fixed overlay modal in the DOM and inert the sidebar
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+
+    const checkModals = () => {
+      // Any fixed full-screen overlay = a modal is open
+      const hasModal = !!document.querySelector(
+        '.fixed.inset-0[class*="z-"], [data-modal-open]'
+      );
+      if (hasModal) sidebar.setAttribute("inert", "");
+      else sidebar.removeAttribute("inert");
+    };
+
+    const obs = new MutationObserver(checkModals);
+    obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-modal-open"] });
+    return () => obs.disconnect();
+  }, []);
+  const [openGroups, setOpenGroups] = useState(() => {
+    // auto-open the group that contains the current route
+    const active = { finance: true, reports: true, operations: true, compliance: true, master: true, admin: true };
+    return active;
+  });
+
+  const toggleGroup = (key) => setOpenGroups((p) => ({ ...p, [key]: !p[key] }));
 
   const location = useLocation();
   const nav = useNavigate();
@@ -105,32 +137,67 @@ export default function SideBar({ component }) {
     }
   };
 
-  const allNavigation = [
-    { id: "dashboard", label: "Dashboard", icon: TrendingUp, module: null },
-    { id: "invoices", label: "Sales", icon: FileText, module: Module.Invoice },
-    { id: "estimates", label: "Quotations", icon: ReceiptText, module: Module.Invoice },
-    { id: "ledger", label: "Ledger", icon: BookOpen, module: Module.Invoice },
-    { id: "profit-loss", label: "P&L Statement", icon: BarChart2, module: Module.Invoice },
-    { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
-    { id: "expenses", label: "Expenses", icon: Receipt, module: Module.Expenses },
-    { id: "delivery-challans", label: "Delivery Challans", icon: Truck, module: Module.Invoice },
-    { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: Module.Invoice },
-    { id: "tdscompliance", label: "TDS Compliance", icon: Receipt, module: Module.Invoice },
-    { id: "customers", label: "Customers", icon: Users, module: Module.Customers },
-    { id: "projects", label: "Projects", icon: FolderKanban, module: Module.Customers },
-    { id: "cost-centers", label: "Cost Centers", icon: Layers, module: Module.Customers },
-    { id: "items", label: "Items", icon: Boxes, module: Module.Products },
-    { id: "assets", label: "Assets", icon: Package, module: null },
-    { id: "users", label: "User Management", icon: UserLockIcon, module: Module.Users },
-    { id: "settings", label: "Settings", icon: Settings, module: null, adminOnly: true },
+  const navGroups = [
+    {
+      key: "finance",
+      label: "Finance",
+      items: [
+        { id: "dashboard",        label: "Dashboard",       icon: TrendingUp,   module: null },
+        { id: "invoices",         label: "Sales",           icon: FileText,     module: Module.Invoice },
+        { id: "estimates",        label: "Quotations",      icon: ReceiptText,  module: Module.Invoice },
+        { id: "delivery-challans",label: "Delivery Challans",icon: Truck,        module: Module.Invoice },
+      ],
+    },
+    {
+      key: "reports",
+      label: "Reports",
+      items: [
+        { id: "ledger",      label: "Ledger",        icon: BookOpen,  module: Module.Invoice },
+        { id: "profit-loss", label: "P&L Statement", icon: BarChart2, module: Module.Invoice },
+      ],
+    },
+    {
+      key: "operations",
+      label: "Operations",
+      items: [
+        { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
+        { id: "expenses",  label: "Expenses",        icon: Receipt,      module: Module.Expenses },
+      ],
+    },
+    {
+      key: "compliance",
+      label: "Compliance",
+      items: [
+        { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: Module.Invoice },
+        { id: "tdscompliance", label: "TDS Compliance", icon: Receipt,     module: Module.Invoice },
+      ],
+    },
+    {
+      key: "master",
+      label: "Organization",
+      items: [
+        { id: "customers",    label: "Customers",    icon: Users,        module: Module.Customers },
+        { id: "projects",     label: "Projects",     icon: FolderKanban, module: Module.Customers },
+        { id: "cost-centers", label: "Cost Centers", icon: Layers,       module: Module.Customers },
+        { id: "items",        label: "Items",        icon: Boxes,        module: Module.Products },
+        { id: "assets",       label: "Assets",       icon: Package,      module: null },
+      ],
+    },
+    {
+      key: "admin",
+      label: "Admin",
+      items: [
+        { id: "users",    label: "User Management", icon: UserLockIcon, module: Module.Users },
+        { id: "settings", label: "Settings",        icon: Settings,     module: null, adminOnly: true },
+      ],
+    },
   ];
 
-  const navigation = allNavigation.filter(
-    (item) => {
-      if (item.adminOnly) return user?.is_admin;
-      return item.module === null || canRead(user, item.module);
-    }
-  );
+  const isItemActive = (id) =>
+    (id === "dashboard" && location.pathname === "/") ||
+    location.pathname.includes(`/${id}`);
+
+  const isGroupActive = (group) => group.items.some((i) => isItemActive(i.id));
 
   const handleNavigate = (id) => nav(`/${id}`);
 
@@ -210,10 +277,11 @@ export default function SideBar({ component }) {
 
   return (
     <div className="flex h-screen overflow-hidden w-screen bg-gray-50">
-      {/* Sidebar */}
+      {/* Sidebar — promoted to its own GPU layer so hover repaints don't bleed into main content */}
       <div
-        className={`${sidebarOpen ? "w-52" : "w-16"
-          } transition-all duration-300 bg-white border-r border-gray-200 flex h-screen flex-col`}
+        ref={sidebarRef}
+        className={`${sidebarOpen ? "w-52" : "w-16"} shrink-0 bg-white border-r border-gray-200 flex h-screen flex-col`}
+        style={{ transform: "translateZ(0)", willChange: "transform", isolation: "isolate" }}
       >
         <div className="shrink-0 p-4 border-b border-gray-200 h-22 flex justify-between items-center">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -243,8 +311,8 @@ export default function SideBar({ component }) {
 
             {/* Text content - only visible when sidebar is open */}
             <div
-              className={`min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${
-                sidebarOpen ? "max-w-[150px] opacity-100 translate-x-0" : "max-w-0 opacity-0 -translate-x-2"
+              className={`min-w-0 overflow-hidden transition-opacity duration-200 ${
+                sidebarOpen ? "max-w-[150px] opacity-100" : "max-w-0 opacity-0 pointer-events-none"
               }`}
             >
               <div className="min-w-[150px]">
@@ -272,7 +340,7 @@ export default function SideBar({ component }) {
           <div className="shrink-0 ml-2">
             {sidebarOpen ? (
               <ChevronLeft
-                className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
+                className="cursor-pointer text-gray-500 hover:text-gray-700"
                 size={20}
                 strokeWidth={1.5}
                 onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -281,37 +349,67 @@ export default function SideBar({ component }) {
               <ChevronRight
                 size={24}
                 strokeWidth={1.5}
-                className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-5.5 transition-colors"
+                className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-5.5"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               />
             )}
           </div>
         </div>
-        <nav className="sidebar-scrollbar flex-1 overflow-y-auto space-y-1/2 bg-gray-50">
-          {navigation?.map((item) => {
-            const Icon = item.icon;
+        <nav className="sidebar-scrollbar flex-1 overflow-y-auto bg-gray-50 py-2">
+          {navGroups.map((group) => {
+            const visibleItems = group.items.filter((item) => {
+              if (item.adminOnly) return user?.is_admin;
+              return item.module === null || canRead(user, item.module);
+            });
+            if (!visibleItems.length) return null;
+            const isOpen = openGroups[group.key];
+            const groupActive = isGroupActive(group);
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavigate(item?.id)}
-                className={`w-full flex items-center rounded-lg transition-colors ${(item.id === "dashboard" && location.pathname === "/") || location.pathname.includes(`/${item.id}`)
-                    ? "bg-indigo-50 text-indigo-600 font-medium"
-                    : "text-gray-600 hover:bg-gray-100"
-                  } sider-button ${sidebarOpen ? "px-3 py-2 space-x-2 justify-start" : "py-2.5 justify-center"}`}
-                title={item.label}
-              >
-                <Icon size={16} className={`${sidebarOpen ? "shrink-0" : "mx-auto"} transition-transform duration-200`} />
-                <span className={`text-sm ${sidebarOpen ? "block" : "hidden"}`}>
-                  {item.label}
-                </span>
-              </button>
+              <div key={group.key} className="mb-1">
+                {/* Group header */}
+                {sidebarOpen ? (
+                  <button
+                    onClick={() => toggleGroup(group.key)}
+                    className={`w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${
+                      groupActive ? "text-indigo-500" : "text-gray-400 hover:text-gray-600"
+                    }`}
+                  >
+                    <span>{group.label}</span>
+                    <ChevronRight size={12} className={isOpen ? "rotate-90" : ""} />
+                  </button>
+                ) : (
+                  <div className="mx-2 my-1 border-t border-gray-200" />
+                )}
+                {/* Items */}
+                {(isOpen || !sidebarOpen) && visibleItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isItemActive(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => nav(`/${item.id}`)}
+                      title={!sidebarOpen ? item.label : undefined}
+                      className={`w-full flex items-center rounded-lg ${
+                        active ? "bg-indigo-50 text-indigo-600 font-medium" : "text-gray-600 hover:bg-gray-100"
+                      } sider-button ${
+                        sidebarOpen ? "px-3 py-2 space-x-2 justify-start pl-5" : "py-2.5 justify-center"
+                      }`}
+                    >
+                      <Icon size={15} className={sidebarOpen ? "shrink-0" : "mx-auto"} />
+                      <span className={`text-sm ${sidebarOpen ? "block" : "hidden"}`}>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main content — promoted to its own GPU layer so sidebar repaints don't affect it */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0"
+        style={{ transform: "translateZ(0)", willChange: "transform", isolation: "isolate" }}
+      >
         <main ref={mainRef} className="overflow-y-auto overflow-x-hidden overscroll-none relative" id="main-scroll-container">
           {showScrollTop && (
             <button
@@ -330,11 +428,11 @@ export default function SideBar({ component }) {
                     {(location.pathname === "/" || location.pathname.includes("/dashboard")) && (
                       <p>Dashboard</p>
                     )}
-                    {location.pathname.includes("/estimates") && <p>Estimates</p>}
+                    {location.pathname.includes("/estimates") && <p>Quotations</p>}
                     {location.pathname.includes("/ledger") && <p>Ledger</p>}
                     {location.pathname.includes("/profit-loss") && <p>P&L Statement</p>}
                     {location.pathname.includes("/delivery-challans") && <p>Delivery Challans</p>}
-                    {location.pathname.includes("/invoices") && <p>Invoices</p>}
+                    {location.pathname.includes("/invoices") && <p>Sales Invoices</p>}
                     {location.pathname.includes("/purchases") && (
                       <p>Purchases</p>
                     )}
@@ -442,7 +540,7 @@ export default function SideBar({ component }) {
             </div>
           </div>
 
-          <div className="p-1">{component}</div>
+          <div className="p-1"><PageContent component={component} /></div>
         </main>
       </div>
     </div>

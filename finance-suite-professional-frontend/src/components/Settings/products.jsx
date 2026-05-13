@@ -12,7 +12,7 @@ import {
   updateProduct,
 } from "../../ReduxApi/product";
 import { KeyUri } from "../../shared/key";
-import { RowActions } from "../../shared/ui";
+import { RowActions, ConfirmModal } from "../../shared/ui";
 
 const fmt = (value) => Number(value || 0).toLocaleString("en-IN");
 const textValue = (value, fallback = "") =>
@@ -125,6 +125,7 @@ export default function Products() {
   const [form, setForm] = useState(emptyForm());
   const [previewModal, setPreviewModal] = useState({ open: false, src: "", title: "" });
   const [descriptionPreview, setDescriptionPreview] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(null);
 
   useEffect(() => {
     dispatch(fetchProductData());
@@ -390,10 +391,10 @@ export default function Products() {
     closeModal();
   };
 
-  const handleDelete = async (productId) => {
-    const shouldDelete = window.confirm("Delete this product?");
-    if (!shouldDelete) return;
-    await dispatch(deleteProduct(productId));
+  const handleDelete = async () => {
+    if (!deleteModal?.id) return;
+    await dispatch(deleteProduct(deleteModal.id));
+    setDeleteModal(null);
   };
 
   const goToPage = (page) => {
@@ -789,7 +790,7 @@ export default function Products() {
                       >
                         <RowActions
                           onEdit={() => openEditModal(product)}
-                          onDelete={() => handleDelete(product.id)}
+                          onDelete={() => setDeleteModal({ id: product.id, name: product.name || "this product" })}
                         />
                       </td>
                     </tr>
@@ -887,6 +888,14 @@ export default function Products() {
           </button>
         </div>
       </div>
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete product <span className="font-medium">{deleteModal.name}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
+      )}
     </div>
   );
 }

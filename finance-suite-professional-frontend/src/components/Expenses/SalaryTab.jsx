@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Plus } from "lucide-react";
 import { fetchSalaries, createSalary, updateSalary, deleteSalary, salarySelector } from "../../ReduxApi/salary";
 import { authSelector } from "../../ReduxApi/auth";
-import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, StatusBadge, RowActions, Modal, FormField, inputCls, Pagination } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, StatusBadge, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal } from "../../shared/ui";
 
 const currentPeriod = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
 const EMPTY = { emp_name: "", emp_id: "", department: "", period: currentPeriod(), gross_salary: "", tds: "", reimbursement: "", status: "YetToBePaid", paid_on: "", cost_type: "indirect" };
@@ -42,11 +43,17 @@ export default function SalaryTab() {
   const [deptFilter, setDeptFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [statusPopup, setStatusPopup] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
   useEffect(() => { dispatch(fetchSalaries()); }, [dispatch]);
   useEffect(() => { setCurrentPage(1); }, [search, deptFilter, statusFilter]);
+  useEffect(() => {
+    if (!statusPopup) return;
+    document.body.setAttribute("data-modal-open", "1");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, [statusPopup]);
 
   const openCreate = () => { setForm({ ...EMPTY, period: currentPeriod() }); setModal({ mode: "create" }); };
   const openEdit = (row) => { setForm({ ...row, cost_type: row.cost_type || "indirect" }); setModal({ mode: "edit", id: getId(row) }); };
@@ -69,9 +76,10 @@ export default function SalaryTab() {
     setStatusPopup(null);
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm("Delete this salary record?")) return;
-    dispatch(deleteSalary(id));
+  const handleDelete = () => {
+    if (!deleteModal?.id) return;
+    dispatch(deleteSalary(deleteModal.id));
+    setDeleteModal(null);
   };
 
   const departments = ["All", ...Array.from(new Set((salaryData || []).map((r) => r.department).filter(Boolean)))];
@@ -115,7 +123,7 @@ export default function SalaryTab() {
       label: "Actions",
       right: true,
       stopPropagation: true,
-      render: (r) => <RowActions onEdit={() => openEdit(r)} onDelete={() => handleDelete(getId(r))} />,
+      render: (r) => <RowActions onEdit={() => openEdit(r)} onDelete={() => setDeleteModal({ id: getId(r), name: r.emp_name || "this salary record" })} />,
     },
   ];
 
@@ -188,8 +196,8 @@ export default function SalaryTab() {
         </Modal>
       )}
 
-      {statusPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      {statusPopup && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-80">
             <h3 className="text-base font-semibold text-gray-800 mb-4">Update Salary Status</h3>
             <select value={statusPopup.status} onChange={(e) => setStatusPopup((p) => ({ ...p, status: e.target.value, paid_on: e.target.value !== "Paid" ? "" : p.paid_on }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -209,7 +217,16 @@ export default function SalaryTab() {
               <button onClick={handleStatusSave} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Update</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete salary record for <span className="font-medium">{deleteModal.name}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
       )}
     </div>
   );

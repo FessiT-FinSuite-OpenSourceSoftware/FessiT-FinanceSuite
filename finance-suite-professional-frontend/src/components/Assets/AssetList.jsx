@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import ReactDOM from 'react-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { Plus, Search, RefreshCcw, X, FileText, Eye, Download } from 'lucide-react'
 import axiosInstance from '../../utils/axiosInstance'
@@ -215,6 +216,12 @@ export default function AssetList() {
   useEffect(() => {
     setCurrentPage(1)
   }, [search, statusFilter, categoryFilter, stockFilter, taxFilter, assetTypeFilter, sortBy])
+
+  useEffect(() => {
+    if (!previewModal.open && !showModal && !statusModal) return
+    document.body.setAttribute('data-modal-open', '1')
+    return () => document.body.removeAttribute('data-modal-open')
+  }, [previewModal.open, showModal, statusModal])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -756,8 +763,8 @@ export default function AssetList() {
         totalCount={filtered.length} onPageChange={goToPage}
         onPageSizeChange={(n) => { setPageSize(Number(n)); setCurrentPage(1) }} />
 
-      {previewModal.open && (
-        <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/75 p-4" onClick={closePreviewModal}>
+      {previewModal.open && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/75 p-4" onClick={closePreviewModal}>
           <div className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h3 className="text-lg font-semibold text-slate-900">{previewModal.title}</h3>
@@ -783,7 +790,8 @@ export default function AssetList() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {descriptionPreview && (
@@ -799,8 +807,8 @@ export default function AssetList() {
       )}
 
       {/* Create / Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 p-4">
+      {showModal && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 shrink-0">
               <div>
@@ -1012,7 +1020,8 @@ export default function AssetList() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {deleteModal && (
@@ -1024,8 +1033,8 @@ export default function AssetList() {
       )}
 
       {/* Status Modal */}
-      {statusModal && (
-        <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/50">
+      {statusModal && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-xl shadow-xl p-6 w-80">
             <h3 className="text-base font-semibold text-gray-800 mb-4">Update Status</h3>
             <select defaultValue={statusModal.current}
@@ -1039,7 +1048,8 @@ export default function AssetList() {
                 className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Update</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {showCategoryManager && (
         <ManageAssetCategoriesModal onClose={() => setShowCategoryManager(false)} />

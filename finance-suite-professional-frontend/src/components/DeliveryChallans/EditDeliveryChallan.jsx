@@ -110,9 +110,11 @@ export default function EditDeliveryChallan() {
             <ArrowLeft strokeWidth={1} onClick={() => nav(-1)} className="cursor-pointer" />
             <span className="text-sm font-semibold text-gray-700">Edit Delivery Challan</span>
             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-              form.status === "Delivered" ? "bg-green-100 text-green-700" :
+                          form.status === "Delivered" ? "bg-green-100 text-green-700" :
               form.status === "Dispatched" ? "bg-blue-100 text-blue-700" :
-              form.status === "Cancelled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+              form.status === "Cancelled" ? "bg-red-100 text-red-700" :
+              form.status === "Returned" ? "bg-orange-100 text-orange-700" :
+              form.status === "Partially Returned" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"
             }`}>{form.status || "Draft"}</span>
           </div>
           <div className="mr-5 flex gap-2">
@@ -172,10 +174,29 @@ export default function EditDeliveryChallan() {
                 <option value="Dispatched">Dispatched</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Cancelled">Cancelled</option>
+                <option value="Returned">Returned</option>
+                <option value="Partially Returned">Partially Returned</option>
               </select>
             </div>
           </div>
         </div>
+
+        {/* Return Info */}
+        {(form.status === "Returned" || form.status === "Partially Returned") && (
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">Return Details</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <label className={labelCls}>Returned Date</label>
+              <input type="date" className={inputCls} value={form.returned_date || ""} onChange={(e) => setField("returned_date", e.target.value)} />
+            </div>
+            <div className="relative">
+              <label className={labelCls}>Return Notes</label>
+              <input className={inputCls} value={form.return_notes || ""} onChange={(e) => setField("return_notes", e.target.value)} placeholder="Reason for return..." />
+            </div>
+          </div>
+        </div>
+        )}
 
         {/* Consignor */}
         <div>

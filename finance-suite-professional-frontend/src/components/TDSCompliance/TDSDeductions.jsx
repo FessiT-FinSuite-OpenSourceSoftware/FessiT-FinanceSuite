@@ -122,8 +122,13 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
                 <td className="px-4 py-2 whitespace-nowrap text-right text-sm text-gray-700">{ded.tdsRate}%</td>
                 <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-semibold text-gray-800">{formatMoney(ded.tdsAmount)}</td>
                 <td className="px-4 py-2 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${ded.status === "deposited" ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}`}>
-                    {ded.status}
+                  <span
+                    className={`inline-flex justify-center w-24 px-2 py-1 text-xs font-semibold rounded-full ${ded.status === "deposited"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-orange-100 text-orange-800"
+                      }`}
+                  >
+                    {ded.status.charAt(0).toUpperCase() + ded.status.slice(1)}
                   </span>
                 </td>
               </tr>

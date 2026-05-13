@@ -1,6 +1,19 @@
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub enum DeliveryChallanStatus {
+    #[default]
+    Draft,
+    Dispatched,
+    Delivered,
+    Cancelled,
+    Returned,
+    #[serde(rename = "Partially Returned")]
+    PartiallyReturned,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DeliveryChallanItem {
     #[serde(default)]
@@ -67,7 +80,13 @@ pub struct DeliveryChallan {
     pub delivery_notes: String,
 
     #[serde(default)]
-    pub status: String,
+    pub status: DeliveryChallanStatus,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub returned_date: Option<String>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub return_notes: Option<String>,
 
     /// Stored UUID filename of the dispatched copy upload
     #[serde(default)]

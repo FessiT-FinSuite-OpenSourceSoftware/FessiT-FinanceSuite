@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import ReactDOM from 'react-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { Pencil, Trash2, X, Check, Tag } from 'lucide-react'
 import { categorySelector, fetchCategories, updateCategory, deleteCategory, createCategory } from '../../ReduxApi/category'
@@ -19,6 +20,11 @@ export default function ManageCategoriesModal({ onClose }) {
   const [newName, setNewName] = useState('')
 
   const categories = Array.isArray(categoryData) ? categoryData : []
+
+  useEffect(() => {
+    document.body.setAttribute('data-modal-open', '1')
+    return () => document.body.removeAttribute('data-modal-open')
+  }, [])
 
   const startEdit = (cat) => {
     setEditingId(extractId(cat))
@@ -46,8 +52,8 @@ export default function ManageCategoriesModal({ onClose }) {
     setNewName('')
   }
 
-  return (
-    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/60 p-4">
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-md flex flex-col h-[60vh] rounded-2xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -149,6 +155,7 @@ export default function ManageCategoriesModal({ onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

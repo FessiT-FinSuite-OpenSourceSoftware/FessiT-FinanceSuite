@@ -6,7 +6,7 @@ import { fetchPurchaseOrderData, deletePurchaseOrder, purchaseOrderSelector } fr
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
 import { getCurrencySymbol } from "../../utils/formatNumber";
-import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination } from "../../shared/ui";
+import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal } from "../../shared/ui";
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -40,6 +40,7 @@ export default function PurchaseOrderList() {
   const [currencyFilter, setCurrencyFilter] = useState("All");
   const [currentPage,    setCurrentPage]    = useState(1);
   const [pageSize,       setPageSize]       = useState(10);
+  const [deleteModal,    setDeleteModal]    = useState(null);
 
   useEffect(() => { dispatch(fetchPurchaseOrderData()); }, [dispatch]);
   useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, currencyFilter]);
@@ -58,9 +59,12 @@ export default function PurchaseOrderList() {
   const current    = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const countByStatus = (s) => purchaseOrders.filter((po) => po.status === s).length;
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this purchase order?")) return;
-    try { await dispatch(deletePurchaseOrder(id)); } catch (e) { console.error(e); }
+  const handleDelete = async () => {
+    if (!deleteModal?.id) return;
+    try {
+      await dispatch(deletePurchaseOrder(deleteModal.id));
+      setDeleteModal(null);
+    } catch (e) { console.error(e); }
   };
 
   const columns = [
@@ -93,7 +97,7 @@ export default function PurchaseOrderList() {
         return (
           <RowActions
             onEdit={() => hasWrite && nav(`/purchases/editPurchaseOrder/${id}`)}
-            onDelete={() => hasDelete && handleDelete(id)}
+            onDelete={() => hasDelete && setDeleteModal({ id, no: po.po_number || "this purchase order" })}
             canEdit={hasWrite} canDelete={hasDelete}
           />
         );
@@ -143,6 +147,14 @@ export default function PurchaseOrderList() {
       />
 
       <Pagination currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} totalCount={filtered.length} onPageChange={setCurrentPage} onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }} />
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete purchase order <span className="font-medium">{deleteModal.no}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
+      )}
     </div>
   );
 }

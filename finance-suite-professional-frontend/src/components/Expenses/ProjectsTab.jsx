@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus } from "lucide-react";
-import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, StatusBadge, RowActions, Modal, FormField, inputCls } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, StatusBadge, RowActions, Modal, FormField, inputCls, ConfirmModal } from "../../shared/ui";
 
 const DUMMY_PROJECTS = [
   { id: 1, name: "ERP Migration",       manager: "Ravi Kumar",   budget: 500000, spent: 320000, deadline: "2025-08-31", status: "Active" },
@@ -28,6 +28,7 @@ export default function ProjectsTab() {
   const [form, setForm] = useState(empty());
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [deleteModal, setDeleteModal] = useState(null);
 
   const openCreate = () => { setForm(empty()); setModal({ mode: "create" }); };
   const openEdit = (row) => { setForm({ ...row }); setModal({ mode: "edit", id: row.id }); };
@@ -41,9 +42,10 @@ export default function ProjectsTab() {
     closeModal();
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm("Delete this project?")) return;
-    setRows((p) => p.filter((r) => r.id !== id));
+  const handleDelete = () => {
+    if (!deleteModal?.id) return;
+    setRows((p) => p.filter((r) => r.id !== deleteModal.id));
+    setDeleteModal(null);
   };
 
   const filtered = rows.filter((r) => {
@@ -88,7 +90,7 @@ export default function ProjectsTab() {
       label: "Actions",
       right: true,
       stopPropagation: true,
-      render: (r) => <RowActions onEdit={() => openEdit(r)} onDelete={() => handleDelete(r.id)} />,
+      render: (r) => <RowActions onEdit={() => openEdit(r)} onDelete={() => setDeleteModal({ id: r.id, name: r.name })} />,
     },
   ];
 
@@ -120,6 +122,14 @@ export default function ProjectsTab() {
           <FormField label="Status"><select name="status" value={form.status} onChange={handleChange} className={inputCls}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></FormField>
           <FormField label="Remaining (auto)"><input readOnly value={`₹ ${remainingAuto.toLocaleString("en-IN")}`} className={`${inputCls} bg-gray-50 text-gray-500`} /></FormField>
         </Modal>
+      )}
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete project <span className="font-medium">{deleteModal.name}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
       )}
     </div>
   );

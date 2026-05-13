@@ -433,6 +433,17 @@ export default function EditInvoice() {
     nav(-1);
   };
 
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        invoiceDataSubmit(e);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [invoiceData]);
+
   if (!invoiceData || !Array.isArray(invoiceData.items)) {
     return (
       <div className="p-6">
@@ -478,7 +489,7 @@ export default function EditInvoice() {
                     className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
                     onClick={invoiceDataSubmit}
                   >
-                    Save
+                    Save 
                   </button>
 
                   {/* Just opens preview; actual download is inside preview */}

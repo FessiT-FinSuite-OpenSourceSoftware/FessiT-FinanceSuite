@@ -707,6 +707,17 @@ export default function AddInvoice() {
   const goBackToInvoices = () => {
     nav("/invoices");
   };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        invoiceDataSubmit(e);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [invoiceData]);
   console.log("the product data we have here in the invoice creation component", productData)
   return (
     <div className="relative">

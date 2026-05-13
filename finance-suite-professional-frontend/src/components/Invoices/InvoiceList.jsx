@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -8,7 +9,7 @@ import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
 import { orgamisationSelector } from "../../ReduxApi/organisation";
 import {
-  TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, TruncatedCell,
+  TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, TruncatedCell, ConfirmModal,
 } from "../../shared/ui";
 import { toast } from "react-toastify";
 
@@ -69,9 +70,15 @@ export default function InvoiceList() {
   const [approxConversionRate, setApproxConversionRate] = useState("");
   const [paymentType, setPaymentType] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
+  const [deleteModal, setDeleteModal] = useState(null);
 
   useEffect(() => { dispatch(fetchInvoiceData()); }, [dispatch]);
   useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, currencyFilter, typeFilter]);
+  useEffect(() => {
+    if (!statusModal) return;
+    document.body.setAttribute("data-modal-open", "1");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, [statusModal]);
 
   const invoices = Array.isArray(invoiceData) ? invoiceData : [];
 
@@ -108,9 +115,8 @@ export default function InvoiceList() {
     return (!due || new Date(due) >= today) ? (i.status || "New") === "Issued" : false;
   }).length;
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this invoice?")) return;
-    dispatch(deleteInvoice(id));
+  const handleDelete = (id, invoiceNumber) => {
+    setDeleteModal({ id, invoiceNumber });
   };
 
   const openStatusModal = (invoice) => {
@@ -215,7 +221,7 @@ export default function InvoiceList() {
         return (
           <RowActions
             onEdit={() => hasWrite && nav(`/invoices/editInvoice/${id}`)}
-            onDelete={() => hasDelete && handleDelete(id)}
+            onDelete={() => hasDelete && handleDelete(id, invoice.invoice_number)}
             canEdit={hasWrite} canDelete={hasDelete}
           />
         );
@@ -288,8 +294,16 @@ export default function InvoiceList() {
         />
       )}
 
-      {statusModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete invoice <span className="font-medium">{deleteModal.invoiceNumber}</span>? This cannot be undone.</>}
+          onConfirm={() => { dispatch(deleteInvoice(deleteModal.id)); setDeleteModal(null); }}
+          onClose={() => setDeleteModal(null)}
+        />
+      )}
+
+      {statusModal && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-96">
             <h3 className="text-base font-semibold text-gray-800 mb-4">Update Invoice Status</h3>
             {!isAdmin && statusModal.currentStatus === "Paid" && (
@@ -345,7 +359,8 @@ export default function InvoiceList() {
               <button onClick={handleStatusUpdate} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Update</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

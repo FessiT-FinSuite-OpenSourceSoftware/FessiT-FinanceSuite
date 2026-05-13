@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import ReactDOM from "react-dom";
 import { Plus, Search, RefreshCcw, X, Info } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
@@ -16,7 +17,7 @@ import {
 import { authSelector } from "../../ReduxApi/auth";
 import { canRead, canWrite, canDelete, Module } from "../../utils/permissions";
 import { KeyUri } from "../../shared/key";
-import { RowActions, Pagination, StatCard, InfoCard, Field, DataTable } from "../../shared/ui";
+import { RowActions, Pagination, StatCard, InfoCard, Field, DataTable, ConfirmModal } from "../../shared/ui";
 
 const fmt = (value) => Number(value || 0).toLocaleString("en-IN");
 const textValue = (value, fallback = "") =>
@@ -133,6 +134,7 @@ export default function Products() {
   const [form, setForm] = useState(emptyForm());
   const [previewModal, setPreviewModal] = useState({ open: false, src: "", title: "" });
   const [stockModal, setStockModal] = useState({ open: false, productId: null, productName: "", quantity: "" });
+  const [deleteModal, setDeleteModal] = useState(null);
   const [descriptionPreview, setDescriptionPreview] = useState(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(!hasLoadedOnce)
@@ -211,6 +213,12 @@ export default function Products() {
   useEffect(() => {
     setCurrentPage(1);
   }, [search, categoryFilter, stockFilter, taxFilter, sortBy]);
+
+  useEffect(() => {
+    if (!previewModal.open && !showModal && !stockModal.open) return;
+    document.body.setAttribute("data-modal-open", "1");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, [previewModal.open, showModal, stockModal.open]);
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -405,10 +413,10 @@ export default function Products() {
     closeModal();
   };
 
-  const handleDelete = async (productId) => {
-    const shouldDelete = window.confirm("Delete this product?");
-    if (!shouldDelete) return;
-    await dispatch(deleteProduct(productId));
+  const handleDelete = async () => {
+    if (!deleteModal?.id) return;
+    await dispatch(deleteProduct(deleteModal.id));
+    setDeleteModal(null);
   };
 
   const openStockModal = (product) => {
@@ -567,8 +575,8 @@ export default function Products() {
         </div>
       </div>
 
-      {previewModal.open && (
-        <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/75 p-4" onClick={closePreviewModal}>
+      {previewModal.open && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/75 p-4" onClick={closePreviewModal}>
           <div
             className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -594,7 +602,8 @@ export default function Products() {
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {descriptionPreview && (
@@ -610,8 +619,8 @@ export default function Products() {
         </div>
       )}
 
-      {showModal && (
-        <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 p-4">
+      {showModal && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <div>
@@ -780,11 +789,12 @@ export default function Products() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {stockModal.open && (
-        <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 p-4">
+      {stockModal.open && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <div>
@@ -815,7 +825,8 @@ export default function Products() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -918,7 +929,7 @@ export default function Products() {
                 {hasWrite && (
                   <button type="button" onClick={() => openStockModal(product)} className="rounded-lg border border-emerald-300 px-2 py-0.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">+Stock</button>
                 )}
-                <RowActions onEdit={() => openEditModal(product)} onDelete={() => handleDelete(product.id)} canEdit={hasWrite} canDelete={hasDelete} />
+                <RowActions onEdit={() => openEditModal(product)} onDelete={() => setDeleteModal({ id: product.id, name: product.name || "this item" })} canEdit={hasWrite} canDelete={hasDelete} />
               </div>
             ),
           },
@@ -955,6 +966,14 @@ export default function Products() {
 
       {showCategoryManager && (
         <ManageCategoriesModal onClose={() => setShowCategoryManager(false)} />
+      )}
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete item <span className="font-medium">{deleteModal.name}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
       )}
     </div>
   );

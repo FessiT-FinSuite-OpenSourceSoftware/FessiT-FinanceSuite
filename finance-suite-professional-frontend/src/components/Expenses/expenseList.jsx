@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { Plus } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -12,7 +13,7 @@ import SalaryTab from "./SalaryTab";
 import OthersTab from "./OthersTab";
 import IncomingInvoicesTab from "./IncomingInvoicesTab";
 import ProjectsTab from "./ProjectsTab";
-import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination } from "../../shared/ui";
+import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal } from "../../shared/ui";
 
 const getExpenseId = (expense) => {
   if (!expense) return "";
@@ -86,6 +87,7 @@ export default function ExpenseList() {
   const [pageSize,      setPageSize]      = useState(5);
   const [projects,      setProjects]      = useState([]);
   const [statusPopup,   setStatusPopup]   = useState(null);
+  const [deleteModal,   setDeleteModal]   = useState(null);
 
   const dispatch  = useDispatch();
   const nav       = useNavigate();
@@ -97,6 +99,11 @@ export default function ExpenseList() {
 
   useEffect(() => { dispatch(fetchExpenseData()); dispatch(fetchIncomingInvoices()); }, [dispatch]);
   useEffect(() => { axiosInstance.get("/expenses/projects").then((res) => { if (res?.status === 200) setProjects(res.data || []); }).catch(() => {}); }, []);
+  useEffect(() => {
+    if (!statusPopup) return;
+    document.body.setAttribute("data-modal-open", "1");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, [statusPopup]);
 
   const handleStatusSave = () => {
     if (statusPopup.status === "REIMBURSED" && !statusPopup.reimbursedAt) { toast.error("Please select a reimbursement date"); return; }
@@ -113,9 +120,12 @@ export default function ExpenseList() {
     setStatusPopup(null);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this expense?")) return;
-    try { await dispatch(deleteExpense(id)); }
+  const handleDelete = async () => {
+    if (!deleteModal?.id) return;
+    try {
+      await dispatch(deleteExpense(deleteModal.id));
+      setDeleteModal(null);
+    }
     catch (err) { toast.error(err.message || "Something went wrong while deleting expense"); }
   };
 
@@ -164,7 +174,7 @@ export default function ExpenseList() {
         return (
           <RowActions
             onEdit={() => hasWrite && nav(`/expenses/editExpense/${id}`)}
-            onDelete={() => hasDelete && handleDelete(id)}
+            onDelete={() => hasDelete && setDeleteModal({ id, title: expense.expense_title || "this expense" })}
             canEdit={hasWrite} canDelete={hasDelete}
           />
         );
@@ -220,8 +230,8 @@ export default function ExpenseList() {
         </div>
       )}
 
-      {statusPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      {statusPopup && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-80">
             <h3 className="text-base font-semibold text-gray-800 mb-4">Update Expense Status</h3>
             {(statusPopup.status || "").toUpperCase() === "REIMBURSED" && !isAdmin && (
@@ -245,7 +255,16 @@ export default function ExpenseList() {
               <button onClick={handleStatusSave} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Update</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete expense <span className="font-medium">{deleteModal.title}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
       )}
     </div>
   );

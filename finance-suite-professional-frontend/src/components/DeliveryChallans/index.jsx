@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import ReactDOM from "react-dom";
 import { Plus, Eye, Download, Upload, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -12,10 +13,12 @@ import { toast } from "react-toastify";
 const getId = (dc) => dc?._id?.$oid || dc?._id || dc?.id || "";
 
 const statusColor = (s) => {
-  if (s === "Delivered")  return "bg-green-100 text-green-700";
-  if (s === "Dispatched") return "bg-blue-100 text-blue-700";
-  if (s === "Cancelled")  return "bg-red-100 text-red-700";
-  return "bg-gray-100 text-gray-700";
+  if (s === "Delivered")          return "bg-green-50 text-green-700 ring-green-200";
+  if (s === "Dispatched")         return "bg-blue-50 text-blue-700 ring-blue-200";
+  if (s === "Cancelled")          return "bg-red-50 text-red-700 ring-red-200";
+  if (s === "Returned")           return "bg-orange-50 text-orange-700 ring-orange-200";
+  if (s === "Partially Returned") return "bg-yellow-50 text-yellow-700 ring-yellow-200";
+  return "bg-slate-50 text-slate-700 ring-slate-200";
 };
 
 const formatDate = (v) => {
@@ -89,6 +92,11 @@ export default function DeliveryChallans() {
 
   // reset to page 1 when filters change
   useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, pageSize]);
+  useEffect(() => {
+    if (!statusModal) return;
+    document.body.setAttribute("data-modal-open", "1");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, [statusModal]);
 
   const challans = Array.isArray(data) ? data : [];
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -111,7 +119,7 @@ export default function DeliveryChallans() {
       render: (dc) => (
         <span
           onClick={() => { if (!hasWrite) return; setSelectedStatus(dc.status || "Draft"); setStatusModal({ id: getId(dc), challan_no: dc.challan_no }); }}
-          className={`inline-flex items-center justify-center w-24 px-2 py-0.5 text-xs font-semibold rounded-full ${hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"} ${statusColor(dc.status || "Draft")}`}
+          className={`inline-flex w-36 items-center justify-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${hasWrite ? "cursor-pointer hover:opacity-80" : "cursor-default"} ${statusColor(dc.status || "Draft")}`}
         >
           {dc.status || "Draft"}
         </span>
@@ -146,6 +154,8 @@ export default function DeliveryChallans() {
           <option value="Draft">Draft</option>
           <option value="Dispatched">Dispatched</option>
           <option value="Delivered">Delivered</option>
+          <option value="Returned">Returned</option>
+          <option value="Partially Returned">Partially Returned</option>
           <option value="Cancelled">Cancelled</option>
         </FilterSelect>
         {hasWrite && (
@@ -228,35 +238,61 @@ export default function DeliveryChallans() {
         />
       )}
 
-      {statusModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-80">
+      {statusModal && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-96">
             <h3 className="text-base font-semibold text-gray-800 mb-1">Update Status</h3>
             <p className="text-xs text-gray-500 mb-4">Challan: <span className="font-medium text-gray-700">{statusModal.challan_no}</span></p>
-            <div className="flex flex-col gap-2">
-              {["Draft", "Dispatched", "Delivered", "Cancelled"].map((s) => (
-                <label key={s} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${
-                  selectedStatus === s ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                }`}>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {["Draft", "Dispatched", "Delivered", "Returned", "Partially Returned", "Cancelled"].map((s) => (
+                <label key={s} className="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
                   <input type="radio" name="challan_status" value={s} checked={selectedStatus === s}
                     onChange={() => setSelectedStatus(s)} className="w-4 h-4 accent-blue-600" />
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColor(s)}`}>{s}</span>
+                  <span className="font-medium">{s}</span>
                 </label>
               ))}
             </div>
+
+            {(selectedStatus === "Returned" || selectedStatus === "Partially Returned") && (
+              <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Return Date *</label>
+                  <input type="date" value={statusModal.returned_date || ""}
+                    onChange={(e) => setStatusModal((p) => ({ ...p, returned_date: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Return Notes</label>
+                  <textarea rows={2} value={statusModal.return_notes || ""}
+                    onChange={(e) => setStatusModal((p) => ({ ...p, return_notes: e.target.value }))}
+                    placeholder="Reason for return, condition of goods..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 mt-5">
               <button onClick={() => setStatusModal(null)} className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
               <button
                 onClick={() => {
+                  if ((selectedStatus === "Returned" || selectedStatus === "Partially Returned") && !statusModal.returned_date) {
+                    toast.error("Return date is required"); return;
+                  }
                   const dc = challans.find((c) => getId(c) === statusModal.id);
-                  if (dc) dispatch(updateDeliveryChallan(statusModal.id, { ...dc, status: selectedStatus })).then(load);
+                  if (dc) dispatch(updateDeliveryChallan(statusModal.id, {
+                    ...dc,
+                    status: selectedStatus,
+                    returned_date: statusModal.returned_date || undefined,
+                    return_notes: statusModal.return_notes || undefined,
+                  })).then(load);
                   setStatusModal(null);
                 }}
                 className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
               >Update</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* File Preview Modal */}

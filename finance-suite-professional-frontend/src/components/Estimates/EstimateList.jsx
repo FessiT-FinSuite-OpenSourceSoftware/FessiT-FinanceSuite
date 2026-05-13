@@ -18,6 +18,7 @@ import {
   DataTable,
   RowActions,
   Pagination,
+  ConfirmModal,
   Modal,
   FormField,
   inputCls,
@@ -70,6 +71,7 @@ export default function EstimateList() {
   const [currentPage, setCurrentPage]   = useState(1);
   const [pageSize, setPageSize]         = useState(10);
   const [statusPopup, setStatusPopup]   = useState(null);
+  const [deleteModal, setDeleteModal]   = useState(null);
 
   const doFetch = useCallback(() => {
     const params = { page: currentPage, limit: pageSize };
@@ -91,9 +93,10 @@ export default function EstimateList() {
     accepted:   allData.filter((r) => (r.status || "").toLowerCase() === "accepted").length,
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm("Delete this estimate?")) return;
-    dispatch(deleteEstimate(id));
+  const handleDelete = () => {
+    if (!deleteModal?.id) return;
+    dispatch(deleteEstimate(deleteModal.id));
+    setDeleteModal(null);
   };
 
   const handleStatusSave = () => {
@@ -148,7 +151,7 @@ export default function EstimateList() {
         return (
           <RowActions
             onEdit={() => hasWrite && nav(`/estimates/edit/${id}`)}
-            onDelete={() => hasDelete && handleDelete(id)}
+            onDelete={() => hasDelete && setDeleteModal({ id, no: row.estimateNumber || "this estimate" })}
             canEdit={hasWrite && !locked}
             canDelete={hasDelete && !locked}
           />
@@ -219,6 +222,14 @@ export default function EstimateList() {
             </select>
           </FormField>
         </Modal>
+      )}
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete quotation <span className="font-medium">{deleteModal.no}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
       )}
     </div>
   );

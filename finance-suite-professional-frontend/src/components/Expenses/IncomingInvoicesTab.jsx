@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import { Plus, IndianRupee } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -6,7 +7,7 @@ import { toast } from "react-toastify";
 import { updateIncomingInvoice, deleteIncomingInvoice, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
-import { StatCard, TabActionBar, FilterSelect, DataTable, StatusBadge, RowActions, Pagination } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, DataTable, StatusBadge, RowActions, Pagination, ConfirmModal } from "../../shared/ui";
 
 const getIncomingId = (inv) => {
   if (typeof inv.id === "string") return inv.id;
@@ -68,6 +69,13 @@ export default function IncomingInvoicesTab() {
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [statusPopup, setStatusPopup] = useState(null);
   const [paymentDetail, setPaymentDetail] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(null);
+
+  useEffect(() => {
+    if (!statusPopup && !paymentDetail) return;
+    document.body.setAttribute("data-modal-open", "1");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, [statusPopup, paymentDetail]);
 
   const handleStatusSave = () => {
     if (statusPopup.status === "Paid") {
@@ -99,9 +107,10 @@ export default function IncomingInvoicesTab() {
   const totalAmount = invoices.reduce((s, b) => s + Number(b.total || 0), 0);
   const totalTds = invoices.filter(b => b.tds_applicable).reduce((s, b) => s + Number(b.tds_total || 0), 0);
 
-  const handleDelete = (id) => {
-    if (!window.confirm("Are you sure you want to delete this incoming invoice?")) return;
-    dispatch(deleteIncomingInvoice(id));
+  const handleDelete = () => {
+    if (!deleteModal?.id) return;
+    dispatch(deleteIncomingInvoice(deleteModal.id));
+    setDeleteModal(null);
   };
 
   const columns = [
@@ -179,7 +188,7 @@ export default function IncomingInvoicesTab() {
             )}
             <RowActions
               onEdit={() => bid && navWithTab(`/expenses/editIncomingInvoice/${bid}`)}
-              onDelete={() => bid && handleDelete(bid)}
+              onDelete={() => bid && setDeleteModal({ id: bid, no: bill.invoice_number || "this incoming invoice" })}
               canEdit={hasWrite} canDelete={hasDelete}
             />
           </div>
@@ -223,8 +232,8 @@ export default function IncomingInvoicesTab() {
 
       <Pagination currentPage={page} totalPages={totalPages} pageSize={pageSize} totalCount={filtered.length} onPageChange={setPage} onPageSizeChange={(n) => { setPageSize(n); setPage(1); }} />
 
-      {statusPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      {statusPopup && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-80">
             <h3 className="text-base font-semibold text-gray-800 mb-4">Update Invoice Status</h3>
             <select value={statusPopup.status} onChange={(e) => setStatusPopup((p) => ({ ...p, status: e.target.value, paidDate: "" }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -260,11 +269,12 @@ export default function IncomingInvoicesTab() {
               <button onClick={handleStatusSave} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Update</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {paymentDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      {paymentDetail && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-80">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold text-gray-800">Payment Details</h3>
@@ -292,7 +302,16 @@ export default function IncomingInvoicesTab() {
             </div>
             <button onClick={() => setPaymentDetail(null)} className="mt-5 w-full px-4 py-2 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Close</button>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete incoming invoice <span className="font-medium">{deleteModal.no}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
       )}
     </div>
   );

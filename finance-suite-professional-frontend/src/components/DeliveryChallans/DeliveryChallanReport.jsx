@@ -117,14 +117,14 @@ export default function DeliveryChallanReport({ challanData, orgData, onBack }) 
           {/* Right: title + status */}
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <h2 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: 2, color: "#1a1a1a" }}>DELIVERY CHALLAN</h2>
-            {dc.status && (
+            {/* {dc.status && (
               <span style={{
                 display: "inline-block", marginTop: "0.5rem", padding: "0.2rem 0.75rem",
                 borderRadius: 999, fontSize: 11, fontWeight: 700,
                 background: dc.status === "Delivered" ? "#dcfce7" : dc.status === "Dispatched" ? "#dbeafe" : dc.status === "Cancelled" ? "#fee2e2" : "#f3f4f6",
                 color: dc.status === "Delivered" ? "#166534" : dc.status === "Dispatched" ? "#1d4ed8" : dc.status === "Cancelled" ? "#991b1b" : "#374151",
               }}>{dc.status}</span>
-            )}
+            )} */}
           </div>
         </div>
 

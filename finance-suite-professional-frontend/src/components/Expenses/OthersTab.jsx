@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import ReactDOM from "react-dom";
 import { Plus, Eye, Download } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -7,7 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 import { fetchGeneralExpenses, createGeneralExpense, updateGeneralExpense, deleteGeneralExpense, uploadGeneralExpenseFile, generalExpenseSelector } from "../../ReduxApi/generalExpense";
 import { authSelector } from "../../ReduxApi/auth";
-import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, RowActions, Modal, FormField, inputCls, Pagination } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal } from "../../shared/ui";
 import axiosInstance from "../../utils/axiosInstance";
 import { KeyUri } from "../../shared/key";
 import { toast } from "react-toastify";
@@ -53,6 +54,7 @@ export default function OthersTab() {
   const [previewMime, setPreviewMime] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [statusPopup, setStatusPopup] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(null);
   const [lens, setLens] = useState({ x: 0, y: 0, show: false });
 
   const LENS_SIZE = 150;
@@ -89,6 +91,11 @@ export default function OthersTab() {
   }, [previewUrl, previewMime, renderPdf]);
 
   useEffect(() => { dispatch(fetchGeneralExpenses()); }, [dispatch]);
+  useEffect(() => {
+    if (!statusPopup && !showPreview) return;
+    document.body.setAttribute("data-modal-open", "1");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, [statusPopup, showPreview]);
 
   const openCreate = () => { setForm(empty()); setDocFile(null); setDocFileName(""); setModal({ mode: "create" }); };
   const openEdit = (row) => {
@@ -122,7 +129,11 @@ export default function OthersTab() {
     setStatusPopup(null);
   };
 
-  const handleDelete = (id) => { if (!window.confirm("Delete this record?")) return; dispatch(deleteGeneralExpense(id)); };
+  const handleDelete = () => {
+    if (!deleteModal?.id) return;
+    dispatch(deleteGeneralExpense(deleteModal.id));
+    setDeleteModal(null);
+  };
 
   const handleViewDoc = async (filename) => {
     if (!filename) return;
@@ -198,7 +209,7 @@ export default function OthersTab() {
       render: (r) => {
         const id = getId(r);
         const locked = r.status === "Approved" && !isAdmin;
-        return <RowActions onEdit={() => !locked && openEdit(r)} onDelete={() => handleDelete(id)} editDisabled={locked} />;
+        return <RowActions onEdit={() => !locked && openEdit(r)} onDelete={() => setDeleteModal({ id, title: r.title || "this record" })} editDisabled={locked} />;
       },
     },
   ];
@@ -229,8 +240,8 @@ export default function OthersTab() {
 
       <Pagination currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} totalCount={filtered.length} onPageChange={setCurrentPage} onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }} />
 
-      {statusPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      {statusPopup && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl p-6 w-80">
             <h3 className="text-base font-semibold text-gray-800 mb-4">Update Status</h3>
             <select value={statusPopup.status} onChange={(e) => setStatusPopup((p) => ({ ...p, status: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -249,11 +260,12 @@ export default function OthersTab() {
               <button onClick={handleStatusSave} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Update</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showPreview && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      {showPreview && ReactDOM.createPortal(
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-9999">
           <div className="bg-white w-[80%] h-[85%] rounded-lg shadow-lg relative overflow-auto p-6">
             <button onClick={() => { setShowPreview(false); setPreviewUrl(null); setPreviewMime(""); }} className="absolute top-3 right-4 text-xl font-bold">✕</button>
             {previewMime.startsWith("image/") ? (
@@ -269,7 +281,8 @@ export default function OthersTab() {
               <div id="pdf-container-gen" className="flex flex-col items-center gap-6" />
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {modal && (
@@ -296,6 +309,14 @@ export default function OthersTab() {
             </div>
           </FormField>
         </Modal>
+      )}
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete general expense <span className="font-medium">{deleteModal.title}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
       )}
     </div>
   );

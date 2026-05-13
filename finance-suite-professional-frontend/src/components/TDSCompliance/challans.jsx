@@ -21,6 +21,7 @@ import {
   TableHead,
   EmptyRow,
   RowActions,
+  ConfirmModal,
   Modal,
   FormField,
   Pagination,
@@ -77,6 +78,7 @@ export default function ChallansTab() {
   const [previewMime, setPreviewMime] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [lens, setLens] = useState({ x: 0, y: 0, show: false });
+  const [deleteModal, setDeleteModal] = useState(null);
 
   const LENS_SIZE = 150;
   const ZOOM = 2.5;
@@ -258,9 +260,10 @@ export default function ChallansTab() {
     }
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm("Delete this challan?")) return;
-    dispatch(deleteChallan(id));
+  const handleDelete = () => {
+    if (!deleteModal?.id) return;
+    dispatch(deleteChallan(deleteModal.id));
+    setDeleteModal(null);
   };
 
   const filtered = useMemo(() => {
@@ -373,7 +376,7 @@ export default function ChallansTab() {
                     )}
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-right">
-                    <RowActions onEdit={() => openEdit(row)} onDelete={() => handleDelete(id)} />
+                    <RowActions onEdit={() => openEdit(row)} onDelete={() => setDeleteModal({ id, no: challanNo })} />
                   </td>
                 </tr>
               );
@@ -500,6 +503,14 @@ export default function ChallansTab() {
             </div>
           </FormField>
         </Modal>
+      )}
+
+      {deleteModal && (
+        <ConfirmModal
+          message={<>Delete challan <span className="font-medium">{deleteModal.no}</span>?</>}
+          onConfirm={handleDelete}
+          onClose={() => setDeleteModal(null)}
+        />
       )}
 
       {showPreview && (

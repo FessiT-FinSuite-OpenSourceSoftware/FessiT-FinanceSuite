@@ -18,6 +18,7 @@ const initialForm = {
   consignor_name: "", consignor_address: "", consignor_gstin: "",
   consignee_name: "", consignee_address: "", consignee_gstin: "",
   delivery_notes: "", status: "Draft",
+  returned_date: "", return_notes: "",
 };
 
 export default function AddDeliveryChallan() {
@@ -157,10 +158,29 @@ export default function AddDeliveryChallan() {
                 <option value="Dispatched">Dispatched</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Cancelled">Cancelled</option>
+                <option value="Returned">Returned</option>
+                <option value="Partially Returned">Partially Returned</option>
               </select>
             </div>
           </div>
         </div>
+
+        {/* Return Info */}
+        {(form.status === "Returned" || form.status === "Partially Returned") && (
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">Return Details</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <label className={labelCls}>Returned Date</label>
+              <input type="date" className={inputCls} value={form.returned_date} onChange={(e) => setField("returned_date", e.target.value)} />
+            </div>
+            <div className="relative">
+              <label className={labelCls}>Return Notes</label>
+              <input className={inputCls} value={form.return_notes} onChange={(e) => setField("return_notes", e.target.value)} placeholder="Reason for return..." />
+            </div>
+          </div>
+        </div>
+        )}
 
         {/* Consignor */}
         <div>
