@@ -1,15 +1,15 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { TabActionBar, FilterSelect, TableWrapper, TableHead, EmptyRow, Pagination } from "../../shared/ui";
+import { TabActionBar, FilterSelect, DataTable, InfoCard, Pagination } from "../../shared/ui";
 
-const formatMoney = (value) =>
+const fmt = (value) =>
   new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0));
 
-const formatDate = (value) => {
+const fmtDate = (value) => {
   if (!value) return "-";
-  if (typeof value === "object" && value.$date) return formatDate(value.$date);
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  if (typeof value === "object" && value.$date) return fmtDate(value.$date);
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
 function buildMonthSet(selectedMonths) {
@@ -24,26 +24,12 @@ function inMonthSet(value, monthSet) {
   if (!value) return false;
   if (typeof value === "object" && value.$date) return inMonthSet(value.$date, monthSet);
   const raw = String(value).trim();
-  // YYYY-MM or YYYY-MM-DD
   if (/^\d{4}-\d{2}/.test(raw)) return monthSet.has(raw.slice(0, 7));
-  // DD-MM-YYYY
   if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) return monthSet.has(`${raw.slice(6, 10)}-${raw.slice(3, 5)}`);
   const d = new Date(raw);
   if (!Number.isNaN(d.getTime())) return monthSet.has(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   return false;
 }
-
-const COLUMNS = [
-  { label: "Date" },
-  { label: "Deductee" },
-  { label: "PAN" },
-  { label: "Section" },
-  { label: "Source" },
-  { label: "Amount", right: true },
-  { label: "TDS Rate", right: true },
-  { label: "TDS Amount", right: true },
-  { label: "Status" },
-];
 
 export default function TDSDeductions({ deductions = [], isLoading = false, selectedMonths = [] }) {
   const [search, setSearch] = useState("");
@@ -58,13 +44,13 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
     const monthSet = buildMonthSet(selectedMonths);
     const q = search.trim().toLowerCase();
     return deductions.filter((d) => {
-      // For salary rows match on period, for invoice rows match on date
       const dateToCheck = d.source === "Salary" ? (d.period || d.date) : d.date;
       if (monthSet.size > 0 && !inMonthSet(dateToCheck, monthSet)) return false;
       const matchSearch = !q ||
         (d.deductee || "").toLowerCase().includes(q) ||
         (d.pan || "").toLowerCase().includes(q) ||
-        formatDate(d.date).toLowerCase().includes(q);
+        (d.invoice_number || "").toLowerCase().includes(q) ||
+        fmtDate(d.date).toLowerCase().includes(q);
       const matchSource = sourceFilter === "All" || d.source === sourceFilter;
       const matchStatus = statusFilter === "All" || d.status === statusFilter;
       return matchSearch && matchSource && matchStatus;
@@ -75,12 +61,83 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const totalTds = filtered.reduce((s, d) => s + (d.tdsAmount || 0), 0);
 
+  const columns = [
+    {
+      label: "Date",
+      render: (d) => <span className="text-sm text-gray-700 whitespace-nowrap">{fmtDate(d.date)}</span>,
+    },
+    {
+      label: "Deductee",
+      render: (d) => (
+        <div>
+          <p className="text-sm font-medium text-gray-800 whitespace-nowrap">{d.deductee}</p>
+          {d.invoice_number && d.invoice_number !== "-" && (
+            <p className="text-xs text-blue-600 font-mono">{d.invoice_number}</p>
+          )}
+          {d.emp_id && d.emp_id !== "-" && (
+            <p className="text-xs text-gray-400">ID: {d.emp_id}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      label: "PAN",
+      render: (d) => <span className="text-sm text-gray-700 font-mono whitespace-nowrap">{d.pan}</span>,
+    },
+    {
+      label: "Section",
+      render: (d) => (
+        <div className="whitespace-nowrap space-y-0.5">
+          {/* {d.tds_section_key
+            ? <span className="inline-flex px-2 py-0.5 text-xs font-bold font-mono rounded bg-indigo-100 text-indigo-700">{d.tds_section_key}</span>
+            : <span className="text-sm text-gray-400">—</span>
+          } */}
+          {d.tds_section_old && <p className="text-s font-semibold text-gray-900">{d.tds_section_key}</p>}
+          {/* {d.tds_section_new && <p className="text-[10px] text-indigo-500">{d.tds_section_new}</p>} */}
+        </div>
+      ),
+    },
+    {
+      label: "Source",
+      render: (d) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          d.source === "Salary" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
+        }`}>
+          {d.source}
+        </span>
+      ),
+    },
+    {
+      label: "Amount", right: true,
+      render: (d) => <span className="text-sm text-gray-700 whitespace-nowrap">₹ {fmt(d.amount)}</span>,
+    },
+    {
+      label: "TDS Rate", right: true,
+      render: (d) => <span className="text-sm text-gray-700 whitespace-nowrap">{d.tdsRate}%</span>,
+    },
+    {
+      label: "TDS Amount", right: true,
+      render: (d) => <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">₹ {fmt(d.tdsAmount)}</span>,
+    },
+    {
+      label: "Status",
+      render: (d) => (
+        <span className={`inline-flex justify-center w-24 px-2 py-1 text-xs font-semibold rounded-full ${
+          d.status === "deposited" ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"
+        }`}>
+          {d.status.charAt(0).toUpperCase() + d.status.slice(1)}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div>
       <TabActionBar
+        sticky={false}
         searchValue={search}
         onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }}
-        searchPlaceholder="Search by deductee, PAN, or date..."
+        searchPlaceholder="Search by deductee, PAN, invoice no, or date..."
       >
         <FilterSelect value={sourceFilter} onChange={(v) => { setSourceFilter(v); setCurrentPage(1); }}>
           <option value="All">All Sources</option>
@@ -95,49 +152,63 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
       </TabActionBar>
 
       {filtered.length > 0 && (
-        <div className="mb-4 px-1 flex gap-6 text-sm text-gray-600">
+        <div className="mb-3 px-1 flex gap-6 text-sm text-gray-600">
           <span>{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
-          <span className="font-semibold text-gray-800">Total TDS: ₹ {formatMoney(totalTds)}</span>
+          <span className="font-semibold text-gray-800">Total TDS: ₹ {fmt(totalTds)}</span>
         </div>
       )}
 
-      <TableWrapper>
-        <TableHead columns={COLUMNS} />
-        <tbody className="divide-y divide-gray-200">
-          {isLoading ? (
-            <EmptyRow colSpan={9} message="Loading deductions..." />
-          ) : paginated.length > 0 ? (
-            paginated.map((ded) => (
-              <tr key={ded.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{formatDate(ded.date)}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-800">{ded.deductee}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700 font-mono">{ded.pan}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{ded.section}</td>
-                <td className="px-4 py-2 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${ded.source === "Salary" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}`}>
-                    {ded.source}
-                  </span>
-                </td>
-                <td className="px-4 py-2 whitespace-nowrap text-right text-sm text-gray-700">{formatMoney(ded.amount)}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-right text-sm text-gray-700">{ded.tdsRate}%</td>
-                <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-semibold text-gray-800">{formatMoney(ded.tdsAmount)}</td>
-                <td className="px-4 py-2 whitespace-nowrap">
-                  <span
-                    className={`inline-flex justify-center w-24 px-2 py-1 text-xs font-semibold rounded-full ${ded.status === "deposited"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-orange-100 text-orange-800"
-                      }`}
-                  >
-                    {ded.status.charAt(0).toUpperCase() + ded.status.slice(1)}
-                  </span>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <EmptyRow colSpan={9} message="No deductions found." />
-          )}
-        </tbody>
-      </TableWrapper>
+      <DataTable
+        isLoading={isLoading}
+        data={paginated}
+        rowKey={(d) => d.id}
+        emptyMessage="No deductions found."
+        columns={columns}
+        renderExpanded={(d) => (
+          <div className="px-4 py-4 bg-slate-50">
+            {d.source === "Invoice" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                <InfoCard label="Invoice Number" value={d.invoice_number} />
+                <InfoCard label="Invoice Date" value={fmtDate(d.date)} />
+                <InfoCard label="Due Date" value={fmtDate(d.due_date)} />
+                <InfoCard label="Status" value={d.status.charAt(0).toUpperCase() + d.status.slice(1)} />
+                <InfoCard label="Vendor / Deductee" value={d.deductee} />
+                <InfoCard label="Vendor GSTIN" value={d.vendor_gstin} />
+                <InfoCard label="PAN" value={d.pan} />
+                <InfoCard label="Place of Supply" value={d.place_of_supply} />
+                <InfoCard label="TDS Rate" value={`${d.tdsRate}%`} />
+                <InfoCard label="TDS Amount" value={`₹ ${fmt(d.tdsAmount)}`} valueClassName="text-red-600 font-bold" />
+                <InfoCard label="Taxable Amount" value={`₹ ${fmt(d.amount)}`} />
+                <InfoCard label="Total (before TDS)" value={`₹ ${fmt(d.total_before_tds)}`} />
+                <InfoCard label="CGST" value={`₹ ${fmt(d.total_cgst)}`} />
+                <InfoCard label="SGST" value={`₹ ${fmt(d.total_sgst)}`} />
+                <InfoCard label="IGST" value={`₹ ${fmt(d.total_igst)}`} />
+                <InfoCard label="Payment Type" value={d.payment_type} />
+                <InfoCard label="Payment Reference" value={d.payment_reference} />
+                {d.tds_section_nature && <InfoCard label="TDS Section Nature" value={d.tds_section_nature} className="xl:col-span-2" />}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                <InfoCard label="Employee" value={d.deductee} />
+                <InfoCard label="Employee ID" value={d.emp_id} />
+                <InfoCard label="PAN" value={d.pan} />
+                <InfoCard label="Period" value={d.period} />
+                <InfoCard label="Designation" value={d.designation} />
+                <InfoCard label="Department" value={d.department} />
+                <InfoCard label="Gross Salary" value={`₹ ${fmt(d.amount)}`} />
+                <InfoCard label="Basic Salary" value={`₹ ${fmt(d.basic_salary)}`} />
+                <InfoCard label="Net Salary" value={`₹ ${fmt(d.net_salary)}`} />
+                <InfoCard label="TDS Rate" value={`${d.tdsRate}%`} />
+                <InfoCard label="TDS Amount" value={`₹ ${fmt(d.tdsAmount)}`} valueClassName="text-red-600 font-bold" />
+                <InfoCard label="Payment Mode" value={d.payment_mode} />
+                <InfoCard label="Paid On" value={fmtDate(d.date)} />
+                <InfoCard label="Status" value={d.status.charAt(0).toUpperCase() + d.status.slice(1)} />
+                {d.tds_section_nature && <InfoCard label="TDS Section Nature" value={d.tds_section_nature} className="xl:col-span-2" />}
+              </div>
+            )}
+          </div>
+        )}
+      />
 
       <Pagination
         currentPage={currentPage}

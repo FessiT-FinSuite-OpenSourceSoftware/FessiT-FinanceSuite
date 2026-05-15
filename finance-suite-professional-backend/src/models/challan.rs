@@ -10,9 +10,25 @@ pub struct Challan {
     #[serde(default)]
     pub challan_no: String,
 
-    /// Section (e.g., "194C", "194J", "TDS on Salary")
+    /// Old section code (e.g., "194C") — stored for display/filter
     #[serde(default)]
     pub section: String,
+
+    /// Numeric code key from TDS_FLAT_LIST (e.g., "1023")
+    #[serde(default)]
+    pub tds_section_key: String,
+
+    /// New section reference (e.g., "393(1)[Sl.6(i).D(a)]")
+    #[serde(default)]
+    pub tds_section_new: String,
+
+    /// Old section reference (e.g., "194C")
+    #[serde(default)]
+    pub tds_section_old: String,
+
+    /// Nature of payment description
+    #[serde(default)]
+    pub tds_section_nature: String,
 
     /// Payment date (YYYY-MM-DD)
     #[serde(default)]
@@ -41,6 +57,14 @@ pub struct Challan {
     /// Stored filename (UUID) of the uploaded challan file
     #[serde(default)]
     pub file: String,
+
+    /// Mode of payment (e.g., "Online", "Cheque", "NEFT")
+    #[serde(default)]
+    pub mode_of_payment: String,
+
+    /// Additional notes
+    #[serde(default)]
+    pub notes: String,
 
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,

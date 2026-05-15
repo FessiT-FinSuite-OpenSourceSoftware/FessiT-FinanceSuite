@@ -780,7 +780,7 @@ export default function AssetList() {
             <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4">
               {previewModal.isPdf ? (
                 <iframe
-                  src={previewModal.src}
+                  src={`${previewModal.src}#toolbar=0`} 
                   title={previewModal.title}
                   className="w-full rounded-xl"
                   style={{ height: '75vh' }}

@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Eye, Download } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import ReactDOM from "react-dom";
+import { Plus, Eye, Download, X } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { sanitizeDownloadFileName, showDownloadNotification, isTauri, saveBytesToDownloads } from "../../utils/pdfUtils";
 import {
   challanSelector,
   createChallan,
@@ -17,33 +17,58 @@ import {
   TabActionBar,
   FilterSelect,
   CreateButton,
-  TableWrapper,
-  TableHead,
-  EmptyRow,
   RowActions,
   ConfirmModal,
   Modal,
   FormField,
   Pagination,
+  TdsSectionSelect,
+  InfoCard,
+  DataTable,
+  ComboField,
   inputCls,
 } from "../../shared/ui";
+import { TDS_FLAT_LIST } from "../../utils/tdsData";
 import { toast } from "react-toastify";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
-
-const SECTION_OPTIONS = ["192", "194C", "194J", "194H", "194I", "Other"];
 const CHALLAN_FILE_FIELD = "file";
+const PAYMENT_MODES = ["Online", "NEFT/RTGS", "Cheque", "Cash", "UPI"];
+
+const getCurrentFY = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const startYear = month >= 4 ? year : year - 1;
+  return `${startYear}-${String(startYear + 1).slice(-2)}`;
+};
+
+const getFYOptions = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const currentStart = month >= 4 ? year : year - 1;
+  return Array.from({ length: 6 }, (_, i) => {
+    const s = currentStart - i;
+    return `${s}-${String(s + 1).slice(-2)}`;
+  });
+};
 
 const emptyChallan = () => ({
   challan_no: "",
-  section: "194C",
+  section: "",
+  tds_section_key: "",
+  tds_section_new: "",
+  tds_section_old: "",
+  tds_section_nature: "",
   payment_date: "",
   date_of_challan: "",
   amount_paid: "",
-  tax_year: "",
+  tax_year: getCurrentFY(),
   payment_type: "",
   bank_reference_no: "",
   file: "",
+  mode_of_payment: "",
+  notes: "",
 });
 
 const getId = (row) => row?._id?.$oid || row?._id || row?.id || "";
@@ -74,62 +99,20 @@ export default function ChallansTab() {
   const [pageSize, setPageSize] = useState(10);
   const [docFile, setDocFile] = useState(null);
   const [docFileName, setDocFileName] = useState("");
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [previewMime, setPreviewMime] = useState("");
-  const [showPreview, setShowPreview] = useState(false);
-  const [lens, setLens] = useState({ x: 0, y: 0, show: false });
+  const [previewModal, setPreviewModal] = useState({ open: false, src: "", title: "", isPdf: false });
   const [deleteModal, setDeleteModal] = useState(null);
 
-  const LENS_SIZE = 150;
-  const ZOOM = 2.5;
+  useEffect(() => {
+    if (previewModal.open) document.body.setAttribute("data-modal-open", "1");
+    else document.body.removeAttribute("data-modal-open");
+    return () => document.body.removeAttribute("data-modal-open");
+  }, [previewModal.open]);
 
   useEffect(() => {
     dispatch(fetchChallans());
   }, [dispatch]);
 
-  const handleMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setLens({
-      x,
-      y,
-      clientX: e.clientX,
-      clientY: e.clientY,
-      show: true,
-      dispW: rect.width,
-      dispH: rect.height,
-    });
-  };
-
-  const handleMouseLeave = () => setLens((prev) => ({ ...prev, show: false }));
-
-  const renderPdf = useCallback(async (url) => {
-    const container = document.getElementById("pdf-container-challan");
-    if (!container) return;
-    try {
-      const pdf = await pdfjsLib.getDocument(url).promise;
-      container.innerHTML = "";
-      for (let p = 1; p <= pdf.numPages; p++) {
-        const page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale: 1.5 });
-        const canvas = document.createElement("canvas");
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        container.appendChild(canvas);
-        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
-      }
-    } catch (err) {
-      console.error("Challan PDF render error:", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (previewUrl && previewMime.startsWith("application/pdf")) {
-      renderPdf(previewUrl);
-      return () => URL.revokeObjectURL(previewUrl);
-    }
-  }, [previewUrl, previewMime, renderPdf]);
+  const closePreview = () => setPreviewModal({ open: false, src: "", title: "", isPdf: false });
 
   const openCreate = () => {
     setForm(emptyChallan());
@@ -142,14 +125,20 @@ export default function ChallansTab() {
     const filename = getFilename(row);
     setForm({
       challan_no: row.challan_no || row.challanNo || "",
-      section: row.section || "194C",
+      section: row.section || "",
+      tds_section_key: row.tds_section_key || "",
+      tds_section_new: row.tds_section_new || "",
+      tds_section_old: row.tds_section_old || "",
+      tds_section_nature: row.tds_section_nature || "",
       payment_date: row.payment_date || "",
       date_of_challan: row.date_of_challan || "",
       amount_paid: row.amount_paid ?? "",
-      tax_year: row.tax_year || "",
+      tax_year: row.tax_year || getCurrentFY(),
       payment_type: row.payment_type || "",
       bank_reference_no: row.bank_reference_no || "",
       file: filename,
+      mode_of_payment: row.mode_of_payment || "",
+      notes: row.notes || "",
     });
     setDocFile(null);
     setDocFileName(filename);
@@ -174,14 +163,11 @@ export default function ChallansTab() {
       });
       if (!res.ok) throw new Error("Failed");
       const ext = filename.split(".").pop().toLowerCase();
-      const mimeType = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
-        ? `image/${ext === "jpg" ? "jpeg" : ext}`
-        : "application/pdf";
+      const isPdf = ext === "pdf";
+      const mimeType = isPdf ? "application/pdf" : `image/${ext === "jpg" ? "jpeg" : ext}`;
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(new Blob([blob], { type: mimeType }));
-      setPreviewUrl(blobUrl);
-      setPreviewMime(mimeType);
-      setShowPreview(true);
+      setPreviewModal({ open: true, src: blobUrl, title: filename, isPdf });
     } catch {
       toast.error("Unable to open challan file");
     }
@@ -190,62 +176,85 @@ export default function ChallansTab() {
   const handleDownloadDoc = async (filename) => {
     if (!filename) return;
     try {
-      const res = await axiosInstance.get(`/challan-files/${filename}`, { responseType: "blob" });
-      const url = URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const safeFilename = sanitizeDownloadFileName(filename);
+      let filePath = null;
+      if (isTauri()) {
+        const res = await axiosInstance.get(`/challan-files/${filename}`, { responseType: "arraybuffer" });
+        const saved = await saveBytesToDownloads(new Uint8Array(res.data), safeFilename);
+        filePath = saved.filePath;
+      } else {
+        const res = await axiosInstance.get(`/challan-files/${filename}`, { responseType: "blob" });
+        const url = URL.createObjectURL(new Blob([res.data]));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = safeFilename;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+      }
+      showDownloadNotification(safeFilename, filePath);
     } catch {
       toast.error("Unable to download challan file");
     }
   };
 
+  const handlePreviewDownload = async () => {
+    if (!previewModal.src) return;
+    const safeFilename = sanitizeDownloadFileName(previewModal.title);
+    let filePath = null;
+    try {
+      if (isTauri()) {
+        const res = await fetch(previewModal.src);
+        const buffer = await res.arrayBuffer();
+        const saved = await saveBytesToDownloads(new Uint8Array(buffer), safeFilename);
+        filePath = saved.filePath;
+      } else {
+        const a = document.createElement("a");
+        a.href = previewModal.src;
+        a.download = safeFilename;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => document.body.removeChild(a), 100);
+      }
+      showDownloadNotification(safeFilename, filePath);
+    } catch {
+      toast.error("Unable to download file");
+    }
+  };
+
   const handleSave = async () => {
-    if (!form.challan_no.trim()) {
-      toast.error("Challan number is required");
-      return;
-    }
-    if (!form.payment_date.trim()) {
-      toast.error("Payment date is required");
-      return;
-    }
-    if (!form.date_of_challan.trim()) {
-      toast.error("Date of challan is required");
-      return;
-    }
-    if (!form.amount_paid.toString().trim()) {
-      toast.error("Amount paid is required");
-      return;
-    }
-    if (!docFile && !form.file && !docFileName) {
-      toast.error("Challan file is required");
-      return;
-    }
+    if (!form.challan_no.trim()) { toast.error("Challan number is required"); return; }
+    if (!form.payment_date.trim()) { toast.error("Payment date is required"); return; }
+    if (!form.amount_paid.toString().trim()) { toast.error("Amount paid is required"); return; }
+    if (!docFile && !form.file && !docFileName) { toast.error("Challan file is required"); return; }
 
     setSaving(true);
     try {
       const payload = new FormData();
+      const selectedSection = TDS_FLAT_LIST.find((s) => s.code === form.tds_section_key);
       Object.entries({
         challan_no: form.challan_no,
-        section: form.section,
+        section: selectedSection?.oldSection || form.section || "",
+        tds_section_key: form.tds_section_key,
+        tds_section_new: selectedSection?.newSection || form.tds_section_new || "",
+        tds_section_old: selectedSection?.oldSection || form.tds_section_old || "",
+        tds_section_nature: selectedSection?.nature || form.tds_section_nature || "",
         payment_date: form.payment_date,
         date_of_challan: form.date_of_challan,
         amount_paid: parseFloat(form.amount_paid) || 0,
         tax_year: form.tax_year,
         payment_type: form.payment_type,
         bank_reference_no: form.bank_reference_no,
+        mode_of_payment: form.mode_of_payment,
+        notes: form.notes,
       }).forEach(([key, value]) => {
         if (value !== null && value !== undefined && value !== "") {
           payload.append(key, String(value));
         }
       });
-      if (docFile) {
-        payload.append(CHALLAN_FILE_FIELD, docFile);
-      }
+      if (docFile) payload.append(CHALLAN_FILE_FIELD, docFile);
 
       if (modal.mode === "create") {
         await dispatch(createChallan(payload));
@@ -272,118 +281,125 @@ export default function ChallansTab() {
       const section = row.section || "";
       const challanNo = row.challan_no || row.challanNo || "";
       const paymentDate = row.payment_date || "";
-      const dateOfChallan = row.date_of_challan || "";
       const matchesSearch =
         !q ||
         challanNo.toLowerCase().includes(q) ||
         section.toLowerCase().includes(q) ||
-        paymentDate.toLowerCase().includes(q) ||
-        dateOfChallan.toLowerCase().includes(q);
-      const matchesSection = sectionFilter === "All" || section === sectionFilter;
+        paymentDate.toLowerCase().includes(q);
+      const matchesSection = sectionFilter === "All" || section === sectionFilter || row.tds_section_old === sectionFilter;
       return matchesSearch && matchesSection;
     });
   }, [challanData, search, sectionFilter]);
 
   const totalAmount = filtered.reduce((sum, row) => sum + (parseFloat(row.amount_paid) || 0), 0);
-  const withFileCount = filtered.filter((row) => getFilename(row)).length;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
-      <div className="sticky top-[146px] z-30">
-        <TabActionBar
-          searchValue={search}
-          onSearchChange={(value) => {
-            setSearch(value);
-            setCurrentPage(1);
-          }}
-          searchPlaceholder="Search by challan no, payment date, or challan date..."
+    <div className="w-full">
+      <TabActionBar
+        sticky={false}
+        searchValue={search}
+        onSearchChange={(value) => { setSearch(value); setCurrentPage(1); }}
+        searchPlaceholder="Search by challan no, section, or payment date..."
+      >
+        <FilterSelect
+          value={sectionFilter}
+          onChange={(value) => { setSectionFilter(value); setCurrentPage(1); }}
         >
-          <FilterSelect
-            value={sectionFilter}
-            onChange={(value) => {
-              setSectionFilter(value);
-              setCurrentPage(1);
-            }}
-          >
-            <option value="All">All Sections</option>
-            {SECTION_OPTIONS.map((section) => (
-              <option key={section} value={section}>
-                {section}
-              </option>
-            ))}
-          </FilterSelect>
-          <CreateButton onClick={openCreate} label="Add Challan" icon={Plus} />
-        </TabActionBar>
-      </div>
+          <option value="All">All Sections</option>
+          {[...new Set(TDS_FLAT_LIST.map((s) => s.oldSection))].map((sec) => (
+            <option key={sec} value={sec}>{sec}</option>
+          ))}
+        </FilterSelect>
+        <CreateButton onClick={openCreate} label="Add Challan" icon={Plus} />
+      </TabActionBar>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <StatCard label="Total Records" value={filtered.length} />
         <StatCard label="Total Amount" value={formatAmount(totalAmount)} valueClass="text-indigo-700" />
-        {/* <StatCard label="With File" value={withFileCount} valueClass="text-green-700" /> */}
       </div>
 
-      <TableWrapper>
-        <TableHead
-          columns={[
-            { label: "Challan No" },
-            { label: "Section" },
-            { label: "Payment Date" },
-            { label: "Date of Challan" },
-            { label: "Amount Paid" },
-            { label: "File", right: true },
-            { label: "Actions", right: true },
-          ]}
-        />
-        <tbody className="divide-y divide-gray-200">
-          {isLoading ? (
-            <EmptyRow colSpan={7} message="Loading challans..." />
-          ) : filtered.length === 0 ? (
-            <EmptyRow colSpan={7} />
-          ) : (
-            paginated.map((row) => {
+      <DataTable
+        isLoading={isLoading}
+        data={paginated}
+        rowKey={(row) => getId(row) || row.challan_no || row.challanNo}
+        wrapperClass="bg-white rounded-lg shadow-sm overflow-hidden"
+        emptyMessage="No challans found."
+        columns={[
+          {
+            label: "Challan No",
+            render: (row) => <span className="font-medium text-gray-900 whitespace-nowrap">{row.challan_no || row.challanNo || "-"}</span>,
+          },
+          {
+            label: "Section",
+            render: (row) => (
+              <div className="whitespace-nowrap">
+                {row.tds_section_new ? (
+                  <>
+                    <span className="font-semibold text-blue-700 text-xs">{row.tds_section_key}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-600 text-xs">{row.section || "-"}</span>
+                )}
+              </div>
+            ),
+          },
+          {
+            label: "Payment Date",
+            render: (row) => <span className="text-gray-600 whitespace-nowrap">{formatDate(row.payment_date)}</span>,
+          },
+          {
+            label: "Amount Paid",
+            render: (row) => <span className="font-semibold text-gray-900 whitespace-nowrap">{formatAmount(row.amount_paid)}</span>,
+          },
+          {
+            label: "Tax Year",
+            render: (row) => <span className="text-gray-600 whitespace-nowrap">{row.tax_year || "-"}</span>,
+          },
+          {
+            label: "File", right: true, stopPropagation: true,
+            render: (row) => {
+              const filename = getFilename(row);
+              return filename ? (
+                <div className="flex items-center justify-end gap-2">
+                  <button type="button" onClick={() => handleViewDoc(filename)} className="text-blue-600 hover:text-blue-800">
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  <button type="button" onClick={() => handleDownloadDoc(filename)} className="text-blue-600 hover:text-blue-800">
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : <span className="text-gray-400 text-xs flex justify-end">-</span>;
+            },
+          },
+          {
+            label: "Actions", right: true, stopPropagation: true,
+            render: (row) => {
               const id = getId(row);
               const challanNo = row.challan_no || row.challanNo || "-";
-              const filename = getFilename(row);
-              return (
-                <tr key={id || challanNo} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{challanNo}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-gray-600">{row.section || "-"}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-gray-600">{formatDate(row.payment_date)}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-gray-600">{formatDate(row.date_of_challan)}</td>
-                  <td className="px-4 py-2 whitespace-nowrap font-semibold text-gray-900">{formatAmount(row.amount_paid)}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    {filename ? (
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleViewDoc(filename)}
-                          className="flex items-center text-blue-600 text-xs underline cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadDoc(filename)}
-                          className="flex items-center text-blue-600 text-xs underline cursor-pointer"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-xs flex justify-end">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-right">
-                    <RowActions onEdit={() => openEdit(row)} onDelete={() => setDeleteModal({ id, no: challanNo })} />
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </TableWrapper>
+              return <RowActions onEdit={() => openEdit(row)} onDelete={() => setDeleteModal({ id, no: challanNo })} />;
+            },
+          },
+        ]}
+        renderExpanded={(row) => (
+          <div className="px-4 py-4 bg-slate-50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+              {/* <InfoCard label="Challan No" value={row.challan_no || row.challanNo || "-"} /> */}
+              <InfoCard label="Old Section" value={row.section || row.tds_section_old || "-"} />
+              <InfoCard label="New Section" value={row.tds_section_new || "-"} />
+              {/* <InfoCard label="Payment Date" value={formatDate(row.payment_date)} /> */}
+              {/* <InfoCard label="Amount Paid" value={formatAmount(row.amount_paid)} valueClassName="text-indigo-700 font-bold" /> */}
+              {/* <InfoCard label="Tax Year" value={row.tax_year || "-"} /> */}
+              <InfoCard label="Mode of Payment" value={row.mode_of_payment || "-"} />
+              <InfoCard label="Type of Challan" value={row.payment_type || "-"} />
+              <InfoCard label="Bank Reference No" value={row.bank_reference_no || "-"} />
+              <InfoCard label="TDS Section Nature" value={row.tds_section_nature || "-"} className="xl:col-span-2" />
+              <InfoCard label="Notes" value={row.notes || "-"} className="xl:col-span-2" />
+            </div>
+          </div>
+        )}
+      />
 
       <Pagination
         currentPage={currentPage}
@@ -391,10 +407,7 @@ export default function ChallansTab() {
         pageSize={pageSize}
         totalCount={filtered.length}
         onPageChange={setCurrentPage}
-        onPageSizeChange={(value) => {
-          setPageSize(value);
-          setCurrentPage(1);
-        }}
+        onPageSizeChange={(value) => { setPageSize(value); setCurrentPage(1); }}
       />
 
       {modal && (
@@ -403,6 +416,7 @@ export default function ChallansTab() {
           onClose={closeModal}
           onSave={handleSave}
           saveLabel={saving ? "Saving..." : "Save"}
+          size="lg"
         >
           <FormField label="Challan Number">
             <input
@@ -414,29 +428,59 @@ export default function ChallansTab() {
               placeholder="Enter challan number"
             />
           </FormField>
-          <FormField label="Section">
-            <select name="section" value={form.section} onChange={handleChange} className={inputCls}>
-              {SECTION_OPTIONS.map((section) => (
-                <option key={section} value={section}>
-                  {section}
-                </option>
-              ))}
-            </select>
+          <FormField label="Type of Challan">
+            <input
+              type="text"
+              name="payment_type"
+              value={form.payment_type}
+              onChange={handleChange}
+              className={inputCls}
+              placeholder="e.g. TDS/TCS payable by taxpayer"
+            />
           </FormField>
-          <FormField label="Payment Date">
+         
+          <FormField label="TDS Section" colSpan>
+            <TdsSectionSelect
+              value={form.tds_section_key}
+              onChange={(key, rate, section) =>
+                setForm((prev) => ({
+                  ...prev,
+                  tds_section_key: key,
+                  tds_section_new: section?.newSection || "",
+                  tds_section_old: section?.oldSection || "",
+                  tds_section_nature: section?.nature || "",
+                  section: section?.oldSection || "",
+                }))
+              }
+              inputCls={inputCls}
+            />
+            {form.tds_section_key && (() => {
+              const s = TDS_FLAT_LIST.find((s) => s.code === form.tds_section_key);
+              return s ? (
+                <p className="mt-1 text-xs text-gray-500">
+                  <span className="font-semibold text-blue-700">{s.newSection}</span>
+                  <span className="text-gray-400 ml-1">({s.oldSection})</span>
+                  {" — "}{s.nature}
+                  {" — TDS: "}<span className="font-semibold text-indigo-600">{s.rate}</span>
+                </p>
+              ) : null;
+            })()}
+          </FormField>
+          <FormField label="Financial Year">
+            <ComboField
+              name="tax_year"
+              value={form.tax_year}
+              onChange={handleChange}
+              options={getFYOptions()}
+              placeholder="e.g. 2019-20"
+              otherLabel="Custom..."
+            />
+          </FormField>
+           <FormField label="Payment Date">
             <input
               type="date"
               name="payment_date"
               value={form.payment_date}
-              onChange={handleChange}
-              className={inputCls}
-            />
-          </FormField>
-          <FormField label="Date of Challan">
-            <input
-              type="date"
-              name="date_of_challan"
-              value={form.date_of_challan}
               onChange={handleChange}
               className={inputCls}
             />
@@ -452,34 +496,35 @@ export default function ChallansTab() {
               min="0"
             />
           </FormField>
-          <FormField label="Tax Year (Financial Year)">
-            <input
-              type="text"
-              name="tax_year"
-              value={form.tax_year}
+          
+          <FormField label="Mode of Payment">
+            <ComboField
+              name="mode_of_payment"
+              value={form.mode_of_payment}
               onChange={handleChange}
-              className={inputCls}
-              placeholder="e.g. 2024-25"
+              options={PAYMENT_MODES}
+              placeholder="Enter payment mode"
             />
           </FormField>
-          <FormField label="Type of Payment">
-            <input
-              type="text"
-              name="payment_type"
-              value={form.payment_type}
-              onChange={handleChange}
-              className={inputCls}
-              placeholder="e.g. TDS/TCS payable by taxpayer"
-            />
-          </FormField>
-          <FormField label="Bank Reference Number">
+          
+          <FormField label="Payment Reference Number">
             <input
               type="text"
               name="bank_reference_no"
               value={form.bank_reference_no}
               onChange={handleChange}
               className={inputCls}
-              placeholder="Enter bank reference number"
+              placeholder="Enter payment reference number"
+            />
+          </FormField>
+          <FormField label="Notes" colSpan>
+            <textarea
+              name="notes"
+              value={form.notes}
+              onChange={handleChange}
+              className={inputCls}
+              placeholder="Additional notes"
+              rows={3}
             />
           </FormField>
           <FormField label="Challan File *" colSpan>
@@ -513,50 +558,30 @@ export default function ChallansTab() {
         />
       )}
 
-      {showPreview && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1100]">
-          <div className="bg-white w-[80%] h-[85%] rounded-lg shadow-lg relative overflow-auto p-6">
-            <button
-              onClick={() => {
-                setShowPreview(false);
-                setPreviewUrl(null);
-                setPreviewMime("");
-              }}
-              className="absolute top-3 right-4 text-xl font-bold cursor-pointer"
-            >
-              ×
-            </button>
-            {previewMime.startsWith("image/") ? (
-              <div className="flex justify-center items-start">
-                <img
-                  src={previewUrl}
-                  alt="Challan"
-                  className="max-w-full rounded shadow"
-                  onMouseMove={handleMouseMove}
-                  onMouseLeave={handleMouseLeave}
-                  draggable={false}
-                />
-                {lens.show && (
-                  <div
-                    className="pointer-events-none fixed rounded-full border-2 border-white shadow-2xl z-[1101]"
-                    style={{
-                      width: LENS_SIZE,
-                      height: LENS_SIZE,
-                      left: lens.clientX - LENS_SIZE / 2,
-                      top: lens.clientY - LENS_SIZE / 2,
-                      backgroundImage: `url(${previewUrl})`,
-                      backgroundRepeat: "no-repeat",
-                      backgroundSize: `${lens.dispW * ZOOM}px ${lens.dispH * ZOOM}px`,
-                      backgroundPosition: `-${lens.x * ZOOM - LENS_SIZE / 2}px -${lens.y * ZOOM - LENS_SIZE / 2}px`,
-                    }}
-                  />
-                )}
+      {previewModal.open && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/75 p-4" onClick={closePreview}>
+          <div className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="text-lg font-semibold text-slate-900 truncate max-w-[80%]">{previewModal.title}</h3>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handlePreviewDownload} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" title="Download">
+                  <Download className="h-5 w-5" />
+                </button>
+                <button type="button" onClick={closePreview} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-            ) : (
-              <div id="pdf-container-challan" className="flex flex-col items-center gap-6" />
-            )}
+            </div>
+            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4">
+              {previewModal.isPdf ? (
+                <iframe src={`${previewModal.src}#toolbar=0`} title={previewModal.title} className="w-full rounded-xl" style={{ height: "75vh" }} />
+              ) : (
+                <img src={previewModal.src} alt={previewModal.title} className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain" />
+              )}
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

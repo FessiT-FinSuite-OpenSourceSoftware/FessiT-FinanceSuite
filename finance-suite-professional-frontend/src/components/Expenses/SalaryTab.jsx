@@ -4,10 +4,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { Plus } from "lucide-react";
 import { fetchSalaries, createSalary, updateSalary, deleteSalary, salarySelector } from "../../ReduxApi/salary";
 import { authSelector } from "../../ReduxApi/auth";
-import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, StatusBadge, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, StatusBadge, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal, TdsSectionSelect, ComboField, InfoCard } from "../../shared/ui";
+import { TDS_FLAT_LIST } from "../../utils/tdsData";
 
 const currentPeriod = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; };
-const EMPTY = { emp_name: "", emp_id: "", department: "", period: currentPeriod(), gross_salary: "", tds: "", reimbursement: "", status: "YetToBePaid", paid_on: "", cost_type: "indirect" };
+const EMPTY = { emp_name: "", emp_id: "", department: "", period: currentPeriod(), gross_salary: "", tds: "", reimbursement: "", status: "YetToBePaid", paid_on: "", cost_type: "indirect", tds_section_key: "", tds_section_new: "", tds_section_old: "", tds_section_nature: "" };
 
 const statusColor = (s) => {
   switch (s) {
@@ -56,7 +57,7 @@ export default function SalaryTab() {
   }, [statusPopup]);
 
   const openCreate = () => { setForm({ ...EMPTY, period: currentPeriod() }); setModal({ mode: "create" }); };
-  const openEdit = (row) => { setForm({ ...row, cost_type: row.cost_type || "indirect" }); setModal({ mode: "edit", id: getId(row) }); };
+  const openEdit = (row) => { setForm({ ...row, cost_type: row.cost_type || "indirect", tds_section_key: row.tds_section_key || "", tds_section_new: row.tds_section_new || "", tds_section_old: row.tds_section_old || "", tds_section_nature: row.tds_section_nature || "" }); setModal({ mode: "edit", id: getId(row) }); };
   const closeModal = () => setModal(null);
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
@@ -150,7 +151,21 @@ export default function SalaryTab() {
         <StatCard label="Total Net Payout" value={`₹ ${totalNet.toLocaleString("en-IN")}`}  valueClass="text-indigo-700" />
       </div>
 
-      <DataTable isLoading={isLoading} data={paginated} rowKey={getId} columns={columns} />
+      <DataTable isLoading={isLoading} data={paginated} rowKey={getId} columns={columns}
+        renderExpanded={(r) => (
+          <div className="px-4 py-4 bg-slate-50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+              <InfoCard label="Department" value={r.department || "-"} />
+              <InfoCard label="Gross Salary" value={`₹ ${fmt(r.gross_salary)}`} />
+              <InfoCard label="TDS" value={`₹ ${fmt(r.tds)}`} />
+              <InfoCard label="Reimbursement" value={`₹ ${fmt(r.reimbursement)}`} />
+              <InfoCard label="TDS Section (Old)" value={r.tds_section_old || "-"} />
+              <InfoCard label="TDS Section (New)" value={r.tds_section_new || "-"} />
+              <InfoCard label="Nature of Payment" value={r.tds_section_nature || "-"} className="xl:col-span-2" />
+            </div>
+          </div>
+        )}
+      />
 
       <Pagination currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} totalCount={filtered.length} onPageChange={setCurrentPage} onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }} />
 
@@ -161,13 +176,41 @@ export default function SalaryTab() {
             { label: "Employee ID",       name: "emp_id",        type: "text" },
             { label: "Department",        name: "department",    type: "text" },
             { label: "Gross Salary (₹)", name: "gross_salary",  type: "number" },
-            { label: "TDS (₹)",          name: "tds",           type: "number" },
             { label: "Reimbursement (₹)",name: "reimbursement", type: "number" },
           ].map(({ label, name, type }) => (
             <FormField key={name} label={label}>
               <input type={type} name={name} value={form[name]} onChange={handleChange} className={inputCls} />
             </FormField>
           ))}
+          <FormField label="TDS Section" colSpan>
+            <TdsSectionSelect
+              value={form.tds_section_key}
+              onChange={(key, rate, section) =>
+                setForm((prev) => ({
+                  ...prev,
+                  tds_section_key: key,
+                  tds_section_new: section?.newSection || "",
+                  tds_section_old: section?.oldSection || "",
+                  tds_section_nature: section?.nature || "",
+                }))
+              }
+              inputCls={inputCls}
+            />
+            {form.tds_section_key && (() => {
+              const s = TDS_FLAT_LIST.find((s) => s.code === form.tds_section_key);
+              return s ? (
+                <p className="mt-1 text-xs text-gray-500">
+                  <span className="font-semibold text-blue-700">{s.newSection}</span>
+                  <span className="text-gray-400 ml-1">({s.oldSection})</span>
+                  {" — "}{s.nature}
+                  {" — TDS: "}<span className="font-semibold text-indigo-600">{s.rate}</span>
+                </p>
+              ) : null;
+            })()}
+          </FormField>
+          <FormField label="TDS (₹)">
+            <input type="number" name="tds" value={form.tds} onChange={handleChange} className={inputCls} placeholder="0.00" min="0" />
+          </FormField>
           <FormField label="Period">
             <input type="month" name="period" value={form.period} onChange={handleChange} className={inputCls} />
           </FormField>

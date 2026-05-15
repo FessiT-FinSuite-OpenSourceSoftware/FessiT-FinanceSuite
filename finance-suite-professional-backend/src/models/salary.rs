@@ -100,6 +100,22 @@ pub struct Salary {
     #[serde(default)]
     pub paid_on: String,
 
+    /// Numeric code key from TDS_FLAT_LIST (e.g., "1023")
+    #[serde(default)]
+    pub tds_section_key: String,
+
+    /// New section reference (e.g., "393(1)[Sl.6(i).D(a)]")
+    #[serde(default)]
+    pub tds_section_new: String,
+
+    /// Old section reference (e.g., "192")
+    #[serde(default)]
+    pub tds_section_old: String,
+
+    /// Nature of payment description
+    #[serde(default)]
+    pub tds_section_nature: String,
+
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,
 

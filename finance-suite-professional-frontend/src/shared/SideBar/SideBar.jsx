@@ -1,45 +1,24 @@
-import React, { useState, useEffect, useRef, useCallback, memo } from "react";
+import React, { useState, useEffect, useRef, memo } from "react";
 import ReactDOM from "react-dom";
 import { useLocation, useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
 import { authSelector, logoutUser, clearAuth } from "../../ReduxApi/auth";
 import { canRead, Module } from "../../utils/permissions";
 import {
-  FileText,
-  ShoppingCart,
-  Receipt,
-  TrendingUp,
-  Users,
-  Settings,
-  IndianRupee,
-  Bell,
-  Menu,
-  X,
-  ChevronRight,
-  ChevronLeft,
-  ArrowUp,
-  UserLockIcon,
-  Layers,
-  FolderKanban,
-  Boxes,
-  LogOut,
-  BookOpen,
-  ReceiptText,
-  BarChart2,
-  Package,
-  Truck,
+  FileText, ShoppingCart, Receipt, TrendingUp, Users, Settings,
+  IndianRupee, Bell, Menu, X, ChevronRight, ChevronLeft, ArrowUp,
+  UserLockIcon, Layers, FolderKanban, Boxes, LogOut, BookOpen,
+  ReceiptText, BarChart2, Package, Truck,
 } from "lucide-react";
 
 function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
   const [pos, setPos] = useState({ top: 0, right: 0 });
-
   useEffect(() => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       setPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
     }
   }, [triggerRef]);
-
   return ReactDOM.createPortal(
     <div
       ref={menuRef}
@@ -58,65 +37,184 @@ function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
   );
 }
 
-// Stable wrapper so sidebar state changes never re-render the page content
 const PageContent = memo(({ component }) => (
   <div className="p-1">{component}</div>
 ));
 
+const NAV_GROUPS = [
+  {
+    key: "finance", label: "Finance",
+    items: [
+      { id: "dashboard",         label: "Dashboard",        icon: TrendingUp,   module: null },
+      { id: "invoices",          label: "Sales",            icon: FileText,     module: Module.Invoice },
+      { id: "estimates",         label: "Quotations",       icon: ReceiptText,  module: Module.Invoice },
+      { id: "delivery-challans", label: "Delivery Challans",icon: Truck,        module: Module.Invoice },
+    ],
+  },
+  {
+    key: "reports", label: "Reports",
+    items: [
+      { id: "ledger",      label: "Ledger",        icon: BookOpen,  module: Module.Invoice },
+      { id: "profit-loss", label: "P&L Statement", icon: BarChart2, module: Module.Invoice },
+    ],
+  },
+  {
+    key: "operations", label: "Operations",
+    items: [
+      { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
+      { id: "expenses",  label: "Expenses",        icon: Receipt,      module: Module.Expenses },
+    ],
+  },
+  {
+    key: "compliance", label: "Compliance",
+    items: [
+      { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: Module.Invoice },
+      { id: "tdscompliance", label: "TDS Compliance", icon: Receipt,     module: Module.Invoice },
+    ],
+  },
+  {
+    key: "master", label: "Organization",
+    items: [
+      { id: "customers",    label: "Customers",    icon: Users,        module: Module.Customers },
+      { id: "projects",     label: "Projects",     icon: FolderKanban, module: Module.Customers },
+      { id: "cost-centers", label: "Cost Centers", icon: Layers,       module: Module.Customers },
+      { id: "items",        label: "Items",        icon: Boxes,        module: Module.Products },
+      { id: "assets",       label: "Assets",       icon: Package,      module: null },
+    ],
+  },
+  {
+    key: "admin", label: "Settings",
+    items: [
+      { id: "users",    label: "User Management", icon: UserLockIcon, module: Module.Users },
+      { id: "settings", label: "Settings",        icon: Settings,     module: null, adminOnly: true },
+    ],
+  },
+];
+
+const PAGE_TITLES = {
+  "/":               "Dashboard",
+  "/dashboard":      "Dashboard",
+  "/estimates":      "Quotations",
+  "/ledger":         "Ledger",
+  "/profit-loss":    "P&L Statement",
+  "/delivery-challans": "Delivery Challans",
+  "/invoices":       "Sales Invoices",
+  "/purchases":      "Purchases",
+  "/expenses":       "Expenses",
+  "/gstcompliance":  "GST Compliance",
+  "/tdscompliance":  "TDS Compliance",
+  "/customers":      "Customers",
+  "/projects":       "Projects",
+  "/cost-centers":   "Cost Centers",
+  "/settings":       "Settings",
+  "/users":          "User Management",
+  "/assets":         "Assets",
+  "/items":          "Items",
+};
+
+function getPageTitle(pathname) {
+  if (pathname === "/" || pathname === "/dashboard") return "Dashboard";
+  const match = Object.keys(PAGE_TITLES).find((k) => k !== "/" && pathname.includes(k));
+  return match ? PAGE_TITLES[match] : "";
+}
+
 export default function SideBar({ component }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [desktopOpen, setDesktopOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const sidebarRef = useRef(null);
-
-  // Watch for any fixed overlay modal in the DOM and inert the sidebar
-  useEffect(() => {
-    const sidebar = sidebarRef.current;
-    if (!sidebar) return;
-
-    const checkModals = () => {
-      // Any fixed full-screen overlay = a modal is open
-      const hasModal = !!document.querySelector(
-        '.fixed.inset-0[class*="z-"], [data-modal-open]'
-      );
-      if (hasModal) sidebar.setAttribute("inert", "");
-      else sidebar.removeAttribute("inert");
-    };
-
-    const obs = new MutationObserver(checkModals);
-    obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-modal-open"] });
-    return () => obs.disconnect();
-  }, []);
-  const [openGroups, setOpenGroups] = useState(() => {
-    // auto-open the group that contains the current route
-    const active = { finance: true, reports: true, operations: true, compliance: true, master: true, admin: true };
-    return active;
+  const [openGroups, setOpenGroups] = useState({
+    finance: true, reports: true, operations: true, compliance: true, master: true, admin: true,
   });
 
-  const toggleGroup = (key) => setOpenGroups((p) => ({ ...p, [key]: !p[key] }));
-
-  const location = useLocation();
-  const nav = useNavigate();
+  const sidebarRef = useRef(null);
   const modalRef = useRef(null);
   const bellRef = useRef(null);
   const userMenuRef = useRef(null);
   const userMenuTriggerRef = useRef(null);
   const mainRef = useRef(null);
-  
-  // Get user data from Redux
+
+  const location = useLocation();
+  const nav = useNavigate();
   const { user } = useSelector(authSelector);
   const dispatch = useDispatch();
-  
-  // Helper function to get user initials
+
+  // Close mobile drawer on route change
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+
+  // Inert sidebar when modal open
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    const check = () => {
+      const hasModal = !!document.querySelector('.fixed.inset-0[class*="z-"], [data-modal-open]');
+      if (hasModal) sidebar.setAttribute("inert", "");
+      else sidebar.removeAttribute("inert");
+    };
+    const obs = new MutationObserver(check);
+    obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-modal-open"] });
+    return () => obs.disconnect();
+  }, []);
+
+  // Scroll to top on route change
+  useEffect(() => { mainRef.current?.scrollTo(0, 0); }, [location.pathname]);
+
+  // Show scroll-to-top button
+  useEffect(() => {
+    const el = mainRef.current;
+    const onScroll = () => setShowScrollTop((el?.scrollTop ?? 0) > 300);
+    el?.addEventListener("scroll", onScroll);
+    return () => el?.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Click outside to close notifications / user menu
+  useEffect(() => {
+    const handler = (e) => {
+      if (modalRef.current && !modalRef.current.contains(e.target) && bellRef.current && !bellRef.current.contains(e.target))
+        setShowNotifications(false);
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target) && userMenuTriggerRef.current && !userMenuTriggerRef.current.contains(e.target))
+        setShowUserMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Dummy notifications
+  const genNotifs = (count, start = 1) =>
+    Array.from({ length: count }, (_, i) => ({
+      id: start + i,
+      title: `Notification ${start + i}`,
+      message: `Message for notification #${start + i}.`,
+      time: `${Math.floor(Math.random() * 10 + 1)} mins ago`,
+    }));
+
+  useEffect(() => { setNotifications(genNotifs(20)); }, []);
+
+  const handleNotifScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    if (scrollHeight - scrollTop <= clientHeight + 20 && !loadingMore) {
+      setLoadingMore(true);
+      setTimeout(() => {
+        setNotifications((prev) => [...prev, ...genNotifs(10, prev.length + 1)]);
+        setLoadingMore(false);
+      }, 800);
+    }
+  };
+
+  const handleLogout = async () => {
+    try { await dispatch(logoutUser()).unwrap(); }
+    catch { dispatch(clearAuth()); }
+    finally { setShowUserMenu(false); nav("/", { replace: true }); }
+  };
+
   const getUserInitials = (name) => {
     if (!name) return "U";
-    return name.split(" ").map(word => word[0]).join("").toUpperCase().slice(0, 2);
+    return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
   };
-  
-  // Helper function to get display name
+
   const getDisplayName = () => {
     if (user?.name) return user.name;
     if (user?.firstName && user?.lastName) return `${user.firstName} ${user.lastName}`;
@@ -125,368 +223,193 @@ export default function SideBar({ component }) {
     return "User";
   };
 
-  const handleLogout = async () => {
-    try {
-      await dispatch(logoutUser()).unwrap();
-    } catch (error) {
-      // If the thunk fails, still clear local auth state so the UI can recover.
-      dispatch(clearAuth());
-    } finally {
-      setShowUserMenu(false);
-      nav("/", { replace: true });
-    }
-  };
-
-  const navGroups = [
-    {
-      key: "finance",
-      label: "Finance",
-      items: [
-        { id: "dashboard",        label: "Dashboard",       icon: TrendingUp,   module: null },
-        { id: "invoices",         label: "Sales",           icon: FileText,     module: Module.Invoice },
-        { id: "estimates",        label: "Quotations",      icon: ReceiptText,  module: Module.Invoice },
-        { id: "delivery-challans",label: "Delivery Challans",icon: Truck,        module: Module.Invoice },
-      ],
-    },
-    {
-      key: "reports",
-      label: "Reports",
-      items: [
-        { id: "ledger",      label: "Ledger",        icon: BookOpen,  module: Module.Invoice },
-        { id: "profit-loss", label: "P&L Statement", icon: BarChart2, module: Module.Invoice },
-      ],
-    },
-    {
-      key: "operations",
-      label: "Operations",
-      items: [
-        { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
-        { id: "expenses",  label: "Expenses",        icon: Receipt,      module: Module.Expenses },
-      ],
-    },
-    {
-      key: "compliance",
-      label: "Compliance",
-      items: [
-        { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: Module.Invoice },
-        { id: "tdscompliance", label: "TDS Compliance", icon: Receipt,     module: Module.Invoice },
-      ],
-    },
-    {
-      key: "master",
-      label: "Organization",
-      items: [
-        { id: "customers",    label: "Customers",    icon: Users,        module: Module.Customers },
-        { id: "projects",     label: "Projects",     icon: FolderKanban, module: Module.Customers },
-        { id: "cost-centers", label: "Cost Centers", icon: Layers,       module: Module.Customers },
-        { id: "items",        label: "Items",        icon: Boxes,        module: Module.Products },
-        { id: "assets",       label: "Assets",       icon: Package,      module: null },
-      ],
-    },
-    {
-      key: "admin",
-      label: "Admin",
-      items: [
-        { id: "users",    label: "User Management", icon: UserLockIcon, module: Module.Users },
-        { id: "settings", label: "Settings",        icon: Settings,     module: null, adminOnly: true },
-      ],
-    },
-  ];
-
   const isItemActive = (id) =>
     (id === "dashboard" && location.pathname === "/") ||
     location.pathname.includes(`/${id}`);
 
   const isGroupActive = (group) => group.items.some((i) => isItemActive(i.id));
+  const toggleGroup = (key) => setOpenGroups((p) => ({ ...p, [key]: !p[key] }));
 
-  const handleNavigate = (id) => nav(`/${id}`);
+  // Shared nav content used in both desktop sidebar and mobile drawer
+  const NavContent = ({ collapsed = false }) => (
+    <nav className="sidebar-scrollbar flex-1 overflow-y-auto bg-gray-50 py-2">
+      {NAV_GROUPS.map((group) => {
+        const visibleItems = group.items.filter((item) => {
+          if (item.adminOnly) return user?.is_admin;
+          return item.module === null || canRead(user, item.module);
+        });
+        if (!visibleItems.length) return null;
+        const isOpen = openGroups[group.key];
+        const groupActive = isGroupActive(group);
+        return (
+          <div key={group.key} className="mb-1">
+            {!collapsed ? (
+              <button
+                onClick={() => toggleGroup(group.key)}
+                className={`w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${
+                  groupActive ? "text-indigo-500" : "text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                <span>{group.label}</span>
+                <ChevronRight size={12} className={isOpen ? "rotate-90" : ""} />
+              </button>
+            ) : (
+              <div className="mx-2 my-1 border-t border-gray-200" />
+            )}
+            {(isOpen || collapsed) && visibleItems.map((item) => {
+              const Icon = item.icon;
+              const active = isItemActive(item.id);
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => nav(`/${item.id}`)}
+                  title={collapsed ? item.label : undefined}
+                  className={`w-full flex items-center rounded-lg ${
+                    active ? "bg-indigo-50 text-indigo-600 font-medium" : "text-gray-600 hover:bg-gray-100"
+                  } sider-button ${collapsed ? "py-2.5 justify-center" : "px-3 py-2 space-x-2 justify-start pl-5"}`}
+                >
+                  <Icon size={15} className={collapsed ? "mx-auto" : "shrink-0"} />
+                  {!collapsed && <span className="text-sm">{item.label}</span>}
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
+    </nav>
+  );
 
-  // Dummy notification generator
-  const generateNotifications = (count, startIndex = 1) =>
-    Array.from({ length: count }, (_, i) => ({
-      id: startIndex + i,
-      title: `Notification ${startIndex + i}`,
-      message: `This is the message for notification #${startIndex + i}.`,
-      time: `${Math.floor(Math.random() * 10 + 1)} mins ago`,
-    }));
-
-  useEffect(() => {
-    setNotifications(generateNotifications(20));
-  }, []);
-
-  // Scroll to top on route change
-  useEffect(() => {
-    mainRef.current?.scrollTo(0, 0);
-  }, [location.pathname]);
-
-  // Show/hide scroll to top button
-  useEffect(() => {
-    const scrollEl = mainRef.current;
-    const handleScroll = () => {
-      if (mainRef.current) {
-        setShowScrollTop(mainRef.current.scrollTop > 300);
-      }
-    };
-    scrollEl?.addEventListener('scroll', handleScroll);
-    return () => scrollEl?.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Infinite scroll
-  const handleScroll = (e) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.target;
-    if (scrollHeight - scrollTop <= clientHeight + 20 && !loadingMore) {
-      setLoadingMore(true);
-      setTimeout(() => {
-        setNotifications((prev) => [
-          ...prev,
-          ...generateNotifications(10, prev.length + 1),
-        ]);
-        setLoadingMore(false);
-      }, 800);
-    }
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        modalRef.current &&
-        !modalRef.current.contains(event.target) &&
-        bellRef.current &&
-        !bellRef.current.contains(event.target)
-      ) {
-        setShowNotifications(false);
-      }
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(event.target) &&
-        userMenuTriggerRef.current &&
-        !userMenuTriggerRef.current.contains(event.target)
-      ) {
-        setShowUserMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const toggleNotifications = () => setShowNotifications((prev) => !prev);
+  const Logo = ({ showText }) => (
+    <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="relative shrink-0">
+        <svg width="36" height="36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="48" fill="#1e40af" opacity="0.1" />
+          <path d="M 25 70 L 35 55 L 45 60 L 55 40 L 65 45 L 75 30" stroke="#1e40af" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M 30 35 L 30 75 M 30 35 L 50 35 M 30 53 L 45 53" stroke="#0ea5e9" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M 55 38 Q 60 35 65 38 Q 70 41 68 47 Q 66 53 60 55 Q 66 57 68 63 Q 70 69 65 72 Q 60 75 55 72" stroke="#1e40af" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="75" cy="30" r="2.5" fill="#f59e0b" />
+          <circle cx="25" cy="70" r="2.5" fill="#f59e0b" />
+        </svg>
+      </div>
+      <div className={`min-w-0 overflow-hidden transition-opacity duration-200 ${showText ? "max-w-[150px] opacity-100" : "max-w-0 opacity-0 pointer-events-none"}`}>
+        <div className="min-w-[150px]">
+          <h1 className="text-sm font-bold text-indigo-600 leading-tight whitespace-nowrap">Financial Suite</h1>
+          <p className="text-[10px] text-gray-500 mt-0.5 whitespace-nowrap">by FessiT Solutions</p>
+          <div className="flex items-center gap-1.5 mt-1.5 whitespace-nowrap">
+            <div className="flex gap-0.5">
+              <div className="w-1 h-3 bg-orange-500 rounded-sm" />
+              <div className="w-1 h-3 bg-white border border-gray-300 rounded-sm" />
+              <div className="w-1 h-3 bg-green-600 rounded-sm" />
+            </div>
+            <span className="text-[10px] text-gray-600 font-medium tracking-wide">MADE IN INDIA</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex h-screen overflow-hidden w-screen bg-gray-50">
-      {/* Sidebar — promoted to its own GPU layer so hover repaints don't bleed into main content */}
+
+      {/* ── Desktop sidebar ─────────────────────────────────────── */}
       <div
         ref={sidebarRef}
-        className={`${sidebarOpen ? "w-52" : "w-16"} shrink-0 bg-white border-r border-gray-200 flex h-screen flex-col`}
+        className={`hidden md:flex ${desktopOpen ? "w-52" : "w-16"} shrink-0 bg-white border-r border-gray-200 h-screen flex-col transition-all duration-200`}
         style={{ transform: "translateZ(0)", willChange: "transform", isolation: "isolate" }}
       >
         <div className="shrink-0 p-4 border-b border-gray-200 h-22 flex justify-between items-center">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            {/* Logo Icon - Always visible */}
-            <div className="relative shrink-0">
-              <svg width="36" height="36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                {/* Circular background */}
-                <circle cx="50" cy="50" r="48" fill="#1e40af" opacity="0.1" />
-
-                {/* Graph/Chart element */}
-                <path d="M 25 70 L 35 55 L 45 60 L 55 40 L 65 45 L 75 30"
-                  stroke="#1e40af" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-
-                {/* Letter F */}
-                <path d="M 30 35 L 30 75 M 30 35 L 50 35 M 30 53 L 45 53"
-                  stroke="#0ea5e9" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-
-                {/* Letter S integrated */}
-                <path d="M 55 38 Q 60 35 65 38 Q 70 41 68 47 Q 66 53 60 55 Q 66 57 68 63 Q 70 69 65 72 Q 60 75 55 72"
-                  stroke="#1e40af" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-
-                {/* Accent dots */}
-                <circle cx="75" cy="30" r="2.5" fill="#f59e0b" />
-                <circle cx="25" cy="70" r="2.5" fill="#f59e0b" />
-              </svg>
-            </div>
-
-            {/* Text content - only visible when sidebar is open */}
-            <div
-              className={`min-w-0 overflow-hidden transition-opacity duration-200 ${
-                sidebarOpen ? "max-w-[150px] opacity-100" : "max-w-0 opacity-0 pointer-events-none"
-              }`}
-            >
-              <div className="min-w-[150px]">
-                <h1 className="text-sm font-bold text-indigo-600 leading-tight whitespace-nowrap">
-                  Financial Suite
-                </h1>
-                <p className="text-[10px] text-gray-500 mt-0.5 whitespace-nowrap">by FessiT Solutions</p>
-
-                {/* Made in India indicator */}
-                <div className="flex items-center gap-1.5 mt-1.5 whitespace-nowrap">
-                  <div className="flex gap-0.5">
-                    <div className="w-1 h-3 bg-orange-500 rounded-sm"></div>
-                    <div className="w-1 h-3 bg-white border border-gray-300 rounded-sm"></div>
-                    <div className="w-1 h-3 bg-green-600 rounded-sm"></div>
-                  </div>
-                  <span className="text-[10px] text-gray-600 font-medium tracking-wide">
-                    MADE IN INDIA
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Toggle button */}
+          <Logo showText={desktopOpen} />
           <div className="shrink-0 ml-2">
-            {sidebarOpen ? (
-              <ChevronLeft
-                className="cursor-pointer text-gray-500 hover:text-gray-700"
-                size={20}
-                strokeWidth={1.5}
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              />
+            {desktopOpen ? (
+              <ChevronLeft className="cursor-pointer text-gray-500 hover:text-gray-700" size={20} strokeWidth={1.5} onClick={() => setDesktopOpen(false)} />
             ) : (
-              <ChevronRight
-                size={24}
-                strokeWidth={1.5}
-                className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-5.5"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              />
+              <ChevronRight size={24} strokeWidth={1.5} className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-5.5" onClick={() => setDesktopOpen(true)} />
             )}
           </div>
         </div>
-        <nav className="sidebar-scrollbar flex-1 overflow-y-auto bg-gray-50 py-2">
-          {navGroups.map((group) => {
-            const visibleItems = group.items.filter((item) => {
-              if (item.adminOnly) return user?.is_admin;
-              return item.module === null || canRead(user, item.module);
-            });
-            if (!visibleItems.length) return null;
-            const isOpen = openGroups[group.key];
-            const groupActive = isGroupActive(group);
-            return (
-              <div key={group.key} className="mb-1">
-                {/* Group header */}
-                {sidebarOpen ? (
-                  <button
-                    onClick={() => toggleGroup(group.key)}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${
-                      groupActive ? "text-indigo-500" : "text-gray-400 hover:text-gray-600"
-                    }`}
-                  >
-                    <span>{group.label}</span>
-                    <ChevronRight size={12} className={isOpen ? "rotate-90" : ""} />
-                  </button>
-                ) : (
-                  <div className="mx-2 my-1 border-t border-gray-200" />
-                )}
-                {/* Items */}
-                {(isOpen || !sidebarOpen) && visibleItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = isItemActive(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => nav(`/${item.id}`)}
-                      title={!sidebarOpen ? item.label : undefined}
-                      className={`w-full flex items-center rounded-lg ${
-                        active ? "bg-indigo-50 text-indigo-600 font-medium" : "text-gray-600 hover:bg-gray-100"
-                      } sider-button ${
-                        sidebarOpen ? "px-3 py-2 space-x-2 justify-start pl-5" : "py-2.5 justify-center"
-                      }`}
-                    >
-                      <Icon size={15} className={sidebarOpen ? "shrink-0" : "mx-auto"} />
-                      <span className={`text-sm ${sidebarOpen ? "block" : "hidden"}`}>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </nav>
+        <NavContent collapsed={!desktopOpen} />
       </div>
 
-      {/* Main content — promoted to its own GPU layer so sidebar repaints don't affect it */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0"
+      {/* ── Mobile drawer overlay ────────────────────────────────── */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-200"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* ── Mobile drawer ────────────────────────────────────────── */}
+      <div
+        className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col z-201 transition-transform duration-250 ease-in-out ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{ isolation: "isolate" }}
+      >
+        <div className="shrink-0 p-4 border-b border-gray-200 flex justify-between items-center">
+          <Logo showText />
+          <button onClick={() => setMobileOpen(false)} className="text-gray-500 hover:text-gray-700 ml-2">
+            <X size={20} />
+          </button>
+        </div>
+        <NavContent collapsed={false} />
+      </div>
+
+      {/* ── Main content ─────────────────────────────────────────── */}
+      <div
+        className="flex-1 flex flex-col overflow-hidden min-w-0"
         style={{ transform: "translateZ(0)", willChange: "transform", isolation: "isolate" }}
       >
         <main ref={mainRef} className="overflow-y-auto overflow-x-hidden overscroll-none relative" id="main-scroll-container">
+
           {showScrollTop && (
             <button
-              onClick={scrollToTop}
-              className="fixed bottom-6 right-6 bg-indigo-500 text-white p-3 font-bold rounded-full shadow-lg transition-all duration-300 z-50"
+              onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+              className="fixed bottom-6 right-6 bg-indigo-500 text-white p-3 font-bold rounded-full shadow-lg z-50"
               aria-label="Scroll to top"
             >
               <ArrowUp size={20} />
             </button>
           )}
-          <header className="bg-white border-b border-gray-200 px-6 h-22 py-4 sticky z-10 top-0 right-0">
+
+          {/* ── Header ─────────────────────────────────────────── */}
+          <header className="bg-white border-b border-gray-200 px-3 md:px-4 lg:px-6 py-3 md:py-4 sticky z-20 top-0">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="mb-4 ">
-                  <h2 className="relative text-2xl font-bold text-gray-800 capitalize ">
-                    {(location.pathname === "/" || location.pathname.includes("/dashboard")) && (
-                      <p>Dashboard</p>
-                    )}
-                    {location.pathname.includes("/estimates") && <p>Quotations</p>}
-                    {location.pathname.includes("/ledger") && <p>Ledger</p>}
-                    {location.pathname.includes("/profit-loss") && <p>P&L Statement</p>}
-                    {location.pathname.includes("/delivery-challans") && <p>Delivery Challans</p>}
-                    {location.pathname.includes("/invoices") && <p>Sales Invoices</p>}
-                    {location.pathname.includes("/purchases") && (
-                      <p>Purchases</p>
-                    )}
-                    {location.pathname.includes("/expenses") && <p>Expenses</p>}
-                    {location.pathname.includes("/gst") && (
-                      <p>GST Complainces</p>
-                    )}
-                    {location.pathname.includes("/tds") && (
-                      <p>TDS Complainces</p>
-                    )}
-                    {location.pathname.includes("/customers") && (
-                      <p>Customers</p>
-                    )}
-                    {location.pathname.includes("/projects") && (
-                      <p>Projects</p>
-                    )}
-                    {location.pathname.includes("/cost-centers") && (
-                      <p>Cost Centers</p>
-                    )}
-                    {location.pathname.includes("/settings") && <p>Settings</p>}
-                    {location.pathname.includes("/users") && <p>User Management</p>}
-                    {location.pathname.includes("/assets") && <p>Assets</p>}
-                    {location.pathname.includes("/items") && <p>Items</p>}
-
-
+              <div className="flex items-center gap-3">
+                {/* Hamburger — mobile only */}
+                <button
+                  className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                  onClick={() => setMobileOpen(true)}
+                >
+                  <Menu size={20} />
+                </button>
+                <div>
+                  <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-800">
+                    {getPageTitle(location.pathname)}
                   </h2>
-                  <p className="text-sm absolute text-gray-500">
+                  <p className="text-xs lg:text-sm text-gray-500 hidden md:block">
                     Welcome back! Here's your business overview.
                   </p>
                 </div>
               </div>
 
               {/* Bell + Profile */}
-              <div className="flex items-center space-x-3 relative">
+              <div className="flex items-center gap-2 md:gap-3">
                 <button
                   ref={bellRef}
-                  onClick={toggleNotifications}
-                  className="sider-button p-2 hover:bg-gray-100 rounded-lg relative"
+                  onClick={() => setShowNotifications((p) => !p)}
+                  className="p-2 hover:bg-gray-100 rounded-lg relative"
                 >
                   <Bell size={20} strokeWidth={1} />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
                 </button>
 
-                {/* User Name and Position */}
                 <div ref={userMenuTriggerRef} className="relative">
-                  <div
-                    className="flex items-center gap-3 cursor-pointer"
-                    onClick={() => setShowUserMenu((p) => !p)}
-                  >
-                    <div className="text-right">
+                  <div className="flex items-center gap-2 md:gap-3 cursor-pointer" onClick={() => setShowUserMenu((p) => !p)}>
+                    <div className="text-right hidden md:block">
                       <p className="text-sm font-medium text-gray-700 leading-tight">{getDisplayName()}</p>
                       <p className="text-xs text-gray-500">{user?.role || "User"}</p>
                     </div>
-                    <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
+                    <div className="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                       {getUserInitials(getDisplayName())}
                     </div>
                   </div>
@@ -495,47 +418,30 @@ export default function SideBar({ component }) {
               </div>
             </div>
           </header>
+
+          {/* Notifications panel */}
           <div
             ref={modalRef}
-            className={`fixed z-125 right-6 top-16 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${showNotifications
-                ? "opacity-100 scale-100 translate-y-2"
-                : "opacity-0 scale-90 -translate-y-3 pointer-events-none"
-              }`}
+            className={`fixed z-125 right-2 md:right-4 lg:right-6 top-14 md:top-16 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${
+              showNotifications ? "opacity-100 scale-100 translate-y-2" : "opacity-0 scale-90 -translate-y-3 pointer-events-none"
+            }`}
           >
-            <div className="bg-white shadow-2xl rounded-2xl w-80 border border-gray-100 overflow-hidden backdrop-blur-sm">
+            <div className="bg-white shadow-2xl rounded-2xl w-[calc(100vw-1rem)] max-w-xs md:w-72 lg:w-80 border border-gray-100 overflow-hidden">
               <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-700">
-                  Notifications
-                </h3>
-                <button
-                  onClick={() => setShowNotifications(false)}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                >
+                <h3 className="text-sm font-semibold text-gray-700">Notifications</h3>
+                <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
                   <X size={14} />
                 </button>
               </div>
-
-              {/* Scrollable notifications */}
-              <div
-                className="px-4 py-3 text-sm text-gray-600 max-h-80 overflow-y-auto space-y-3 bg-white custom-scroll"
-                onScroll={handleScroll}
-              >
+              <div className="px-4 py-3 text-sm text-gray-600 max-h-80 overflow-y-auto space-y-3 bg-white" onScroll={handleNotifScroll}>
                 {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100 transition"
-                  >
+                  <div key={n.id} className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100 transition">
                     <p className="font-medium text-gray-800">{n.title}</p>
                     <p className="text-gray-600 text-xs mt-1">{n.message}</p>
                     <p className="text-gray-400 text-xs mt-1">{n.time}</p>
                   </div>
                 ))}
-
-                {loadingMore && (
-                  <div className="text-center text-gray-400 py-2 text-xs">
-                    Loading more...
-                  </div>
-                )}
+                {loadingMore && <div className="text-center text-gray-400 py-2 text-xs">Loading more...</div>}
               </div>
             </div>
           </div>

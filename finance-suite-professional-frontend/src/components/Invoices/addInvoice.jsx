@@ -1371,7 +1371,7 @@ export default function AddInvoice() {
                     rowSpan="2"
                     className="border border-gray-300 px-3 py-2 text-center"
                   >
-                    HSN
+                    HSN/SAC
                   </th>
                   <th
                     rowSpan="2"

@@ -73,7 +73,7 @@ export default function RecentTDSTransactions({ salaries = [], incomingInvoices 
         tds,
       };
     });
-
+    
     const invoiceTxns = (Array.isArray(incomingInvoices) ? incomingInvoices : [])
       .filter((inv) => inv.tds_applicable === true)
       .map((inv) => {
@@ -117,7 +117,7 @@ export default function RecentTDSTransactions({ salaries = [], incomingInvoices 
 
   return (
     <div>
-      <TabActionBar searchValue={search} onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }} searchPlaceholder="Search by reference, party, or date...">
+      <TabActionBar sticky={false} searchValue={search} onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }} searchPlaceholder="Search by reference, party, or date...">
         <FilterSelect value={typeFilter} onChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
           <option value="All">All Types</option>
           <option value="Salary">Salary</option>

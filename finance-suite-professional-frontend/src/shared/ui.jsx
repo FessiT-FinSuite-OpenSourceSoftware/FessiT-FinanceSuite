@@ -13,9 +13,9 @@ export function StatCard({ label, value, valueClass = "text-gray-900" }) {
 }
 
 // ── Tab Action Bar ────────────────────────────────────────────────────────────
-export function TabActionBar({ searchValue, onSearchChange, searchPlaceholder = "Search...", children }) {
+export function TabActionBar({ searchValue, onSearchChange, searchPlaceholder = "Search...", sticky = true, children }) {
   return (
-    <div className="sticky top-[88px] z-10 rounded-lg bg-white border border-gray-300 py-4 shadow-sm mb-2">
+    <div className={`${sticky ? "sticky top-[88px] z-10 " : ""}rounded-lg bg-white border border-gray-300 py-4 shadow-sm mb-2`}>
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -134,14 +134,16 @@ export function RowActions({ onEdit, onDelete, canEdit = true, canDelete = true 
 }
 
 // ── Modal Wrapper ─────────────────────────────────────────────────────────────
-export function Modal({ title, onClose, onSave, saveLabel = "Save", children }) {
+const MODAL_SIZE = { sm: "max-w-lg", md: "max-w-2xl", lg: "max-w-4xl", xl: "max-w-5xl" };
+
+export function Modal({ title, onClose, onSave, saveLabel = "Save", size = "sm", children }) {
   React.useEffect(() => {
     document.body.setAttribute("data-modal-open", "1");
     return () => document.body.removeAttribute("data-modal-open");
   }, []);
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 backdrop-blur-[2px] overflow-y-auto p-4">
-      <div className="bg-white rounded-xl shadow-2xl ring-1 ring-black/10 p-6 w-full max-w-lg relative max-h-[calc(100vh-2rem)] overflow-y-auto">
+      <div className={`bg-white rounded-xl shadow-2xl ring-1 ring-black/10 p-6 w-full ${MODAL_SIZE[size] || MODAL_SIZE.sm} relative max-h-[calc(100vh-2rem)] overflow-y-auto`}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold text-gray-800">{title}</h3>
           <button onClick={onClose}><X className="w-5 h-5 text-gray-500" /></button>
@@ -335,7 +337,7 @@ export function TdsSectionSelect({ value, onChange, inputCls: cls }) {
                 }`}
               >
                 <div className="flex items-center gap-3 whitespace-nowrap overflow-hidden">
-                                   <span className="font-mono text-xs text-gray-400 shrink-0">#{s.code}</span>
+                                   <span className="font-mono text-xs text-gray-400 shrink-0">{s.code}</span>
 
                   <span className="font-semibold text-blue-700 text-xs shrink-0">{s.newSection}</span>
                   <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">{s.oldSection}</span>
@@ -352,6 +354,48 @@ export function TdsSectionSelect({ value, onChange, inputCls: cls }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Combo Field (select with Other → inline editable input) ─────────────────
+export function ComboField({ name, value, onChange, options, placeholder, otherLabel = "Other..." }) {
+  const isCustom = value !== "" && !options.includes(value);
+  if (isCustom) {
+    return (
+      <div className="relative">
+        <input
+          autoFocus
+          type="text"
+          name={name}
+          value={value}
+          onChange={onChange}
+          className={inputCls}
+          placeholder={placeholder}
+        />
+        <button
+          type="button"
+          onClick={() => onChange({ target: { name, value: "" } })}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+  return (
+    <select
+      name={name}
+      value={value}
+      onChange={(e) => {
+        if (e.target.value === "__other__") onChange({ target: { name, value: " " } });
+        else onChange(e);
+      }}
+      className={inputCls}
+    >
+      <option value="">Select...</option>
+      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      <option value="__other__">{otherLabel}</option>
+    </select>
   );
 }
 

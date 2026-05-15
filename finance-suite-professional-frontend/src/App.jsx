@@ -6,7 +6,7 @@ import { authSelector, verifyToken, fetchUserProfile } from "./ReduxApi/auth";
 import { forceLogout, getTokenExpiryMs } from "./utils/axiosInstance";
 import { canRead, Module } from "./utils/permissions";
 import Forbidden from "./pages/Forbidden";
-
+const Badge = lazy(() => import("./shared/Badge"));
 // lazy imports
 const SideBar = lazy(() => import("./shared/SideBar/SideBar"));
 const StatsGrid = lazy(() => import("./components/Dashboard"));
@@ -136,6 +136,7 @@ export default function App() {
   // Show main app if authenticated
   return (
     <div>
+      <Badge/>
       <Suspense
         fallback={
           <div className="flex justify-center items-center h-screen w-screen">

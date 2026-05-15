@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import { countries } from "../../shared/countries";
 import { useNavigate, useParams } from "react-router-dom";
 import { formatNumber, getCurrencySymbol, formatCurrency } from "../../utils/formatNumber";
-import InvoiceReportGeneration from "./invoiceReportGeneration";
+import InvoiceReportWrapper from "./InvoiceReportWrapper";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
 import { fetchOneInvoice, updateInvoice, invoiceSelector } from "../../ReduxApi/invoice";
@@ -1061,7 +1061,7 @@ export default function EditInvoice() {
                         rowSpan="2"
                         className="border border-gray-300 px-3 py-2 text-center"
                       >
-                        HSN
+                        HSN/SAC
                       </th>
                       <th
                         rowSpan="2"
@@ -1429,14 +1429,11 @@ export default function EditInvoice() {
           </div>
         </>
       ) : (
-        <>
-          {/* Invoice Preview Component */}
-          <InvoiceReportGeneration
-            invoiceData={invoiceData}
-            orgData={currentOrganisation}
-            onBack={() => setShowInvoicePreview(false)}
-          />
-        </>
+        <InvoiceReportWrapper
+          invoiceData={invoiceData}
+          orgData={currentOrganisation}
+          onBack={() => setShowInvoicePreview(false)}
+        />
       )}
     </div>
   );

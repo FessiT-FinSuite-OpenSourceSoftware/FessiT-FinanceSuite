@@ -44,8 +44,11 @@ async fn main() -> std::io::Result<()> {
         .parse::<u16>()
         .expect("Invalid SERVER_PORT");
 
-    let cors_origin =
-        env::var("CORS_ALLOWED_ORIGIN").unwrap_or_else(|_| "http://localhost:5174".to_string());
+    let cors_origins: Vec<String> = env::var("CORS_ALLOWED_ORIGIN")
+        .unwrap_or_else(|_| "http://localhost:5174".to_string())
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
 
     let db_client = MongoDbClient::new()
         .await
@@ -160,11 +163,13 @@ async fn main() -> std::io::Result<()> {
     log::info!("Starting server at http://{}:{}", host, port);
 
     HttpServer::new(move || {
-        let cors = Cors::default()
-            .allowed_origin(&cors_origin)
-            .allow_any_method()
-            .allow_any_header()
-            .max_age(3600);
+        let cors = cors_origins.iter().fold(
+            Cors::default(),
+            |c, origin| c.allowed_origin(origin),
+        )
+        .allow_any_method()
+        .allow_any_header()
+        .max_age(3600);
 
         App::new()
             .wrap(cors)
