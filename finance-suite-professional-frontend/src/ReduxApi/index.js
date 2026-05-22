@@ -17,10 +17,13 @@ import categoryReducer from './category';
 import assetCategoryReducer from './assetCategory';
 import estimateReducer from './estimate';
 import deliveryChallanReducer from './deliveryChallan';
+import employeeReducer from './employee';
 import ledgerReducer from './ledger';
 import productReducer from './product';
 import gstSummaryReducer from './gstSummary';
 import tdsSummaryReducer from './tdsSummary';
+import ptSummaryReducer from './ptSummary';
+import ptChallanReducer from './ptChallan';
 import { injectStore } from '../utils/axiosInstance';
 
 const store = configureStore({
@@ -44,9 +47,12 @@ const store = configureStore({
     product: productReducer,
     gstSummary: gstSummaryReducer,
     tdsSummary: tdsSummaryReducer,
+    ptSummary:  ptSummaryReducer,
+  ptChallan: ptChallanReducer,
   asset: assetReducer,
   assetCategory: assetCategoryReducer,
   deliveryChallan: deliveryChallanReducer,
+  employee: employeeReducer,
   },
 });
 

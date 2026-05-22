@@ -118,7 +118,7 @@ export default function LedgerPage() {
   };
 
   return (
-    <div className="max-w-7xl w-full space-y-4">
+    <div className=" w-full space-y-4">
 
       {/* Filter Card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">

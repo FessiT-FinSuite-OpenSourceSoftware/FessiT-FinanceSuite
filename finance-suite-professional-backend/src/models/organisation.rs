@@ -111,6 +111,7 @@ pub struct Organisation {
     #[serde(rename = "taxNotes", default)]
     pub tax_notes: String,
 
+
     // -------- Users & Roles --------
     #[serde(rename = "newUserName", default)]
     pub new_user_name: String,
@@ -172,6 +173,10 @@ pub struct Organisation {
     #[serde(rename = "lastEstimateSequence", default)]
     pub last_estimate_sequence: i32,
 
+    // Delivery Challan sequence tracking
+    #[serde(rename = "lastDeliveryChallanSequence", default)]
+    pub last_delivery_challan_sequence: i32,
+
     #[serde(rename = "serviceIds", default)]
     pub service_ids: Vec<ObjectId>,
 
@@ -200,6 +205,9 @@ pub struct Organisation {
 
     #[serde(rename = "swiftCode", default)]
     pub swift_code: String,
+    
+    #[serde(rename = "professionalTaxAmount", default)]
+pub professional_tax_amount: String,
 }
 
 //
@@ -255,6 +263,7 @@ pub struct CreateOrganisationRequest {
     pub require_hsn: String,
     pub rounding_rule: String,
     pub tax_notes: String,
+    pub professional_tax_amount: String,
 
     // Users
     pub new_user_name: String,
@@ -341,6 +350,8 @@ pub struct UpdateOrganizationRequest {
     pub require_hsn: Option<String>,
     pub rounding_rule: Option<String>,
     pub tax_notes: Option<String>,
+    pub professional_tax_amount: Option<String>,
+
 
     pub new_user_name: Option<String>,
     pub new_user_email: Option<String>,
@@ -449,6 +460,7 @@ impl Organisation {
             require_hsn: req.require_hsn,
             rounding_rule: req.rounding_rule,
             tax_notes: req.tax_notes,
+            professional_tax_amount: req.professional_tax_amount,
 
             // Users
             new_user_name: req.new_user_name,
@@ -472,6 +484,7 @@ impl Organisation {
             custom_payment_name: req.custom_payment_name,
             last_invoice_sequence: 0,
             last_estimate_sequence: 0,
+            last_delivery_challan_sequence: 0,
             service_ids: Vec::new(),
             services: Vec::new(),
             logo: String::new(),

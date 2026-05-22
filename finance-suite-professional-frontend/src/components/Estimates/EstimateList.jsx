@@ -161,7 +161,7 @@ export default function EstimateList() {
   ];
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
+    <div className="w-full lg:w-full md:w-full">
       <TabActionBar
         searchValue={search}
         onSearchChange={(v) => setSearch(v)}

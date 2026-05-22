@@ -21,16 +21,18 @@ use handlers::{
     configure_challan_routes, configure_category_routes, configure_product_routes,
     configure_estimate_routes, configure_ledger_routes, configure_account_routes,
     configure_service_routes, configure_report_routes, configure_asset_routes,
-    configure_asset_category_routes, configure_delivery_challan_routes,
+    configure_asset_category_routes, configure_delivery_challan_routes, configure_employee_routes,
+    configure_professional_tax_challan_routes,
 };
 use repository::{
     CustomerRepository, ExpenseRepository, InvoiceRepository, IncomingInvoiceRepository,
     OrganisationRepository, UserRepository, PurchaseOrderRepository, CostCenterRepository,
     SalaryRepository, GeneralExpenseRepository, ChallanRepository, CategoryRepository, ProductRepository,
     EstimateRepository, LedgerRepository, AccountRepository, ServiceRepository, AssetRepository,
-    AssetCategoryRepository, DeliveryChallanRepository,
+    AssetCategoryRepository, DeliveryChallanRepository, EmployeeRepository,
+    ProfessionalTaxChallanRepository,
 };
-use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService, ServiceService, AssetService, AssetCategoryService, DeliveryChallanService};
+use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService, ServiceService, AssetService, AssetCategoryService, DeliveryChallanService, EmployeeService, ProfessionalTaxChallanService};
 use utils::jwt_middleware::JwtMiddleware;
 
 #[actix_web::main]
@@ -60,6 +62,7 @@ async fn main() -> std::io::Result<()> {
     let user_collection = db_client.get_user_collection();
     let user_repository = UserRepository::new(user_collection);
     let user_service = UserService::new(user_repository.clone());
+    user_repository.ensure_indexes().await.expect("❌ Failed to create user indexes");
 
     // 🔹 Customers
     let customer_collection = db_client.get_customers_collection();
@@ -99,7 +102,7 @@ async fn main() -> std::io::Result<()> {
     // 🔹 Salaries
     let salary_collection = db_client.get_salary_collection();
     let salary_repository = SalaryRepository::new(salary_collection);
-    let salary_service = SalaryService::new(salary_repository, user_repository.clone());
+    let salary_service = SalaryService::new(salary_repository, user_repository.clone(), organisation_repository.clone());
 
     // 🔹 General Expenses
     let general_expense_collection = db_client.get_general_expense_collection();
@@ -158,7 +161,17 @@ async fn main() -> std::io::Result<()> {
     // Delivery Challans
     let delivery_challan_collection = db_client.get_delivery_challan_collection();
     let delivery_challan_repository = DeliveryChallanRepository::new(delivery_challan_collection);
-    let delivery_challan_service = DeliveryChallanService::new(delivery_challan_repository, user_repository.clone());
+    let delivery_challan_service = DeliveryChallanService::new(delivery_challan_repository, user_repository.clone(), organisation_repository.clone());
+
+    // Employees
+    let employee_collection = db_client.get_employee_collection();
+    let employee_repository = EmployeeRepository::new(employee_collection);
+    let employee_service = EmployeeService::new(employee_repository, user_repository.clone());
+
+    // PT Challans
+    let pt_challan_collection = db_client.get_pt_challan_collection();
+    let pt_challan_repository = ProfessionalTaxChallanRepository::new(pt_challan_collection);
+    let pt_challan_service = ProfessionalTaxChallanService::new(pt_challan_repository, user_repository.clone());
 
     log::info!("Starting server at http://{}:{}", host, port);
 
@@ -195,6 +208,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(asset_service.clone()))
             .app_data(web::Data::new(asset_category_service.clone()))
             .app_data(web::Data::new(delivery_challan_service.clone()))
+            .app_data(web::Data::new(employee_service.clone()))
+            .app_data(web::Data::new(pt_challan_service.clone()))
             .service(
                 web::scope("/api/v1")
                     .configure(configure_user_routes)
@@ -223,6 +238,8 @@ async fn main() -> std::io::Result<()> {
                             .configure(configure_asset_routes)
                             .configure(configure_asset_category_routes)
                             .configure(configure_delivery_challan_routes)
+                            .configure(configure_employee_routes)
+                            .configure(configure_professional_tax_challan_routes)
                     )
             )
     })

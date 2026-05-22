@@ -132,7 +132,7 @@ pub async fn get_profit_loss(
     // Source : Incoming invoices
     // Rule   : Status must be Paid
     // Date   : invoice_date within period
-    // Amount : invoice.total (as recorded, INR)
+    // Amount : invoice.totalBeforeTds (as recorded, INR)
     // ═════════════════════════════════════════════════════════════════════════
     let incoming = incoming_invoice_service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
@@ -145,7 +145,12 @@ pub async fn get_profit_loss(
         let date_ym = match extract_ym(&inv.invoice_date) { Some(v) => v, None => continue };
         if !in_range(&date_ym, &from, &to) { continue; }
 
-        let amount = inv.total.parse::<f64>().unwrap_or(0.0);
+        let amount_source = if inv.total_before_tds.trim().is_empty() {
+            &inv.total
+        } else {
+            &inv.total_before_tds
+        };
+        let amount = amount_source.parse::<f64>().unwrap_or(0.0);
         incoming_total += amount;
         incoming_items.push(json!({
             "date":    inv.invoice_date,

@@ -28,6 +28,7 @@ const Expenses = lazy(() => import("./components/Expenses"));
 const Settings = lazy(() => import("./components/Settings"));
 const GSTCompliance = lazy(() => import("./components/GSTCompliance"));
 const TDSCompliance = lazy(() => import("./components/TDSCompliance"));
+const ProfessionalTaxCompliance = lazy(() => import("./components/ProfessionalTaxCompliance"));
 const Users = lazy(() => import("./components/User"));
 const Items = lazy(() => import("./components/Items"));
 const Estimates = lazy(() => import("./components/Estimates"));
@@ -53,7 +54,8 @@ const Estimats= lazy(()=>import('./components/Estimates'))
 const AddEstimate = lazy(()=>import('./components/Estimates/AddEstimate'))
 const EditEstimate = lazy(()=>import('./components/Estimates/EditEstimate'))
 const Assets = lazy(() => import('./components/Assets'))
-
+const Employees = lazy(() => import('./components/Employees'))
+const AddEmployee = lazy(() => import('./components/Employees/AddEmployee'))
 
 
 function ProtectedRoute({ user, module, children }) {
@@ -121,7 +123,7 @@ export default function App() {
           </div>
         }
       >
-        <div className="h-screen w-screen">
+        <div className="h-screen w-screen overflow-y-auto bg-gray-50">
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
@@ -176,6 +178,7 @@ export default function App() {
               {/* Compliance Routes */}
               <Route path="/tdscompliance" element={<TDSCompliance />} />
               <Route path="/gstcompliance" element={<GSTCompliance />} />
+              <Route path="/ptcompliance" element={<ProfessionalTaxCompliance />} />
 
               {/* Customer Routes */}
               <Route path="/customers" element={<ProtectedRoute user={user} module={Module.Customers}><Customers /></ProtectedRoute>} />
@@ -207,6 +210,11 @@ export default function App() {
 
               {/* Assets */}
               <Route path="/assets" element={<Assets />} />
+
+              {/* Employees */}
+              <Route path="/employees" element={<ProtectedRoute user={user} module={Module.Users}><Employees /></ProtectedRoute>} />
+              <Route path="/employees/add" element={<ProtectedRoute user={user} module={Module.Users}><AddEmployee /></ProtectedRoute>} />
+              <Route path="/employees/edit/:id" element={<ProtectedRoute user={user} module={Module.Users}><AddEmployee /></ProtectedRoute>} />
             </Routes>
           }
         />

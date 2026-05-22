@@ -1,6 +1,18 @@
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct TdsSection {
+    #[serde(default)]
+    pub key: String,
+    #[serde(default)]
+    pub section_new: String,
+    #[serde(default)]
+    pub section_old: String,
+    #[serde(default)]
+    pub nature: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Challan {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none", skip_deserializing)]
@@ -10,25 +22,9 @@ pub struct Challan {
     #[serde(default)]
     pub challan_no: String,
 
-    /// Old section code (e.g., "194C") — stored for display/filter
+    /// One or more TDS sections
     #[serde(default)]
-    pub section: String,
-
-    /// Numeric code key from TDS_FLAT_LIST (e.g., "1023")
-    #[serde(default)]
-    pub tds_section_key: String,
-
-    /// New section reference (e.g., "393(1)[Sl.6(i).D(a)]")
-    #[serde(default)]
-    pub tds_section_new: String,
-
-    /// Old section reference (e.g., "194C")
-    #[serde(default)]
-    pub tds_section_old: String,
-
-    /// Nature of payment description
-    #[serde(default)]
-    pub tds_section_nature: String,
+    pub tds_sections: Vec<TdsSection>,
 
     /// Payment date (YYYY-MM-DD)
     #[serde(default)]
@@ -66,8 +62,11 @@ pub struct Challan {
     #[serde(default)]
     pub notes: String,
 
-    #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
-    pub organisation_id: Option<ObjectId>,
+    /// Period for the challan (e.g., "2025-04" for April 2025)
+    #[serde(default)]
+    pub period: String,
+
+    #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]    pub organisation_id: Option<ObjectId>,
 }
 
 pub type CreateChallanRequest = Challan;

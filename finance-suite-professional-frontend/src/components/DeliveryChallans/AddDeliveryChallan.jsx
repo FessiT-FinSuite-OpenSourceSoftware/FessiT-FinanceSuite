@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ArrowLeft, CirclePlus, CircleMinus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { createDeliveryChallan } from "../../ReduxApi/deliveryChallan";
+import { createDeliveryChallan, fetchNextChallanNo } from "../../ReduxApi/deliveryChallan";
 import { fetchCustomerData, customerSelector } from "../../ReduxApi/customer";
 import { fetchOrganisationByEmail, orgamisationSelector } from "../../ReduxApi/organisation";
 import PlaceOfSupplyField from "../Invoices/PlaceOfSupplyField";
@@ -31,6 +31,7 @@ export default function AddDeliveryChallan() {
   const [items, setItems]     = useState([emptyItem()]);
   const [saving, setSaving]   = useState(false);
   const [errors, setErrors]   = useState({});
+  const [challanNoLoading, setChallanNoLoading] = useState(true);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerDrop, setShowCustomerDrop] = useState(false);
   const [dispatchedFile, setDispatchedFile]     = useState(null);
@@ -40,6 +41,10 @@ export default function AddDeliveryChallan() {
   useEffect(() => {
     dispatch(fetchCustomerData());
     dispatch(fetchOrganisationByEmail(localStorage.getItem("email")));
+    dispatch(fetchNextChallanNo()).then((no) => {
+      if (no) setForm((f) => ({ ...f, challan_no: no }));
+      setChallanNoLoading(false);
+    });
   }, [dispatch]);
 
   useEffect(() => {
@@ -72,7 +77,6 @@ export default function AddDeliveryChallan() {
 
   const validate = () => {
     const e = {};
-    if (!form.challan_no.trim())      e.challan_no      = "Challan number is required";
     if (!form.challan_date.trim())    e.challan_date    = "Challan date is required";
     if (!form.consignee_name.trim())  e.consignee_name  = "Consignee name is required";
     return e;
@@ -119,9 +123,13 @@ export default function AddDeliveryChallan() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">Challan Details</h2>
           <div className="grid grid-cols-3 gap-4">
             <div className="relative">
-              <label className={labelCls}>Challan No *</label>
-              <input className={inputCls} value={form.challan_no} onChange={(e) => setField("challan_no", e.target.value)} placeholder="e.g. DC/2024/001" />
-              {errors.challan_no && <p className={errCls}>{errors.challan_no}</p>}
+              <label className={labelCls}>Challan No</label>
+              <input
+                className={`${inputCls} bg-gray-50 text-gray-500 cursor-not-allowed`}
+                value={challanNoLoading ? "Generating..." : form.challan_no}
+                readOnly
+              />
+              <p className="text-xs text-gray-400 mt-1">Auto-generated</p>
             </div>
             <div className="relative">
               <label className={labelCls}>Challan Date *</label>

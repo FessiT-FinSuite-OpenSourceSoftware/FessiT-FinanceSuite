@@ -7,7 +7,7 @@ use mongodb::{
 };
 use futures::stream::TryStreamExt;
 
-use crate::models::challan::Challan;
+use crate::models::challan::{Challan, TdsSection};
 
 #[derive(Clone)]
 pub struct ChallanRepository {
@@ -17,8 +17,22 @@ pub struct ChallanRepository {
 
 fn doc_to_challan(raw: Document) -> Option<Challan> {
     let oid = raw.get_object_id("_id").ok();
+    // Read legacy flat fields before consuming the document
+    let legacy_key     = raw.get_str("tds_section_key").unwrap_or("").to_string();
+    let legacy_new     = raw.get_str("tds_section_new").unwrap_or("").to_string();
+    let legacy_old     = raw.get_str("tds_section_old").unwrap_or("").to_string();
+    let legacy_nature  = raw.get_str("tds_section_nature").unwrap_or("").to_string();
     let mut challan: Challan = from_document(raw).ok()?;
     challan.id = oid;
+    // Migrate: if no tds_sections stored yet but legacy fields exist, backfill
+    if challan.tds_sections.is_empty() && !legacy_key.is_empty() {
+        challan.tds_sections = vec![TdsSection {
+            key: legacy_key,
+            section_new: legacy_new,
+            section_old: legacy_old,
+            nature: legacy_nature,
+        }];
+    }
     Some(challan)
 }
 

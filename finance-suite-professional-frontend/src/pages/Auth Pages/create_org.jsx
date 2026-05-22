@@ -223,7 +223,7 @@ export default function CreateOrganization() {
       case 1:
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Organization Name *</label>
                 <input
@@ -263,7 +263,7 @@ export default function CreateOrganization() {
                 {errors.gstIN && <p className="text-xs text-red-600 mt-1">{errors.gstIN}</p>}
               </div>
 
-              <div ref={dropdownRef}>
+              <div ref={dropdownRef} className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
                 <button
                   type="button"
@@ -355,7 +355,7 @@ export default function CreateOrganization() {
       case 2:
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Prefix *</label>
                 <input
@@ -433,7 +433,7 @@ export default function CreateOrganization() {
       case 3:
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tax Regime</label>
                 <select
@@ -516,8 +516,8 @@ export default function CreateOrganization() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl w-full space-y-8">
+    <div className="min-h-screen bg-gray-50 flex items-start justify-center py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl w-full space-y-8">
         {/* Header */}
         <div className="text-center">
           <img src={Logo} alt="FessiT Logo" className="h-20 w-20 object-contain mx-auto mb-4" />
@@ -526,37 +526,37 @@ export default function CreateOrganization() {
         </div>
 
         {/* Stepper */}
-        <div className="flex items-center justify-center mb-8">
+        <div className="flex flex-nowrap items-center justify-center mb-8">
           {steps.map((step, index) => (
-            <div key={step.id} className="flex items-center">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+            <div key={step.id} className="flex flex-none items-center">
+              <div className={`flex items-center justify-center w-9 h-9 rounded-full border-2 text-sm ${
                 currentStep > step.id ? 'bg-green-500 border-green-500 text-white' :
                 currentStep === step.id ? 'bg-blue-500 border-blue-500 text-white' :
                 'bg-white border-gray-300 text-gray-500'
               }`}>
                 {currentStep > step.id ? <Check className="w-5 h-5" /> : step.id}
               </div>
-              <div className="ml-3 text-left">
+              <div className="ml-2 text-left whitespace-nowrap">
                 <p className={`text-sm font-medium ${currentStep >= step.id ? 'text-gray-900' : 'text-gray-500'}`}>
                   {step.title}
                 </p>
-                <p className="text-xs text-gray-500">{step.description}</p>
+                <p className="hidden lg:block text-xs text-gray-500">{step.description}</p>
               </div>
               {index < steps.length - 1 && (
-                <div className={`w-16 h-0.5 mx-4 ${currentStep > step.id ? 'bg-green-500' : 'bg-gray-300'}`} />
+                <div className={`w-8 lg:w-12 h-0.5 mx-2 lg:mx-3 flex-none ${currentStep > step.id ? 'bg-green-500' : 'bg-gray-300'}`} />
               )}
             </div>
           ))}
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8">
           <h3 className="text-xl font-semibold text-gray-900 mb-6">{steps[currentStep - 1].title}</h3>
           
           {renderStepContent()}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8">
+          <div className="flex flex-wrap justify-between gap-3 mt-8">
             <button
               onClick={prevStep}
               disabled={currentStep === 1}

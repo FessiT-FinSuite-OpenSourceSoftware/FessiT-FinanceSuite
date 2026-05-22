@@ -2,6 +2,7 @@ import React, { useState, lazy, Suspense } from "react";
 
 const InvoiceReportGeneration = lazy(() => import("./invoiceReportGeneration"));
 const InvoiceReportGenerationV2 = lazy(() => import("./InvoiceReportGenerationV2"));
+const InvoiceReportGenerationV3 = lazy(() => import("./InvoiceReportGenerationV3"));
 
 const TEMPLATES = [
   {
@@ -48,12 +49,42 @@ const TEMPLATES = [
       </svg>
     ),
   },
+  {
+    id: "minimal",
+    name: "Minimal",
+    description: "Clean Helvetica-style, totals right, bank at bottom",
+    preview: (
+      <svg viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <rect x="4" y="4" width="18" height="8" rx="1" fill="#e5e7eb" />
+        <rect x="4" y="14" width="28" height="3" rx="1" fill="#d1d5db" />
+        <rect x="4" y="19" width="22" height="2" rx="1" fill="#e5e7eb" />
+        <rect x="60" y="4" width="36" height="5" rx="1" fill="#111" opacity="0.8" />
+        <rect x="60" y="11" width="28" height="2" rx="1" fill="#d1d5db" />
+        <rect x="60" y="15" width="28" height="2" rx="1" fill="#d1d5db" />
+        <rect x="60" y="19" width="28" height="2" rx="1" fill="#d1d5db" />
+        <line x1="4" y1="26" x2="96" y2="26" stroke="#ddd" strokeWidth="0.8" />
+        <rect x="4" y="27" width="92" height="4" rx="0" fill="#f5f5f5" />
+        {[0, 1, 2].map((i) => (
+          <rect key={i} x="4" y={33 + i * 5} width="92" height="4" rx="0" fill={i % 2 === 0 ? "#fff" : "#fafafa"} />
+        ))}
+        <line x1="4" y1="48" x2="96" y2="48" stroke="#ddd" strokeWidth="0.8" />
+        <rect x="60" y="51" width="36" height="2" rx="1" fill="#e5e7eb" />
+        <rect x="60" y="55" width="36" height="2" rx="1" fill="#e5e7eb" />
+        <rect x="60" y="59" width="36" height="3" rx="1" fill="#111" opacity="0.7" />
+        <rect x="4" y="63" width="40" height="2" rx="1" fill="#e5e7eb" />
+        <rect x="58" y="63" width="38" height="2" rx="1" fill="#e5e7eb" />
+      </svg>
+    ),
+  },
 ];
 
 export default function InvoiceReportWrapper({ invoiceData, orgData, onBack }) {
   const [selectedTemplate, setSelectedTemplate] = useState("classic");
 
-  const PreviewComponent = selectedTemplate === "modern" ? InvoiceReportGenerationV2 : InvoiceReportGeneration;
+  const PreviewComponent =
+    selectedTemplate === "modern" ? InvoiceReportGenerationV2 :
+    selectedTemplate === "minimal" ? InvoiceReportGenerationV3 :
+    InvoiceReportGeneration;
 
   return (
     <div className="flex min-h-screen bg-gray-100 print:block">

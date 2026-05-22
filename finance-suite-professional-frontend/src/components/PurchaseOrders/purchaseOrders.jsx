@@ -106,7 +106,7 @@ export default function PurchaseOrderList() {
   ];
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
+    <div className=" lg:w-ful w-fulll md:w-full">
       <TabActionBar searchValue={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Search by PO number or vendor...">
         <FilterSelect value={statusFilter} onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
           <option value="All">All Status</option>

@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
+import { motion } from "framer-motion";
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { ChevronDown, ChevronRight, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 
 const fmt = (n) => {
@@ -27,6 +29,30 @@ const fmtPeriod = (value) => {
     if (isNaN(d.getTime())) return value;
     return d.toLocaleDateString("en-IN", { year: "numeric", month: "long" });
   } catch { return value; }
+};
+
+const parseDateValue = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) return date;
+  if (/^\d{4}-\d{2}$/.test(value)) {
+    const monthDate = new Date(`${value}-01`);
+    return Number.isNaN(monthDate.getTime()) ? null : monthDate;
+  }
+  return null;
+};
+
+const fmtMonthLabel = (date) => date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+
+const chartTooltipFormatter = (value, name) => {
+  const labels = {
+    revenue: "Revenue",
+    costOfRevenue: "Cost",
+    grossProfit: "Gross Profit",
+    totalExpenses: "Total Expenses",
+    netProfit: "Net Profit",
+  };
+  return [fmt(value), labels[name] || name];
 };
 
 const currentFY = () => {
@@ -177,8 +203,55 @@ export default function ProfitLossPage() {
     salary_records:    expenses?.payroll?.count || 0,
   } : null;
 
+  const revenueTrendData = useMemo(() => {
+    const points = {};
+    const addPoints = (items = [], key) => {
+      items.forEach((item) => {
+        const date = parseDateValue(item.date || item.period);
+        if (!date) return;
+        const label = fmtMonthLabel(date);
+        const existing = points[label] || { month: label, timestamp: date.getTime(), revenue: 0, costOfRevenue: 0 };
+        existing[key] += Number(item.amount_inr ?? item.amount ?? 0) || 0;
+        points[label] = existing;
+      });
+    };
+    addPoints(revenue?.items, "revenue");
+    addPoints(expenses?.incoming_invoices?.items, "costOfRevenue");
+    const sorted = Object.values(points)
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .map(({ timestamp, ...rest }) => rest);
+    if (!sorted.length) {
+      sorted.push({ month: "FY", revenue: summary?.revenue || 0, costOfRevenue: expenses?.incoming_invoices?.total || 0 });
+    }
+    return sorted;
+  }, [revenue?.items, expenses?.incoming_invoices?.items, summary?.revenue, expenses?.incoming_invoices?.total]);
+
+  const expenseBreakdown = useMemo(() => [
+    { name: "Employee Expenses", value: expenses?.employee_expenses?.total || 0, color: "#4f46e5" },
+    { name: "General Expenses", value: expenses?.general_expenses?.total || 0, color: "#f97316" },
+    { name: "Payroll", value: expenses?.payroll?.gross_total || 0, color: "#10b981" },
+    { name: "Cost of Revenue", value: expenses?.incoming_invoices?.total || 0, color: "#dc2626" },
+    { name: "Revenue", value: summary?.revenue || 0, color: "#6366f1" },
+  ].filter((item) => item.value > 0), [expenses?.employee_expenses?.total, expenses?.general_expenses?.total, expenses?.payroll?.gross_total, expenses?.incoming_invoices?.total, summary?.revenue]);
+
+  const salesTrendData = useMemo(() => {
+    const points = {};
+    (revenue?.items || []).forEach((item) => {
+      const date = parseDateValue(item.date || item.period);
+      if (!date) return;
+      const label = fmtMonthLabel(date);
+      const existing = points[label] || { month: label, timestamp: date.getTime(), sales: 0 };
+      existing.sales += Number(item.amount_inr ?? item.amount ?? 0) || 0;
+      points[label] = existing;
+    });
+    const sorted = Object.values(points)
+      .sort((a, b) => a.timestamp - b.timestamp);
+    const latestSix = sorted.slice(-6);
+    return latestSix.map(({ timestamp, ...rest }) => rest);
+  }, [revenue?.items]);
+
   return (
-    <div className="max-w-7xl w-full space-y-4">
+    <div className=" w-full space-y-4">
 
       {/* Header / filter bar */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-wrap items-center gap-4">
@@ -248,6 +321,66 @@ export default function ProfitLossPage() {
               ))}
             </div>
           </div>
+
+          {/* Charts */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="grid gap-4 xl:grid-cols-3"
+          >
+            <div className="xl:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">P&amp;L Breakdown</p>
+                  <p className="text-xs text-gray-400">Pie chart showing revenue and expense categories</p>
+                </div>
+                <div className="text-xs text-gray-500">{expenseBreakdown.length} segments</div>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={expenseBreakdown}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={60}
+                      outerRadius={110}
+                      paddingAngle={4}
+                      stroke="transparent"
+                    >
+                      {expenseBreakdown.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value, name) => [fmt(value), name]} />
+                    <Legend verticalAlign="bottom" height={36} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">Sales Monthwise</p>
+                  <p className="text-xs text-gray-400">Revenue trend for the selected year</p>
+                </div>
+                <div className="text-xs text-gray-500">{salesTrendData.length} months</div>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={salesTrendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <YAxis tickFormatter={(value) => value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`} tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <Tooltip formatter={(value) => [fmt(value), "Sales"]} />
+                    <Line type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Income */}
           <Section title="Income (Revenue)" total={sec.income.total} accent="indigo" defaultOpen>

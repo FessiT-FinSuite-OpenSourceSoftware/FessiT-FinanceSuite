@@ -7,6 +7,7 @@ import html2canvas from "html2canvas-pro";
 import { toast } from "react-toastify";
 import { isTauri, savePdf, showDownloadNotification } from "../../utils/pdfUtils";
 import fallbackLogo from "../../assets/FessiTLogoTrans.png";
+import { getInvoiceReportLogoFilename } from "./invoiceLogo";
 
 /** 🔽 High-quality A4 PDF from the invoice-print-area (Download) */
 async function generateInvoicePdf(invoiceNumber) {
@@ -115,10 +116,10 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
     let cancelled = false;
 
     const fetchLogo = async () => {
-      // Only use linkedLogo stamped on the invoice — fall back to local asset, not org logo
-      const logoFilename = baseData?.linkedLogo || "";
+      // New invoices use the current org logo; issued/paid invoices use the stamped linked logo.
+      const logoFilename = getInvoiceReportLogoFilename(baseData, orgData);
 
-      if (!logoFilename) { setLogoLoading(false); return; }
+      if (!logoFilename) { setLogoUrl(fallbackLogo); setLogoLoading(false); return; }
 
       try {
         const res = await axiosInstance.get(`/organisation-logo/${logoFilename}`, { responseType: "blob" });
@@ -133,7 +134,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
     setLogoLoading(true);
     fetchLogo();
     return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [baseData?.linkedLogo, orgData?.logo]);
+  }, [baseData?.linkedLogo, baseData?.status, orgData?.logo]);
 
   if (logoLoading) return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
@@ -680,6 +681,19 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                 );
               })()}
 
+              {/* Total Tax */}
+              <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
+                <span className="font-semibold">Total Tax</span>
+                <span className="font-semibold">
+                  {getCurrencySymbol(data.currency_type)} {formatNumber(
+                    isDomestic
+                      ? parseFloat(totalcgst) + parseFloat(totalsgst)
+                      : parseFloat(totaligst),
+                    data.currency_type
+                  )}
+                </span>
+              </div>
+
               {/* Grand Total */}
               <div className="flex justify-between border-t border-gray-400 pt-2 mt-2 text-sm">
                 <span className="font-bold">Grand Total/Balance Due</span>
@@ -710,6 +724,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
             ))}
           </div>
         )}
+        {footerNoteLines.length === 0 && <div className="mt-auto" />}
       </div>
     </div>
   );

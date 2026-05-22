@@ -3,7 +3,8 @@ use std::env;
 
 use crate::models::{
     Category, Challan, CostCenter, Customer, Expense, GeneralExpense, IncomingInvoice, Invoice,
-    Organisation, PartyCounter, Product, PurchaseOrder, Salary, User, Account, Service, AssetCategory,
+    Organisation, PartyCounter, Product, PurchaseOrder, Salary, User, Account, Service, AssetCategory, Employee,
+    professional_tax_challan::ProfessionalTaxChallan,
 };
 
 #[derive(Clone)]
@@ -86,6 +87,10 @@ impl MongoDbClient {
         self.database.collection::<Challan>("challans")
     }
 
+    pub fn get_pt_challan_collection(&self) -> Collection<ProfessionalTaxChallan> {
+        self.database.collection::<ProfessionalTaxChallan>("pt_challans")
+    }
+
     pub fn get_category_collection(&self) -> Collection<Category> {
         self.database.collection::<Category>("categories")
     }
@@ -120,5 +125,9 @@ impl MongoDbClient {
 
     pub fn get_delivery_challan_collection(&self) -> Collection<crate::models::delivery_challan::DeliveryChallan> {
         self.database.collection("delivery_challans")
+    }
+
+    pub fn get_employee_collection(&self) -> Collection<Employee> {
+        self.database.collection::<Employee>("employees")
     }
 }

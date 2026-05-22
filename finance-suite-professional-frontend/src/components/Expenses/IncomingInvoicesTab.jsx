@@ -198,7 +198,7 @@ export default function IncomingInvoicesTab() {
   ];
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
+    <div className=" lg:w-full md:w-full">
       <TabActionBar searchValue={search} onSearchChange={(v) => { setSearch(v); setPage(1); }} searchPlaceholder="Search by bill number or vendor...">
         <FilterSelect value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(1); }}>
           <option value="All">All Status</option>

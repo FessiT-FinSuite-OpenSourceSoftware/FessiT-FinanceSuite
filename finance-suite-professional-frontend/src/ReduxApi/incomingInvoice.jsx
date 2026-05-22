@@ -33,7 +33,7 @@ export const fetchIncomingInvoices = (year, month) => async (dispatch) => {
     dispatch(setSuccess(data))
   } catch (error) {
     dispatch(setFailure())
-    toast.error(error?.response?.data?.message || 'Failed to fetch incoming invoices')
+    toast.error(typeof error?.response?.data?.message === 'string' ? error.response.data.message : 'Failed to fetch incoming invoices')
   }
 }
 
@@ -44,7 +44,7 @@ export const createIncomingInvoice = (payload) => async (dispatch) => {
     dispatch(fetchIncomingInvoices())
     return data
   } catch (error) {
-    toast.error(error?.response?.data?.message || 'Failed to create incoming invoice')
+    toast.error(typeof error?.response?.data?.message === 'string' ? error.response.data.message : 'Failed to create incoming invoice')
     throw error
   }
 }
@@ -56,7 +56,7 @@ export const updateIncomingInvoice = (id, payload) => async (dispatch) => {
     dispatch(fetchIncomingInvoices())
     return data
   } catch (error) {
-    toast.error(error?.response?.data?.message || 'Failed to update incoming invoice')
+    toast.error(typeof error?.response?.data?.message === 'string' ? error.response.data.message : 'Failed to update incoming invoice')
     throw error
   }
 }
@@ -67,6 +67,6 @@ export const deleteIncomingInvoice = (id) => async (dispatch) => {
     toast.success('Incoming invoice deleted successfully')
     dispatch(fetchIncomingInvoices())
   } catch (error) {
-    toast.error(error?.response?.data?.message || 'Failed to delete incoming invoice')
+    toast.error(typeof error?.response?.data?.message === 'string' ? error.response.data.message : 'Failed to delete incoming invoice')
   }
 }

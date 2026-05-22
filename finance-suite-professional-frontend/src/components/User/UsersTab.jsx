@@ -105,7 +105,7 @@ export default function UsersTab() {
   ];
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
+    <div className="w-full lg:w-full md:w-full">
       <TabActionBar searchValue={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Search by name, email, or role...">
         <FilterSelect value={roleFilter} onChange={(v) => { setRoleFilter(v); setCurrentPage(1); }}>
           <option value="All">All Roles</option>

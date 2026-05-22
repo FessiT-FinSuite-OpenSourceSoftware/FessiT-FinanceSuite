@@ -102,6 +102,7 @@ const normalizeOrganisation = (organisation) => {
     customPaymentName:
       organisation.customPaymentName ?? organisation.custom_payment_name ?? '',
     logo: organisation.logo || '',
+    professionalTaxAmount: organisation.professionalTaxAmount ?? organisation.professional_tax_amount ?? '',
   }
 }
 
@@ -252,6 +253,7 @@ export const updateOrganisationData =
   (organID, organData) => async (dispatch, getState) => {
     dispatch(getOrganisation())
     try {
+      console.log("Data before sending to the backend ", organData)
       const { data } = await axiosInstance.put(`/organisationsUpdate/${organID}`, organData)
       toast.success(data.message)
       

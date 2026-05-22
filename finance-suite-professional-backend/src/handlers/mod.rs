@@ -19,6 +19,7 @@ pub mod report_handler;
 pub mod asset_handler;
 pub mod asset_category_handler;
 pub mod delivery_challan_handler;
+pub mod employee_handler;
 
 pub use customer_handler::configure_routes as configure_customer_routes;
 pub use organisation_handler::{configure_routes as configure_organisation_routes, configure_public_routes as configure_organisation_public_routes};
@@ -30,6 +31,8 @@ pub use purchase_order_handler::configure_routes as configure_purchase_order_rou
 pub use cost_center_handler::configure_routes as configure_cost_center_routes;
 pub use salary_handler::configure_routes as configure_salary_routes;
 pub use general_expense_handler::configure_routes as configure_general_expense_routes;
+pub mod professional_tax_challan_handler;
+pub use professional_tax_challan_handler::configure_routes as configure_professional_tax_challan_routes;
 pub use challan_handler::configure_routes as configure_challan_routes;
 pub use category_handler::configure_routes as configure_category_routes;
 pub use product_handler::configure_routes as configure_product_routes;
@@ -41,3 +44,4 @@ pub use report_handler::configure_routes as configure_report_routes;
 pub use asset_handler::configure_routes as configure_asset_routes;
 pub use asset_category_handler::configure_routes as configure_asset_category_routes;
 pub use delivery_challan_handler::configure_routes as configure_delivery_challan_routes;
+pub use employee_handler::configure_routes as configure_employee_routes;

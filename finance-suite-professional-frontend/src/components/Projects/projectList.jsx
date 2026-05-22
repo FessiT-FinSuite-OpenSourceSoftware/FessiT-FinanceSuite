@@ -30,7 +30,7 @@ function ProjectModal({ project, customers, existingProjects, onSave, onClose })
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-semibold text-gray-800">{project ? 'Edit Project' : 'Add Project'}</h3>
@@ -125,7 +125,7 @@ export default function ProjectList() {
   ]
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
+    <div className="w-full lg:w-full md:w-full">
       <TabActionBar searchValue={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Search by name, owner, email, customer...">
         <FilterSelect value={customerFilter} onChange={(v) => { setCustomerFilter(v); setCurrentPage(1); }}>
           <option value="All">All Customers</option>

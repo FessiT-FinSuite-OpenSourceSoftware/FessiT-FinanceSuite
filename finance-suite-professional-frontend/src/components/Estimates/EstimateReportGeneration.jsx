@@ -118,7 +118,7 @@ export default function EstimateReportGeneration({ estimateData, orgData, onBack
 
   const termsLines = [
     ...(data.terms || "").split("\n").map((l) => l.trim()).filter(Boolean),
-    ...(orgData?.footerNote || "").split("\n").map((l) => l.trim()).filter(Boolean),
+    // ...(orgData?.footerNote || "").split("\n").map((l) => l.trim()).filter(Boolean),
     ...(orgData?.paymentInstructions || "").split("\n").map((l) => l.trim()).filter(Boolean),
   ];
 
@@ -362,7 +362,7 @@ export default function EstimateReportGeneration({ estimateData, orgData, onBack
                 </span>
               </div>
 
-              <div className="border-t border-gray-400 my-1" />
+              {/* <div className="border-t border-gray-400 my-1" /> */}
 
               {discount > 0 && (
                 <div className="flex justify-between text-red-600">

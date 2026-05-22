@@ -563,7 +563,7 @@ export default function AssetList() {
   if (isInitialLoad) return <LoadingSkeleton />
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 relative">
+    <div className="w-full ">
       {/* Subtle loading overlay for refreshes when data exists */}
       {isLoading && hasLoadedOnce && (
         <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
@@ -574,7 +574,7 @@ export default function AssetList() {
         </div>
       )}
       {/* Toolbar */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-2">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:max-w-xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -607,14 +607,14 @@ export default function AssetList() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mb-2">
         <StatCard label="Total Assets" value={summary.total} />
         <StatCard label="Active" value={summary.active} valueClass="text-emerald-700" />
         <StatCard label="In Repair" value={summary.repair} valueClass="text-amber-600" />
         <StatCard label="Inventory Value" value={`Rs. ${fmt(summary.inventoryValue)}`} valueClass="text-blue-700" />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-2">
         <div className="flex flex-col gap-3 items-end justify-end">
          
           <div className="flex flex-wrap gap-3">

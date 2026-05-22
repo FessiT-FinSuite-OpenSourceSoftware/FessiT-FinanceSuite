@@ -38,6 +38,7 @@ export const loginUser = createAsyncThunk(
       
       return { token, refreshToken: refresh_token, user };
     } catch (error) {
+      console.log(error)
       const message ="Please Check your Credentails";
       return rejectWithValue(message);
     }

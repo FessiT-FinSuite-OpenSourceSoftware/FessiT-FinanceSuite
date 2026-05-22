@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ReactDOM from "react-dom";
-import { Plus } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchInvoiceData, deleteInvoice, updateInvoice, invoiceSelector } from "../../ReduxApi/invoice";
@@ -12,6 +12,8 @@ import {
   TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, TruncatedCell, ConfirmModal,
 } from "../../shared/ui";
 import { toast } from "react-toastify";
+import * as XLSX from "xlsx";
+import { isTauri, saveBytesToDownloads, showDownloadNotification } from "../../utils/pdfUtils";
 
 const getInvoiceId = (invoice) => {
   if (!invoice) return "";
@@ -64,6 +66,8 @@ export default function InvoiceList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const downloadMenuRef = useRef(null);
   const [statusModal, setStatusModal] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [conversionRate, setConversionRate] = useState("");
@@ -79,6 +83,92 @@ export default function InvoiceList() {
     document.body.setAttribute("data-modal-open", "1");
     return () => document.body.removeAttribute("data-modal-open");
   }, [statusModal]);
+
+  // Close download menu on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target))
+        setShowDownloadMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const buildExportRows = () => filtered.map((inv) => ({
+    "Invoice No": inv.invoice_number || "-",
+    "Customer": inv.billcustomer_name || inv.customer_name || "-",
+    "Invoice Date": formatDate(inv.invoice_date || inv.date || ""),
+    "Due Date": formatDate(inv.invoice_dueDate || inv.due_date || ""),
+    "Type": inv.invoice_type === "international" ? "International" : "Domestic",
+    "Currency": inv.currency_type || "INR",
+    "Sub Total": inv.subTotal || "0",
+    "Total CGST": inv.totalcgst || "0",
+    "Total SGST": inv.totalsgst || "0",
+    "Total IGST": inv.totaligst || "0",
+    "Total": inv.total || "0",
+    "Status": inv.status || "New",
+    "Payment Type": inv.payment_type || "-",
+    "Payment Reference": inv.payment_reference || "-",
+    "Place of Supply": inv.place_of_supply || "-",
+    "GSTIN": inv.billcustomer_gstin || "-",
+  }));
+
+  const handleDownload = async (format) => {
+    setShowDownloadMenu(false);
+    const rows = buildExportRows();
+    if (!rows.length) { toast.info("No data to export"); return; }
+    const filename = `sales-report-${new Date().toISOString().slice(0, 10)}`;
+    const toastId = toast.loading("Preparing export...");
+
+    try {
+      let bytes;
+      let fullName;
+
+      if (format === "json") {
+        fullName = `${filename}.json`;
+        bytes = new TextEncoder().encode(JSON.stringify(rows, null, 2));
+      } else if (format === "csv") {
+        fullName = `${filename}.csv`;
+        const headers = Object.keys(rows[0]);
+        const csv = [headers.join(","), ...rows.map((r) =>
+          headers.map((h) => `"${String(r[h] ?? "").replace(/"/g, '""')}"`).join(",")
+        )].join("\n");
+        bytes = new TextEncoder().encode(csv);
+      } else if (format === "xlsx") {
+        fullName = `${filename}.xlsx`;
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sales Report");
+        bytes = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      } else if (format === "tsv") {
+        fullName = `${filename}.tsv`;
+        const headers = Object.keys(rows[0]);
+        const tsv = [headers.join("\t"), ...rows.map((r) =>
+          headers.map((h) => String(r[h] ?? "")).join("\t")
+        )].join("\n");
+        bytes = new TextEncoder().encode(tsv);
+      }
+
+      toast.dismiss(toastId);
+
+      let filePath = null;
+      if (isTauri()) {
+        const result = await saveBytesToDownloads(bytes, fullName);
+        filePath = result.filePath;
+      } else {
+        const mimeMap = { json: "application/json", csv: "text/csv", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", tsv: "text/tab-separated-values" };
+        const blob = new Blob([bytes], { type: mimeMap[format] });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fullName; a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      await showDownloadNotification(fullName, filePath);
+    } catch (err) {
+      toast.update(toastId, { render: `Export failed: ${err.message}`, type: "error", isLoading: false, autoClose: 4000 });
+    }
+  };
 
   const invoices = Array.isArray(invoiceData) ? invoiceData : [];
 
@@ -230,7 +320,7 @@ export default function InvoiceList() {
   ];
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
+    <div className="w-full lg:w-full md:w-full">
       <TabActionBar
         searchValue={searchTerm}
         onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }}
@@ -255,6 +345,38 @@ export default function InvoiceList() {
           <option value="domestic">Domestic</option>
           <option value="international">International</option>
         </FilterSelect>
+        <div className="relative" ref={downloadMenuRef}>
+          {/* <button
+            onClick={() => setShowDownloadMenu((p) => !p)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+            {filtered.length > 0 && (
+              <span className="bg-indigo-100 text-indigo-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">{filtered.length}</span>
+            )}
+          </button> */}
+          {showDownloadMenu && (
+            <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+              <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">Export as</p>
+              {[
+                { fmt: "csv",  label: "CSV",  desc: "Spreadsheet compatible" },
+                { fmt: "xlsx", label: "XLSX", desc: "Excel workbook" },
+                { fmt: "json", label: "JSON", desc: "Raw data" },
+                { fmt: "tsv",  label: "TSV",  desc: "Tab-separated" },
+              ].map(({ fmt, label, desc }) => (
+                <button
+                  key={fmt}
+                  onClick={() => handleDownload(fmt)}
+                  className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                >
+                  <p className="text-sm font-medium text-gray-800">{label}</p>
+                  <p className="text-xs text-gray-400">{desc}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="relative">
           <button
             onClick={() => hasWrite && setShowCreateMenu((prev) => !prev)}

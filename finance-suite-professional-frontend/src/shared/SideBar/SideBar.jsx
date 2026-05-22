@@ -8,7 +8,7 @@ import {
   FileText, ShoppingCart, Receipt, TrendingUp, Users, Settings,
   IndianRupee, Bell, Menu, X, ChevronRight, ChevronLeft, ArrowUp,
   UserLockIcon, Layers, FolderKanban, Boxes, LogOut, BookOpen,
-  ReceiptText, BarChart2, Package, Truck,
+  ReceiptText, BarChart2, Package, Truck, UserCheck,
 } from "lucide-react";
 
 function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
@@ -68,8 +68,16 @@ const NAV_GROUPS = [
   {
     key: "compliance", label: "Compliance",
     items: [
-      { id: "gstcompliance", label: "GST Compliance", icon: IndianRupee, module: Module.Invoice },
-      { id: "tdscompliance", label: "TDS Compliance", icon: Receipt,     module: Module.Invoice },
+      { id: "gstcompliance", label: "GST ", icon: IndianRupee, module: Module.Invoice },
+      { id: "tdscompliance", label: "TDS ", icon: Receipt,     module: Module.Invoice },
+      { id: "ptcompliance",  label: "PT ",  icon: IndianRupee, module: Module.Invoice },
+    ],
+  },
+   {
+    key: "inventory", label: "Inventory",
+    items: [
+      { id: "assets",    label: "Assets", icon: Package, module: Module.null },
+      { id: "items",        label: "Items",        icon: Boxes,        module: Module.Products },
     ],
   },
   {
@@ -78,10 +86,12 @@ const NAV_GROUPS = [
       { id: "customers",    label: "Customers",    icon: Users,        module: Module.Customers },
       { id: "projects",     label: "Projects",     icon: FolderKanban, module: Module.Customers },
       { id: "cost-centers", label: "Cost Centers", icon: Layers,       module: Module.Customers },
-      { id: "items",        label: "Items",        icon: Boxes,        module: Module.Products },
-      { id: "assets",       label: "Assets",       icon: Package,      module: null },
+      // { id: "items",        label: "Items",        icon: Boxes,        module: Module.Products },
+      // { id: "assets",       label: "Assets",       icon: Package,      module: null },
+      { id: "employees",    label: "Employees",    icon: UserCheck,    module: Module.Users },
     ],
   },
+ 
   {
     key: "admin", label: "Settings",
     items: [
@@ -103,12 +113,14 @@ const PAGE_TITLES = {
   "/expenses":       "Expenses",
   "/gstcompliance":  "GST Compliance",
   "/tdscompliance":  "TDS Compliance",
+  "/ptcompliance":   "PT Compliance",
   "/customers":      "Customers",
   "/projects":       "Projects",
   "/cost-centers":   "Cost Centers",
   "/settings":       "Settings",
   "/users":          "User Management",
   "/assets":         "Assets",
+  "/employees":      "Employees",
   "/items":          "Items",
 };
 
@@ -127,7 +139,7 @@ export default function SideBar({ component }) {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [openGroups, setOpenGroups] = useState({
-    finance: true, reports: true, operations: true, compliance: true, master: true, admin: true,
+    finance: true, reports: true, operations: true, compliance: true, master: false, admin: false,inventory: false,
   });
 
   const sidebarRef = useRef(null);
@@ -150,7 +162,7 @@ export default function SideBar({ component }) {
     const sidebar = sidebarRef.current;
     if (!sidebar) return;
     const check = () => {
-      const hasModal = !!document.querySelector('.fixed.inset-0[class*="z-"], [data-modal-open]');
+      const hasModal = !!document.querySelector('[data-modal-open]');
       if (hasModal) sidebar.setAttribute("inert", "");
       else sidebar.removeAttribute("inert");
     };
@@ -263,7 +275,6 @@ export default function SideBar({ component }) {
                 <button
                   key={item.id}
                   onClick={() => nav(`/${item.id}`)}
-                  title={collapsed ? item.label : undefined}
                   className={`w-full flex items-center rounded-lg ${
                     active ? "bg-indigo-50 text-indigo-600 font-medium" : "text-gray-600 hover:bg-gray-100"
                   } sider-button ${collapsed ? "py-2.5 justify-center" : "px-3 py-2 space-x-2 justify-start pl-5"}`}
@@ -314,16 +325,15 @@ export default function SideBar({ component }) {
       {/* ── Desktop sidebar ─────────────────────────────────────── */}
       <div
         ref={sidebarRef}
-        className={`hidden md:flex ${desktopOpen ? "w-52" : "w-16"} shrink-0 bg-white border-r border-gray-200 h-screen flex-col transition-all duration-200`}
-        style={{ transform: "translateZ(0)", willChange: "transform", isolation: "isolate" }}
+        className={`hidden md:flex ${desktopOpen ? "w-52" : "w-16"} shrink-0 bg-white border-r border-gray-200 h-screen flex-col transition-[width] duration-200`}
       >
-        <div className="shrink-0 p-4 border-b border-gray-200 h-22 flex justify-between items-center">
+        <div className="shrink-0 p-4 border-b border-gray-200 h-[72px] flex justify-between items-center">
           <Logo showText={desktopOpen} />
           <div className="shrink-0 ml-2">
             {desktopOpen ? (
               <ChevronLeft className="cursor-pointer text-gray-500 hover:text-gray-700" size={20} strokeWidth={1.5} onClick={() => setDesktopOpen(false)} />
             ) : (
-              <ChevronRight size={24} strokeWidth={1.5} className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-5.5" onClick={() => setDesktopOpen(true)} />
+              <ChevronRight size={24} strokeWidth={1.5} className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-6" onClick={() => setDesktopOpen(true)} />
             )}
           </div>
         </div>
@@ -333,14 +343,14 @@ export default function SideBar({ component }) {
       {/* ── Mobile drawer overlay ────────────────────────────────── */}
       {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-200"
+          className="md:hidden fixed inset-0 bg-black/50 z-[200]"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* ── Mobile drawer ────────────────────────────────────────── */}
       <div
-        className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col z-201 transition-transform duration-250 ease-in-out ${
+        className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col z-[201] transition-transform duration-300 ease-in-out ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ isolation: "isolate" }}
@@ -355,11 +365,8 @@ export default function SideBar({ component }) {
       </div>
 
       {/* ── Main content ─────────────────────────────────────────── */}
-      <div
-        className="flex-1 flex flex-col overflow-hidden min-w-0"
-        style={{ transform: "translateZ(0)", willChange: "transform", isolation: "isolate" }}
-      >
-        <main ref={mainRef} className="overflow-y-auto overflow-x-hidden overscroll-none relative" id="main-scroll-container">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none relative" id="main-scroll-container">
 
           {showScrollTop && (
             <button
@@ -372,7 +379,7 @@ export default function SideBar({ component }) {
           )}
 
           {/* ── Header ─────────────────────────────────────────── */}
-          <header className="bg-white border-b border-gray-200 px-3 md:px-4 lg:px-6 py-3 md:py-4 sticky z-20 top-0">
+          <header className="bg-white border-b border-gray-200 px-3 md:px-4 lg:px-6 py-3 md:py-4 sticky z-20 top-0 h-[72px]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Hamburger — mobile only */}
@@ -422,7 +429,7 @@ export default function SideBar({ component }) {
           {/* Notifications panel */}
           <div
             ref={modalRef}
-            className={`fixed z-125 right-2 md:right-4 lg:right-6 top-14 md:top-16 transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${
+            className={`fixed z-[125] right-2 md:right-4 lg:right-6 top-[72px] transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${
               showNotifications ? "opacity-100 scale-100 translate-y-2" : "opacity-0 scale-90 -translate-y-3 pointer-events-none"
             }`}
           >

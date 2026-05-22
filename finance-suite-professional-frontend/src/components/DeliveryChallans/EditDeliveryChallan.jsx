@@ -85,7 +85,6 @@ export default function EditDeliveryChallan() {
   };
 
   const handleSubmit = async () => {
-    if (!form.challan_no?.trim()) { toast.error("Challan number is required"); return; }
     setSaving(true);
     try {
       await dispatch(updateDeliveryChallan(id, { ...form, items }, files));
@@ -137,8 +136,13 @@ export default function EditDeliveryChallan() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">Challan Details</h2>
           <div className="grid grid-cols-3 gap-4">
             <div className="relative">
-              <label className={labelCls}>Challan No *</label>
-              <input className={inputCls} value={form.challan_no || ""} onChange={(e) => setField("challan_no", e.target.value)} placeholder="e.g. DC/2024/001" />
+              <label className={labelCls}>Challan No</label>
+              <input
+                className={`${inputCls} bg-gray-50 text-gray-500 cursor-not-allowed`}
+                value={form.challan_no || ""}
+                readOnly
+              />
+              <p className="text-xs text-gray-400 mt-1">Auto-generated</p>
             </div>
             <div className="relative">
               <label className={labelCls}>Challan Date</label>

@@ -19,7 +19,7 @@ function ProjectModal({ customerName, onSave, onClose }) {
     onSave(form);
   };
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
         <div className="flex justify-between items-center mb-1">
           <h3 className="text-base font-semibold text-gray-800">Add Project</h3>
@@ -108,7 +108,7 @@ export default function CustomerList() {
     {
       label: "Customer",
       render: (item) => (
-        <span className="block truncate max-w-[160px] text-blue-600 font-medium cursor-pointer capitalize" title={item?.customerName} onClick={() => nav(`/customers/customer/${item?._id?.$oid}`)}>
+        <span className="block truncate max-w-40 text-blue-600 font-medium cursor-pointer capitalize" title={item?.customerName} onClick={() => nav(`/customers/customer/${item?._id?.$oid}`)}>
           {item?.customerName}
         </span>
       ),
@@ -116,7 +116,7 @@ export default function CustomerList() {
     {
       label: "Company",
       render: (item) => (
-        <span className="block truncate max-w-[160px] text-gray-700 capitalize" title={item?.companyName}>{item?.companyName}</span>
+        <span className="block truncate max-w-40 text-gray-700 capitalize" title={item?.companyName}>{item?.companyName}</span>
       ),
     },
     {
@@ -176,7 +176,7 @@ export default function CustomerList() {
   ];
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
+    <div className="w-full lg:w-full md:w-full">
       <TabActionBar searchValue={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Search by customer, or company...">
         <FilterSelect value={statusFilter} onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
           <option value="All">All Status</option>

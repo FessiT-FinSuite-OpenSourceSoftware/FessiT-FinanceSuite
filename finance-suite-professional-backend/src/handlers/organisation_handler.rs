@@ -56,6 +56,7 @@ pub async fn get_organisation_by_email(
     match service.get_organisation_by_email(&email).await {
         Ok(organisation) => {
             log::info!("✅ Found organisation: {:?}", organisation.id);
+            // log::info!("Organisation response: {:#?}", organisation);
             Ok(HttpResponse::Ok().json(organisation))
         }
         Err(_) => {

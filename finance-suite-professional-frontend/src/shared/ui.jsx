@@ -81,7 +81,7 @@ export function TableHead({ columns }) {
         {columns.map((col) => (
           <th
             key={col.label}
-            className={`px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider${col.right ? " text-right" : " text-left"}${col.hidden ? " hidden lg:table-cell" : ""}`}
+            className={`px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider${col.right ? " text-right" : col.center ? " text-center" : " text-left"}${col.hidden ? " hidden lg:table-cell" : ""}`}
           >
             {col.label}
           </th>
@@ -240,9 +240,30 @@ export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wr
       <TableHead columns={columns} />
       <tbody className={tbodyClass}>
         {isLoading ? (
-          <EmptyRow colSpan={columns.length} message={emptyMessage || "Loading..."} />
+          <tr>
+            <td colSpan={columns.length} className="px-6 py-8">
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex gap-4">
+                    {columns.map((col) => (
+                      <div key={col.label} className={`skeleton-shimmer h-4 rounded ${col.right ? "ml-auto w-16" : "flex-1"}`} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </td>
+          </tr>
         ) : !data?.length ? (
-          <EmptyRow colSpan={columns.length} message={emptyMessage || "No records found."} />
+          <tr>
+            <td colSpan={columns.length} className="px-6 py-14 text-center">
+              <div className="flex flex-col items-center gap-2 text-gray-400">
+                <svg className="w-10 h-10 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6M3 17h18" />
+                </svg>
+                <p className="text-sm">{emptyMessage || "No records found."}</p>
+              </div>
+            </td>
+          </tr>
         ) : data.map((row) => {
           const key = rowKey(row);
           const isOpen = expandable && openId === key;
@@ -255,7 +276,7 @@ export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wr
                 {columns.map((col) => (
                   <td
                     key={col.label}
-                    className={`px-4 py-2 whitespace-nowrap${col.right ? " text-right" : ""}${col.hidden ? " hidden lg:table-cell" : ""} text-sm`}
+                    className={`px-4 py-2 whitespace-nowrap${col.right ? " text-right" : col.center ? " text-center" : ""}${col.hidden ? " hidden lg:table-cell" : ""} text-sm`}
                     onClick={col.stopPropagation ? (e) => e.stopPropagation() : undefined}
                   >
                     {col.render ? col.render(row) : row[col.key] ?? "-"}
@@ -263,7 +284,7 @@ export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wr
                 ))}
               </tr>
               {isOpen && (
-                <tr className="bg-blue-50">
+                <tr className="bg-slate-50 border-t border-slate-100">
                   <td colSpan={columns.length}>{renderExpanded(row)}</td>
                 </tr>
               )}

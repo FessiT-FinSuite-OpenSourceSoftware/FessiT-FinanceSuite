@@ -215,7 +215,7 @@ export default function OthersTab() {
   ];
 
   return (
-    <div className="max-w-7xl lg:w-full md:w-full">
+    <div className="w-full lg:w-full md:w-full">
       <TabActionBar searchValue={search} onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }} searchPlaceholder="Search by title or paid by...">
         <FilterSelect value={categoryFilter} onChange={(v) => { setCategoryFilter(v); setCurrentPage(1); }}>
           <option value="All">All Categories</option>

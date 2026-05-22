@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { Search } from "lucide-react";
 import { TabActionBar, FilterSelect, DataTable, InfoCard, Pagination } from "../../shared/ui";
 
 const fmt = (value) =>
@@ -33,16 +34,18 @@ function inMonthSet(value, monthSet) {
 
 export default function TDSDeductions({ deductions = [], isLoading = false, selectedMonths = [] }) {
   const [search, setSearch] = useState("");
+  const [sectionSearch, setSectionSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  useEffect(() => { setCurrentPage(1); }, [search, sourceFilter, statusFilter, pageSize, selectedMonths]);
+  useEffect(() => { setCurrentPage(1); }, [search, sectionSearch, sourceFilter, statusFilter, pageSize, selectedMonths]);
 
   const filtered = useMemo(() => {
     const monthSet = buildMonthSet(selectedMonths);
     const q = search.trim().toLowerCase();
+    const sq = sectionSearch.trim().toLowerCase();
     return deductions.filter((d) => {
       const dateToCheck = d.source === "Salary" ? (d.period || d.date) : d.date;
       if (monthSet.size > 0 && !inMonthSet(dateToCheck, monthSet)) return false;
@@ -51,11 +54,15 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
         (d.pan || "").toLowerCase().includes(q) ||
         (d.invoice_number || "").toLowerCase().includes(q) ||
         fmtDate(d.date).toLowerCase().includes(q);
+      const matchSection = !sq ||
+        (d.tds_section_key || "").toLowerCase().includes(sq) ||
+        (d.tds_section_old || "").toLowerCase().includes(sq) ||
+        (d.tds_section_new || "").toLowerCase().includes(sq);
       const matchSource = sourceFilter === "All" || d.source === sourceFilter;
       const matchStatus = statusFilter === "All" || d.status === statusFilter;
-      return matchSearch && matchSource && matchStatus;
+      return matchSearch && matchSection && matchSource && matchStatus;
     });
-  }, [deductions, search, sourceFilter, statusFilter, selectedMonths]);
+  }, [deductions, search, sectionSearch, sourceFilter, statusFilter, selectedMonths]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -100,9 +107,8 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
     {
       label: "Source",
       render: (d) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          d.source === "Salary" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
-        }`}>
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${d.source === "Salary" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
+          }`}>
           {d.source}
         </span>
       ),
@@ -122,9 +128,8 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
     {
       label: "Status",
       render: (d) => (
-        <span className={`inline-flex justify-center w-24 px-2 py-1 text-xs font-semibold rounded-full ${
-          d.status === "deposited" ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"
-        }`}>
+        <span className={`inline-flex justify-center w-24 px-2 py-1 text-xs font-semibold rounded-full ${d.status === "deposited" ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"
+          }`}>
           {d.status.charAt(0).toUpperCase() + d.status.slice(1)}
         </span>
       ),
@@ -139,6 +144,17 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
         onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }}
         searchPlaceholder="Search by deductee, PAN, invoice no, or date..."
       >
+       
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={sectionSearch}
+            onChange={(e) => { setSectionSearch(e.target.value); setCurrentPage(1); }}
+            placeholder="Search section code..."
+            className="pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 w-44"
+          />
+        </div>
         <FilterSelect value={sourceFilter} onChange={(v) => { setSourceFilter(v); setCurrentPage(1); }}>
           <option value="All">All Sources</option>
           <option value="Salary">Salary</option>
@@ -157,6 +173,63 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
           <span className="font-semibold text-gray-800">Total TDS: ₹ {fmt(totalTds)}</span>
         </div>
       )}
+       {(
+          search ||
+          sectionSearch ||
+          sourceFilter !== "All" ||
+          statusFilter !== "All" ||
+          selectedMonths.length > 0
+        ) && (
+            <div className="flex flex-wrap items-center gap-2 mb-3 px-1">
+
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium hover:bg-indigo-200 transition"
+                >
+                  Search: {search}
+                  <span className="text-sm">×</span>
+                </button>
+              )}
+
+              {sectionSearch && (
+                <button
+                  onClick={() => setSectionSearch("")}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium hover:bg-purple-200 transition"
+                >
+                  Section: {sectionSearch}
+                  <span className="text-sm">×</span>
+                </button>
+              )}
+
+              {sourceFilter !== "All" && (
+                <button
+                  onClick={() => setSourceFilter("All")}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200 transition"
+                >
+                  Source: {sourceFilter}
+                  <span className="text-sm">×</span>
+                </button>
+              )}
+
+              {statusFilter !== "All" && (
+                <button
+                  onClick={() => setStatusFilter("All")}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-medium hover:bg-orange-200 transition"
+                >
+                  Status: {statusFilter}
+                  <span className="text-sm">×</span>
+                </button>
+              )}
+
+              {selectedMonths.length > 0 && (
+                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                  Months: {selectedMonths.length} selected
+                </div>
+              )}
+
+            </div>
+          )}
 
       <DataTable
         isLoading={isLoading}

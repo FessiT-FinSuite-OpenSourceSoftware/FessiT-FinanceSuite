@@ -143,7 +143,7 @@ export default function DeliveryChallans() {
   ];
 
   return (
-    <div className="max-w-7xl lg:w-full">
+    <div className="w-full lg:w-full">
       <TabActionBar
         searchValue={search}
         onSearchChange={(v) => setSearch(v)}

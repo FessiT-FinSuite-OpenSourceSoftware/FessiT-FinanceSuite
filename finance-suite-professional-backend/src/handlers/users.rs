@@ -1,12 +1,15 @@
 use actix_web::{
     delete, get, post, put,
     web::{self, Json, Path},
-    HttpResponse, Responder, HttpRequest, HttpMessage,
+    HttpMessage, HttpRequest, HttpResponse, Responder,
 };
 use serde_json::json;
 
 use crate::{
-    models::users::{CreateUserRequest, UpdateUserRequest, LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse},
+    models::users::{
+        CreateUserRequest, LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse,
+        UpdateUserRequest,
+    },
     services::UserService,
     utils::auth::Claims,
     utils::permissions::{check_permission, create_permission_error, Module, PermissionAction},
@@ -34,11 +37,16 @@ pub async fn create_user(
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("Admin user not found"))?;
 
     // Check permissions
-    check_permission(&admin_user.permissions, Module::Users, PermissionAction::Write, admin_user.is_admin)
-        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+    check_permission(
+        &admin_user.permissions,
+        Module::Users,
+        PermissionAction::Write,
+        admin_user.is_admin,
+    )
+    .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
     let mut new_user = req.into_inner();
-    
+
     // Set the new user's organisation_id to be the same as the admin's
     new_user.organisation_id = admin_user.organisation_id;
 
@@ -68,8 +76,13 @@ pub async fn list_users(
         .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
 
-    check_permission(&user.permissions, Module::Users, PermissionAction::Read, user.is_admin)
-        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+    check_permission(
+        &user.permissions,
+        Module::Users,
+        PermissionAction::Read,
+        user.is_admin,
+    )
+    .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
     let users = service
         .get_users_by_organisation(&user.organisation_id.unwrap())
@@ -98,8 +111,13 @@ pub async fn get_user(
         .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
 
-    check_permission(&user.permissions, Module::Users, PermissionAction::Read, user.is_admin)
-        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+    check_permission(
+        &user.permissions,
+        Module::Users,
+        PermissionAction::Read,
+        user.is_admin,
+    )
+    .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
     let id = id.into_inner();
 
@@ -143,8 +161,13 @@ pub async fn update_user(
         .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
 
-    check_permission(&user.permissions, Module::Users, PermissionAction::Write, user.is_admin)
-        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+    check_permission(
+        &user.permissions,
+        Module::Users,
+        PermissionAction::Write,
+        user.is_admin,
+    )
+    .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
     let id = id.into_inner();
 
@@ -237,8 +260,13 @@ pub async fn delete_user(
         .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
 
-    check_permission(&user.permissions, Module::Users, PermissionAction::Delete, user.is_admin)
-        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+    check_permission(
+        &user.permissions,
+        Module::Users,
+        PermissionAction::Delete,
+        user.is_admin,
+    )
+    .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
     let id = id.into_inner();
 
@@ -308,13 +336,30 @@ pub async fn login(
     service: web::Data<UserService>,
     req: Json<LoginRequest>,
 ) -> actix_web::Result<impl Responder> {
-    let (token, refresh_tok, user) = service
-        .login(&req.email, &req.password)
-        .await
-        .map_err(|e| actix_web::error::ErrorUnauthorized(e.to_string()))?;
+    match service.login(&req.email, &req.password).await {
+        Ok((token, refresh_tok, user)) => {
+            let response = LoginResponse {
+                token,
+                refresh_token: refresh_tok,
+                user,
+            };
+            Ok(HttpResponse::Ok().json(response))
+        }
+        Err(e) => {
+            let code = e.to_string();
+            let message = match code.as_str() {
+                "EMAIL_NOT_FOUND" => "Email address not found",
+                "INVALID_PASSWORD" => "Incorrect password",
+                "ACCOUNT_INACTIVE" => "User account is inactive",
+                _ => "Login failed",
+            };
 
-    let response = LoginResponse { token, refresh_token: refresh_tok, user };
-    Ok(HttpResponse::Ok().json(response))
+            Ok(HttpResponse::Unauthorized().json(json!({
+                    "error": message,
+                    "code": code,
+            })))
+        }
+    }
 }
 
 /// POST /api/v1/auth/refresh
@@ -333,27 +378,31 @@ pub async fn refresh_token(
                     json!({
                         "error": "Refresh token expired. Please login again.",
                         "code": "REFRESH_TOKEN_EXPIRED"
-                    }).to_string()
+                    })
+                    .to_string(),
                 )
             } else {
                 actix_web::error::ErrorUnauthorized(
                     json!({
                         "error": "Invalid refresh token. Please login again.",
                         "code": "INVALID_REFRESH_TOKEN"
-                    }).to_string()
+                    })
+                    .to_string(),
                 )
             }
         })?;
 
-    let response = RefreshTokenResponse { token, refresh_token };
+    let response = RefreshTokenResponse {
+        token,
+        refresh_token,
+    };
     Ok(HttpResponse::Ok().json(response))
 }
 
 /// Register routes - split into public and protected
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     // Public routes (no JWT required)
-    cfg.service(login)
-        .service(refresh_token);
+    cfg.service(login).service(refresh_token);
 }
 
 /// Register protected routes (JWT required)

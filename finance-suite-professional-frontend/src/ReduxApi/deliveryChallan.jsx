@@ -97,3 +97,12 @@ export const deleteDeliveryChallan = (id) => async (dispatch) => {
     toast.error(err?.response?.data?.message || 'Failed to delete delivery challan')
   }
 }
+
+export const fetchNextChallanNo = () => async () => {
+  try {
+    const { data } = await axiosInstance.get('/delivery-challans/next-number')
+    return data.challan_no
+  } catch {
+    return null
+  }
+}

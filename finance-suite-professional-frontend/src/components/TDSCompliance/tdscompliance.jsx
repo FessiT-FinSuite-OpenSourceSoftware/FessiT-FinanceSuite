@@ -484,13 +484,7 @@ export default function TDSCompliance() {
           <TDSDeductions deductions={dynamicDeductions} selectedMonths={selectedMonths} />
         )}
 
-        {/* Challans Tab */}
-        {activeTab === "challans" && (
-          <>
-            <ChallansTab />
-          </>
-
-        )}
+        {activeTab === "challans" && <ChallansTab />}
 
 
         {/* Certificates Tab */}

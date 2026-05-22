@@ -3,6 +3,7 @@ use actix_web::{
     web::{self, Json, Path},
     HttpResponse, Responder, HttpRequest, HttpMessage,
 };
+use chrono::Utc;
 use serde_json::json;
 use serde::Deserialize;
 
@@ -59,7 +60,7 @@ pub async fn list_salaries(
     let mut salaries = service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
     if query.year.is_some() || query.month.is_some() {
-        let now = chrono::Utc::now();
+        let now = Utc::now();
         let year  = query.year.clone().unwrap_or_else(|| now.format("%Y").to_string());
         let month = query.month.clone().unwrap_or_else(|| now.format("%m").to_string());
         salaries.retain(|s| {
@@ -170,9 +171,40 @@ pub async fn delete_salary(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct PtSummaryQuery {
+    year: Option<String>,
+    month: Option<String>,
+}
+
+/// GET /api/v1/salaries/pt-summary
+#[get("/salaries/pt-summary")]
+pub async fn get_pt_summary(
+    service: web::Data<SalaryService>,
+    query: web::Query<PtSummaryQuery>,
+    http_req: HttpRequest,
+) -> actix_web::Result<impl Responder> {
+    let claims = http_req.extensions().get::<Claims>().cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
+    let user = service.get_user_permissions(&claims.sub).await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
+        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+    let org_id = user.organisation_id
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
+    let now = Utc::now();
+    let year  = query.year.clone().unwrap_or_else(|| now.format("%Y").to_string());
+    let month = query.month.clone().unwrap_or_else(|| now.format("%m").to_string());
+    let summary = service.get_pt_summary(&org_id, &year, &month).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+    Ok(HttpResponse::Ok().json(summary))
+}
+
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(create_salary)
         .service(list_salaries)
+        .service(get_pt_summary)
         .service(get_salary)
         .service(update_salary)
         .service(delete_salary);

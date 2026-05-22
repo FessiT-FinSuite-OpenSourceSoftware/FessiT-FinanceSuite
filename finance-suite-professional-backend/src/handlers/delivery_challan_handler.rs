@@ -11,6 +11,7 @@ use crate::{
     models::delivery_challan::{DeliveryChallan, DeliveryChallanItem, DeliveryChallanStatus},
     services::delivery_challan_service::DeliveryChallanService,
     utils::auth::Claims,
+    utils::permissions::{check_permission, create_permission_error, Module, PermissionAction},
 };
 
 const UPLOAD_DIR: &str = "./uploads/delivery_challans";
@@ -116,6 +117,25 @@ fn dc_from_fields(
     }
 }
 
+#[get("/delivery-challans/next-number")]
+pub async fn get_next_challan_number(
+    service: web::Data<DeliveryChallanService>,
+    http_req: HttpRequest,
+) -> actix_web::Result<impl Responder> {
+    let claims = http_req.extensions().get::<Claims>().cloned()
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("Missing claims"))?;
+    let user = service.get_user_permissions(&claims.sub).await
+        .map_err(actix_web::error::ErrorInternalServerError)?
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
+    let org_id = user.organisation_id
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
+    let number = service.peek_next_challan_no(&org_id).await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+    Ok(HttpResponse::Ok().json(json!({ "challan_no": number })))
+}
+
 #[post("/delivery-challans")]
 pub async fn create_delivery_challan(
     service: web::Data<DeliveryChallanService>,
@@ -160,9 +180,7 @@ pub async fn create_delivery_challan(
     }
 
     let dc = dc_from_fields(&mut fields, None, dispatched_copy, acknowledged_copy);
-    if dc.challan_no.trim().is_empty() {
-        return Ok(HttpResponse::BadRequest().json(json!({ "message": "Challan number is required" })));
-    }
+    // challan_no is now always generated server-side in the service
     let saved = service.create(dc, &org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
     Ok(HttpResponse::Created().json(saved))
@@ -345,7 +363,8 @@ pub async fn get_delivery_challan_file(
 }
 
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(get_delivery_challan_file)
+    cfg.service(get_next_challan_number)
+        .service(get_delivery_challan_file)
         .service(create_delivery_challan)
         .service(list_delivery_challans)
         .service(get_delivery_challan)

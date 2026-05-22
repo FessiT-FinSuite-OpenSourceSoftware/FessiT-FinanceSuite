@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { CirclePlus, CircleMinus, ArrowLeft, Eye } from "lucide-react";
+import { CirclePlus, CircleMinus, ArrowLeft, Eye, X } from "lucide-react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { fetchIncomingInvoices } from "../../ReduxApi/incomingInvoice";
@@ -116,6 +117,7 @@ export default function AddIncomingInvoice() {
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [invoiceFileName, setInvoiceFileName] = useState("");
   const [invoiceFilePreview, setInvoiceFilePreview] = useState("");
+  const [previewModal, setPreviewModal] = useState({ open: false, src: "", title: "", isPdf: false });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -174,6 +176,8 @@ export default function AddIncomingInvoice() {
 
   const addItem = () => recalc([...items, emptyItem()]);
   const removeItem = (idx) => recalc(items.filter((_, i) => i !== idx));
+
+  const isFilePdf = (file) => file?.type === "application/pdf" || file?.name?.toLowerCase().endsWith(".pdf");
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -234,7 +238,7 @@ export default function AddIncomingInvoice() {
       dispatch(fetchIncomingInvoices());
       nav(-1);
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to create incoming invoice");
+      toast.error(typeof err?.response?.data?.message === 'string' ? err.response.data.message : "Failed to create incoming invoice");
     } finally {
       setSaving(false);
     }
@@ -612,7 +616,7 @@ export default function AddIncomingInvoice() {
                 {invoiceFilePreview && (
                   <button
                     type="button"
-                    onClick={() => window.open(invoiceFilePreview, "_blank")}
+                    onClick={() => setPreviewModal({ open: true, src: invoiceFilePreview, title: invoiceFileName, isPdf: isFilePdf(invoiceFile) })}
                     className="flex items-center gap-1 text-blue-600 text-xs underline cursor-pointer"
                   >
                     <Eye className="w-3 h-3" /> Preview
@@ -625,6 +629,27 @@ export default function AddIncomingInvoice() {
         </div>
 
       </div>
+
+      {previewModal.open && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 p-4" onClick={() => setPreviewModal({ open: false, src: "", title: "", isPdf: false })}>
+          <div className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="text-base font-semibold text-slate-900 truncate max-w-xs">{previewModal.title}</h3>
+              <button type="button" onClick={() => setPreviewModal({ open: false, src: "", title: "", isPdf: false })} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4">
+              {previewModal.isPdf ? (
+                <iframe src={`${previewModal.src}#toolbar=0`} title={previewModal.title} className="w-full rounded-xl" style={{ height: "75vh" }} />
+              ) : (
+                <img src={previewModal.src} alt={previewModal.title} className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain" />
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

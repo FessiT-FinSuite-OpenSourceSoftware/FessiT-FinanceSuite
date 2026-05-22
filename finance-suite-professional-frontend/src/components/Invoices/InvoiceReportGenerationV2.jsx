@@ -7,6 +7,7 @@ import html2canvas from "html2canvas-pro";
 import { toast } from "react-toastify";
 import { isTauri, savePdf, showDownloadNotification } from "../../utils/pdfUtils";
 import fallbackLogo from "../../assets/FessiTLogoTrans.png";
+import { getInvoiceReportLogoFilename } from "./invoiceLogo";
 
 async function generateInvoicePdf(invoiceNumber) {
   const toastId = toast.loading("Generating PDF...");
@@ -78,8 +79,8 @@ const InvoiceReportGenerationV2 = ({ invoiceData, orgData, onBack }) => {
     let objectUrl = null;
     let cancelled = false;
     const fetchLogo = async () => {
-      const logoFilename = baseData?.linkedLogo || "";
-      if (!logoFilename) { setLogoLoading(false); return; }
+      const logoFilename = getInvoiceReportLogoFilename(baseData, orgData);
+      if (!logoFilename) { setLogoUrl(fallbackLogo); setLogoLoading(false); return; }
       try {
         const res = await axiosInstance.get(`/organisation-logo/${logoFilename}`, { responseType: "blob" });
         if (!cancelled) { objectUrl = URL.createObjectURL(res.data); setLogoUrl(objectUrl); }
@@ -89,7 +90,7 @@ const InvoiceReportGenerationV2 = ({ invoiceData, orgData, onBack }) => {
     setLogoLoading(true);
     fetchLogo();
     return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [baseData?.linkedLogo]);
+  }, [baseData?.linkedLogo, baseData?.status, orgData?.logo]);
 
   if (logoLoading) return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
@@ -216,13 +217,13 @@ const InvoiceReportGenerationV2 = ({ invoiceData, orgData, onBack }) => {
                 ["P.O. Number", data.po_number],
                 ["P.O. Date", data.po_date],
                 ...(isInternational ? [["LUT No", data.lut_no || data.lutNo], ["IEC No", data.iec_no || data.iecNo]] : []),
-              ].map(([label, value]) => value ? (
+              ].map(([label, value]) => (
                 <div key={label} className="flex gap-1">
                   <span className="font-semibold w-28 shrink-0">{label}</span>
                   <span className="text-gray-500">:</span>
-                  <span>{value}</span>
+                  <span>{value || "-"}</span>
                 </div>
-              ) : null)}
+              ))}
             </div>
 
             {/* Bill To / Ship To */}
@@ -613,7 +614,7 @@ const InvoiceReportGenerationV2 = ({ invoiceData, orgData, onBack }) => {
 
 
                 <div className="flex border-t border-indigo-100 justify-between text-gray-700 pt-2 mt-2">
-                  <span>Total GST</span>
+                  <span>Total Tax</span>
                   <span className="font-semibold">
                     {currSym} {formatNumber(
                       isDomestic
@@ -646,6 +647,7 @@ const InvoiceReportGenerationV2 = ({ invoiceData, orgData, onBack }) => {
               {footerNoteLines.map((line, i) => <p key={i}>{line}</p>)}
             </div>
           )}
+          {footerNoteLines.length === 0 && <div className="mt-auto" />}
         </div>
 
         {/* Bottom accent bar */}

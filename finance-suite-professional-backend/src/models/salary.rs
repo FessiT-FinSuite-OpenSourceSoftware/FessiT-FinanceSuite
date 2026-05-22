@@ -1,6 +1,7 @@
 use mongodb::bson::{oid::ObjectId, Bson};
 use serde::{Deserialize, Deserializer, Serialize};
 
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum CostType {
@@ -89,7 +90,11 @@ pub struct Salary {
     #[serde(default, deserialize_with = "deserialize_string_or_number")]
     pub reimbursement: String,
 
-    /// net_salary = gross_salary + reimbursement (computed on frontend, stored here)
+    /// professional_tax pulled from org settings (not user-editable)
+    #[serde(default, deserialize_with = "deserialize_string_or_number")]
+    pub professional_tax: String,
+
+    /// net_salary = gross_salary + reimbursement - tds - professional_tax (computed server-side)
     #[serde(default, deserialize_with = "deserialize_string_or_number")]
     pub net_salary: String,
 

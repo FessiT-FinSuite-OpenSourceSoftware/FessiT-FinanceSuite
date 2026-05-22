@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import ReactDOM from "react-dom";
 import Cropper from "react-easy-crop";
 import { toast } from "react-toastify";
 import { countriesData } from "../../utils/countriesData";
@@ -115,6 +116,7 @@ const initialSettings = {
   requireHSN: "yes",
   roundingRule: "nearest",
   taxNotes: "",
+  professional_tax_amount:"",
 
   // --- Users & Roles ---
   newUserName: "",
@@ -443,6 +445,7 @@ export default function SettingsCreation() {
       require_hsn: settings.requireHSN,
       rounding_rule: settings.roundingRule,
       tax_notes: settings.taxNotes,
+      professional_tax_amount: settings.professional_tax_amount,
       enabled_methods: settings.enabledMethods,
       payment_bank_name: settings.paymentBankName,
       payment_account_no: settings.paymentAccountNo,
@@ -653,6 +656,7 @@ export default function SettingsCreation() {
       } else if (currentOrganisation._id) {
         setOrgID(currentOrganisation._id);
       }
+      console.log("BEfore appending the stuff", currentOrganisation)
 
       // Batch all state updates together to avoid multiple re-renders
       const newSettings = {
@@ -697,6 +701,7 @@ export default function SettingsCreation() {
         requireHSN: currentOrganisation?.requireHSN || "yes",
         roundingRule: currentOrganisation?.roundingRule || "nearest",
         taxNotes: currentOrganisation?.taxNotes || "",
+        professional_tax_amount: currentOrganisation?.professionalTaxAmount || "",
         // Payment fields
         enabledMethods: currentOrganisation?.enabledMethods || initialSettings.enabledMethods,
         paymentBankName: currentOrganisation?.paymentBankName || "",
@@ -799,11 +804,12 @@ export default function SettingsCreation() {
   );
   return (
     <>
-      {cropSrc && (
-        <LogoCropModal imageSrc={cropSrc} onConfirm={handleCropConfirm} onCancel={handleCropCancel} />
+      {cropSrc && ReactDOM.createPortal(
+        <LogoCropModal imageSrc={cropSrc} onConfirm={handleCropConfirm} onCancel={handleCropCancel} />,
+        document.body
       )}
 
-      {isLogoPreviewOpen && logoPreview && (
+      {isLogoPreviewOpen && logoPreview && ReactDOM.createPortal(
         <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/70 p-4" onClick={() => setIsLogoPreviewOpen(false)}>
           <div
             className="w-full max-w-2xl rounded-xl bg-white p-4 shadow-2xl"
@@ -828,7 +834,8 @@ export default function SettingsCreation() {
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Settings Form */}
@@ -1735,6 +1742,21 @@ export default function SettingsCreation() {
                       <option value="down">Always round down</option>
                       <option value="none">No rounding</option>
                     </select>
+                  </div>
+
+                  {/* Professional TTax related Stuff */}
+                  <div className="relative">
+                    <label className="block text-gray-700 font-medium mb-1">
+                      Professional Tax Amount
+                    </label>
+                    <input
+                      type="number"
+                      name="professional_tax_amount"
+                      value={settings.professional_tax_amount || ""}
+                      onChange={handleChange}
+                      className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
+                      placeholder="e.g., 200"
+                    />
                   </div>
 
                   {/* Tax Notes */}

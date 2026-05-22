@@ -11,7 +11,7 @@ use std::io::Write;
 use uuid::Uuid;
 
 use crate::{
-    models::challan::Challan,
+    models::challan::{Challan, TdsSection},
     services::challan_service::ChallanService,
     utils::auth::Claims,
     utils::permissions::{check_permission, Module, PermissionAction, create_permission_error},
@@ -80,11 +80,9 @@ pub async fn create_challan(
     let challan = Challan {
         id: None,
         challan_no: fields.remove("challan_no").unwrap_or_default(),
-        section: fields.remove("section").unwrap_or_default(),
-        tds_section_key: fields.remove("tds_section_key").unwrap_or_default(),
-        tds_section_new: fields.remove("tds_section_new").unwrap_or_default(),
-        tds_section_old: fields.remove("tds_section_old").unwrap_or_default(),
-        tds_section_nature: fields.remove("tds_section_nature").unwrap_or_default(),
+        tds_sections: fields.remove("tds_sections")
+            .and_then(|v| serde_json::from_str::<Vec<TdsSection>>(&v).ok())
+            .unwrap_or_default(),
         payment_date: fields.remove("payment_date").unwrap_or_default(),
         date_of_challan: fields.remove("date_of_challan").unwrap_or_default(),
         amount_paid: parse_f64(&fields.remove("amount_paid").unwrap_or_default()),
@@ -94,6 +92,7 @@ pub async fn create_challan(
         file: stored_filename,
         mode_of_payment: fields.remove("mode_of_payment").unwrap_or_default(),
         notes: fields.remove("notes").unwrap_or_default(),
+        period: fields.remove("period").unwrap_or_default(),
         organisation_id: None,
     };
 
@@ -217,11 +216,9 @@ pub async fn update_challan(
     let updated = Challan {
         id: None,
         challan_no: fields.remove("challan_no").unwrap_or(existing.challan_no),
-        section: fields.remove("section").unwrap_or(existing.section),
-        tds_section_key: fields.remove("tds_section_key").unwrap_or(existing.tds_section_key),
-        tds_section_new: fields.remove("tds_section_new").unwrap_or(existing.tds_section_new),
-        tds_section_old: fields.remove("tds_section_old").unwrap_or(existing.tds_section_old),
-        tds_section_nature: fields.remove("tds_section_nature").unwrap_or(existing.tds_section_nature),
+        tds_sections: fields.remove("tds_sections")
+            .and_then(|v| serde_json::from_str::<Vec<TdsSection>>(&v).ok())
+            .unwrap_or(existing.tds_sections),
         payment_date: fields.remove("payment_date").unwrap_or(existing.payment_date),
         date_of_challan: fields.remove("date_of_challan").unwrap_or(existing.date_of_challan),
         amount_paid: fields.remove("amount_paid").map(|v| parse_f64(&v)).unwrap_or(existing.amount_paid),
@@ -231,6 +228,7 @@ pub async fn update_challan(
         file: new_filename.unwrap_or(existing.file),
         mode_of_payment: fields.remove("mode_of_payment").unwrap_or(existing.mode_of_payment),
         notes: fields.remove("notes").unwrap_or(existing.notes),
+        period: fields.remove("period").unwrap_or(existing.period),
         organisation_id: existing.organisation_id,
     };
 

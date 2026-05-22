@@ -3,7 +3,8 @@ use std::sync::Arc;
 use mongodb::{
     bson::{doc, oid::ObjectId},
     error::Error as MongoError,
-    Collection,
+    options::IndexOptions,
+    Collection, IndexModel,
 };
 
 use crate::models::users::User;
@@ -21,6 +22,16 @@ impl UserRepository {
         Self {
             collection: Arc::new(collection),
         }
+    }
+
+    pub async fn ensure_indexes(&self) -> Result<(), MongoError> {
+        let opts = IndexOptions::builder().unique(true).build();
+        let index = IndexModel::builder()
+            .keys(doc! { "email": 1 })
+            .options(opts)
+            .build();
+        self.collection.create_index(index, None).await?;
+        Ok(())
     }
 
     /// Create user
