@@ -13,10 +13,10 @@ import { toast } from "react-toastify";
 const getId = (dc) => dc?._id?.$oid || dc?._id || dc?.id || "";
 
 const statusColor = (s) => {
-  if (s === "Delivered")          return "bg-green-50 text-green-700 ring-green-200";
-  if (s === "Dispatched")         return "bg-blue-50 text-blue-700 ring-blue-200";
-  if (s === "Cancelled")          return "bg-red-50 text-red-700 ring-red-200";
-  if (s === "Returned")           return "bg-orange-50 text-orange-700 ring-orange-200";
+  if (s === "Delivered") return "bg-green-50 text-green-700 ring-green-200";
+  if (s === "Dispatched") return "bg-blue-50 text-blue-700 ring-blue-200";
+  if (s === "Cancelled") return "bg-red-50 text-red-700 ring-red-200";
+  if (s === "Returned") return "bg-orange-50 text-orange-700 ring-orange-200";
   if (s === "Partially Returned") return "bg-yellow-50 text-yellow-700 ring-yellow-200";
   return "bg-slate-50 text-slate-700 ring-slate-200";
 };
@@ -32,15 +32,15 @@ export default function DeliveryChallans() {
   const dispatch = useDispatch();
   const { data, total, isLoading } = useSelector(deliveryChallanSelector);
   const { user } = useSelector(authSelector);
-  const hasWrite  = canWrite(user, Module.Invoice);
+  const hasWrite = canWrite(user, Module.Invoice);
   const hasDelete = canDelete(user, Module.Invoice);
 
-  const [search, setSearch]       = useState("");
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatus] = useState("All");
-  const [page, setPage]           = useState(1);
-  const [pageSize, setPageSize]   = useState(10);
-  const [deleteModal, setDeleteModal]   = useState(null);
-  const [statusModal, setStatusModal]   = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [statusModal, setStatusModal] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [previewModal, setPreviewModal] = useState({ open: false, src: "", title: "", isPdf: false });
   const [replaceModal, setReplaceModal] = useState(null); // { id, key, label }
@@ -110,15 +110,25 @@ export default function DeliveryChallans() {
         </span>
       ),
     },
-    { label: "Date",       render: (dc) => <span className="text-sm text-gray-600">{formatDate(dc.challan_date)}</span> },
-    { label: "Consignee",  render: (dc) => <span className="text-sm text-gray-700">{dc.consignee_name || "—"}</span> },
-    { label: "Invoice Ref",hidden: true, render: (dc) => <span className="text-sm text-gray-500">{dc.invoice_ref || "—"}</span> },
-    { label: "Purpose",    hidden: true, render: (dc) => <span className="text-sm text-gray-500">{dc.purpose || "—"}</span> },
+    { label: "Date", render: (dc) => <span className="text-sm text-gray-600">{formatDate(dc.challan_date)}</span> },
+    { label: "Consignee", render: (dc) => <span className="text-sm text-gray-700">{dc.consignee_name || "—"}</span> },
+    { label: "Invoice Ref", hidden: true, render: (dc) => <span className="text-sm text-gray-500">{dc.invoice_ref || "—"}</span> },
+    { label: "Purpose", hidden: true, render: (dc) => <span className="text-sm text-gray-500">{dc.purpose || "—"}</span> },
     {
       label: "Status",
       render: (dc) => (
         <span
-          onClick={() => { if (!hasWrite) return; setSelectedStatus(dc.status || "Draft"); setStatusModal({ id: getId(dc), challan_no: dc.challan_no }); }}
+          onClick={(e) => {
+            e.stopPropagation();
+
+            if (!hasWrite) return;
+
+            setSelectedStatus(dc.status || "Draft");
+            setStatusModal({
+              id: getId(dc),
+              challan_no: dc.challan_no,
+            });
+          }}
           className={`inline-flex w-36 items-center justify-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${hasWrite ? "cursor-pointer hover:opacity-80" : "cursor-default"} ${statusColor(dc.status || "Draft")}`}
         >
           {dc.status || "Draft"}
@@ -165,9 +175,9 @@ export default function DeliveryChallans() {
         )}
       </TabActionBar>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 mt-3">
         {/* <StatCard label="Total (this page)" value={challans.length} /> */}
-        <StatCard label="Total Records"     value={total} />
+        <StatCard label="Total Records" value={total} />
         {/* <StatCard label="Page"              value={`${page} / ${totalPages}`} valueClass="text-blue-600" /> */}
         {/* <StatCard label="Page Size"         value={pageSize} valueClass="text-gray-500" /> */}
       </div>
@@ -176,11 +186,11 @@ export default function DeliveryChallans() {
         renderExpanded={(dc) => {
           const id = getId(dc);
           return (
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Documents</p>
+            <div className="p-4 rounded-2xl bg-[#ECEEF2]">
+              <p className="text-xs font-bold uppercase tracking-widest text-black-400 mb-3">Documents</p>
               <div className="flex flex-wrap gap-4">
                 {[
-                  { key: "dispatched_copy",   label: "Dispatched Copy" },
+                  { key: "dispatched_copy", label: "Dispatched Copy" },
                   { key: "acknowledged_copy", label: "Acknowledged Copy" },
                 ].map(({ key, label }) => (
                   <div key={key} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 min-w-[220px]">
@@ -193,12 +203,12 @@ export default function DeliveryChallans() {
                     <div className="flex items-center gap-1.5">
                       <button title="View" disabled={!dc[key]}
                         onClick={(e) => { e.stopPropagation(); dc[key] && openFile(dc[key], label); }}
-                        className={`p-1.5 rounded-lg border transition-colors ${ dc[key] ? "border-slate-300 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300" : "border-slate-200 text-slate-300 cursor-not-allowed" }`}>
+                        className={`p-1.5 rounded-lg border transition-colors ${dc[key] ? "border-slate-300 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300" : "border-slate-200 text-slate-300 cursor-not-allowed"}`}>
                         <Eye className="w-3.5 h-3.5" />
                       </button>
                       <button title="Download" disabled={!dc[key]}
                         onClick={(e) => { e.stopPropagation(); dc[key] && downloadFile(dc[key], label); }}
-                        className={`p-1.5 rounded-lg border transition-colors ${ dc[key] ? "border-slate-300 text-slate-600 hover:bg-green-50 hover:text-green-600 hover:border-green-300" : "border-slate-200 text-slate-300 cursor-not-allowed" }`}>
+                        className={`p-1.5 rounded-lg border transition-colors ${dc[key] ? "border-slate-300 text-slate-600 hover:bg-green-50 hover:text-green-600 hover:border-green-300" : "border-slate-200 text-slate-300 cursor-not-allowed"}`}>
                         <Download className="w-3.5 h-3.5" />
                       </button>
                       {hasWrite && (

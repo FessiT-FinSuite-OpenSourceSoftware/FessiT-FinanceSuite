@@ -7,6 +7,7 @@ import { assetSelector, fetchAssetData, createAsset, updateAsset, deleteAsset, u
 import { assetCategorySelector, createAssetCategory, fetchAssetCategories } from '../../ReduxApi/assetCategory'
 import { authSelector } from '../../ReduxApi/auth'
 import { RowActions, Pagination, StatCard, InfoCard, Field, ConfirmModal, DataTable } from '../../shared/ui'
+import { DonutChart, BarChartCard } from '../../shared/charts'
 import { toast } from 'react-toastify'
 import ManageAssetCategoriesModal from './ManageAssetCategoriesModal'
 import { isTauri, sanitizeDownloadFileName, saveBytesToDownloads, showDownloadNotification } from '../../utils/pdfUtils'
@@ -264,6 +265,49 @@ export default function AssetList() {
     const repair = filtered.filter((a) => a.asset_status === 'repair').length
     const inventoryValue = filtered.reduce((sum, a) => sum + a.sale_price * a.stocks, 0)
     return { total, active, repair, inventoryValue }
+  }, [filtered])
+
+  const statusData = useMemo(() => {
+    const counts = {
+      Active: summary.active,
+      Repair: summary.repair,
+      Other: filtered.length - summary.active - summary.repair,
+    }
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .filter((item) => item.value > 0)
+  }, [filtered, summary])
+
+  const categoryDistribution = useMemo(() => {
+    const counts = new Map()
+    filtered.forEach((asset) => {
+      const label = textValue(asset.categoryLabel, 'Unassigned') || 'Unassigned'
+      counts.set(label, (counts.get(label) || 0) + 1)
+    })
+    const sorted = [...counts.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+    if (sorted.length <= 5) return sorted
+    const top = sorted.slice(0, 4)
+    const otherValue = sorted.slice(4).reduce((sum, item) => sum + item.value, 0)
+    if (otherValue > 0) top.push({ name: 'Other', value: otherValue })
+    return top
+  }, [filtered])
+
+  const purchaseValueData = useMemo(() => {
+    const counts = new Map()
+    filtered.forEach((a) => {
+      const label = textValue(a.categoryLabel, 'Unassigned') || 'Unassigned'
+      counts.set(label, (counts.get(label) || 0) + a.purchased_price)
+    })
+    const sorted = [...counts.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+    if (sorted.length <= 4) return sorted
+    const top = sorted.slice(0, 3)
+    const otherValue = sorted.slice(3).reduce((sum, item) => sum + item.value, 0)
+    if (otherValue > 0) top.push({ name: 'Other', value: otherValue })
+    return top
   }, [filtered])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
@@ -614,6 +658,33 @@ export default function AssetList() {
         <StatCard label="Inventory Value" value={`Rs. ${fmt(summary.inventoryValue)}`} valueClass="text-blue-700" />
       </div>
 
+            {summary.total > 0 && (
+        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-3 mb-2 h-full">
+          <DonutChart
+            title="Asset status distribution"
+            subtitle="See how the current asset population is split by status."
+            badge={`${summary.total} items`}
+            data={statusData}
+            colors={['#34d399', '#fbbf24', '#cbd5e1']}
+            tooltipLabel="Assets"
+          />
+          <DonutChart
+            title="Asset categories"
+            subtitle="Top categories by asset count in the current view."
+            data={categoryDistribution}
+            colors={['#60a5fa', '#818cf8', '#38bdf8', '#f97316', '#a855f7']}
+            tooltipLabel="Assets"
+          />
+          <BarChartCard
+            title="Purchase value by category"
+            subtitle="Total procurement spend per category."
+            data={purchaseValueData}
+            colors={['#34d399', '#818cf8', '#f97316', '#f59e0b']}
+            tooltipFormatter={(v) => [`Rs. ${fmt(v)}`, 'Spend']}
+          />
+        </div>
+      )}
+
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-2">
         <div className="flex flex-col gap-3 items-end justify-end">
          
@@ -706,7 +777,7 @@ export default function AssetList() {
           const invoiceSrc = a.invoice_image ? imageCache[a.invoice_image] : ''
           const invoiceIsPdf = isSrcPdf(a.invoice_image)
           return (
-            <div className="px-4 py-4 bg-slate-50">
+            <div className="p-4 rounded-2xl bg-[#ECEEF2]">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
                 <InfoCard label="Description" value={a.description || '-'} className="xl:col-span-3" valueClassName="line-clamp-2 min-h-[2.5rem]" />
                 <InfoCard label="Manufacturer" value={a.manufacturer || '-'} />

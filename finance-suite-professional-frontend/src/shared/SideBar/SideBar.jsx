@@ -23,11 +23,11 @@ function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
     <div
       ref={menuRef}
       style={{ top: pos.top, right: pos.right }}
-      className="fixed bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-9999 overflow-hidden"
+      className="fixed bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg shadow-slate-900/10 dark:shadow-black/30 w-40 z-9999 overflow-hidden"
     >
       <button
         onClick={onLogout}
-        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
       >
         <LogOut size={16} />
         Logout
@@ -45,16 +45,16 @@ const NAV_GROUPS = [
   {
     key: "finance", label: "Finance",
     items: [
-      { id: "dashboard",         label: "Dashboard",        icon: TrendingUp,   module: null },
-      { id: "invoices",          label: "Sales",            icon: FileText,     module: Module.Invoice },
-      { id: "estimates",         label: "Quotations",       icon: ReceiptText,  module: Module.Invoice },
-      { id: "delivery-challans", label: "Delivery Challans",icon: Truck,        module: Module.Invoice },
+      { id: "dashboard", label: "Dashboard", icon: TrendingUp, module: null },
+      { id: "invoices", label: "Sales", icon: FileText, module: Module.Invoice },
+      { id: "estimates", label: "Quotations", icon: ReceiptText, module: Module.Invoice },
+      { id: "delivery-challans", label: "Delivery Challans", icon: Truck, module: Module.Invoice },
     ],
   },
   {
     key: "reports", label: "Reports",
     items: [
-      { id: "ledger",      label: "Ledger",        icon: BookOpen,  module: Module.Invoice },
+      { id: "ledger", label: "Ledger", icon: BookOpen, module: Module.Invoice },
       { id: "profit-loss", label: "P&L Statement", icon: BarChart2, module: Module.Invoice },
     ],
   },
@@ -62,66 +62,66 @@ const NAV_GROUPS = [
     key: "operations", label: "Operations",
     items: [
       { id: "purchases", label: "Purchase Orders", icon: ShoppingCart, module: Module.PurchaseOrders },
-      { id: "expenses",  label: "Expenses",        icon: Receipt,      module: Module.Expenses },
+      { id: "expenses", label: "Expenses", icon: Receipt, module: Module.Expenses },
     ],
   },
   {
     key: "compliance", label: "Compliance",
     items: [
       { id: "gstcompliance", label: "GST ", icon: IndianRupee, module: Module.Invoice },
-      { id: "tdscompliance", label: "TDS ", icon: Receipt,     module: Module.Invoice },
-      { id: "ptcompliance",  label: "PT ",  icon: IndianRupee, module: Module.Invoice },
+      { id: "tdscompliance", label: "TDS ", icon: Receipt, module: Module.Invoice },
+      { id: "ptcompliance", label: "PT ", icon: IndianRupee, module: Module.Invoice },
     ],
   },
-   {
+  {
     key: "inventory", label: "Inventory",
     items: [
-      { id: "assets",    label: "Assets", icon: Package, module: Module.null },
-      { id: "items",        label: "Items",        icon: Boxes,        module: Module.Products },
+      { id: "assets", label: "Assets", icon: Package, module: Module.null },
+      { id: "items", label: "Items", icon: Boxes, module: Module.Products },
     ],
   },
   {
     key: "master", label: "Organization",
     items: [
-      { id: "customers",    label: "Customers",    icon: Users,        module: Module.Customers },
-      { id: "projects",     label: "Projects",     icon: FolderKanban, module: Module.Customers },
-      { id: "cost-centers", label: "Cost Centers", icon: Layers,       module: Module.Customers },
+      { id: "customers", label: "Customers", icon: Users, module: Module.Customers },
+      { id: "projects", label: "Projects", icon: FolderKanban, module: Module.Customers },
+      { id: "cost-centers", label: "Cost Centers", icon: Layers, module: Module.Customers },
       // { id: "items",        label: "Items",        icon: Boxes,        module: Module.Products },
       // { id: "assets",       label: "Assets",       icon: Package,      module: null },
-      { id: "employees",    label: "Employees",    icon: UserCheck,    module: Module.Users },
+      { id: "employees", label: "Employees", icon: UserCheck, module: Module.Users },
     ],
   },
- 
+
   {
     key: "admin", label: "Settings",
     items: [
-      { id: "users",    label: "User Management", icon: UserLockIcon, module: Module.Users },
-      { id: "settings", label: "Settings",        icon: Settings,     module: null, adminOnly: true },
+      { id: "users", label: "User Management", icon: UserLockIcon, module: Module.Users },
+      { id: "settings", label: "Settings", icon: Settings, module: null, adminOnly: true },
     ],
   },
 ];
 
 const PAGE_TITLES = {
-  "/":               "Dashboard",
-  "/dashboard":      "Dashboard",
-  "/estimates":      "Quotations",
-  "/ledger":         "Ledger",
-  "/profit-loss":    "P&L Statement",
+  "/": "Dashboard",
+  "/dashboard": "Dashboard",
+  "/estimates": "Quotations",
+  "/ledger": "Ledger",
+  "/profit-loss": "P&L Statement",
   "/delivery-challans": "Delivery Challans",
-  "/invoices":       "Sales Invoices",
-  "/purchases":      "Purchases",
-  "/expenses":       "Expenses",
-  "/gstcompliance":  "GST Compliance",
-  "/tdscompliance":  "TDS Compliance",
-  "/ptcompliance":   "PT Compliance",
-  "/customers":      "Customers",
-  "/projects":       "Projects",
-  "/cost-centers":   "Cost Centers",
-  "/settings":       "Settings",
-  "/users":          "User Management",
-  "/assets":         "Assets",
-  "/employees":      "Employees",
-  "/items":          "Items",
+  "/invoices": "Sales Invoices",
+  "/purchases": "Purchases",
+  "/expenses": "Expenses",
+  "/gstcompliance": "Goods and Services Tax",
+  "/tdscompliance": "Tax Deducted at Source",
+  "/ptcompliance": "Professional Tax",
+  "/customers": "Customers",
+  "/projects": "Projects",
+  "/cost-centers": "Cost Centers",
+  "/settings": "Settings",
+  "/users": "User Management",
+  "/assets": "Assets",
+  "/employees": "Employees",
+  "/items": "Items",
 };
 
 function getPageTitle(pathname) {
@@ -139,7 +139,7 @@ export default function SideBar({ component }) {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [openGroups, setOpenGroups] = useState({
-    finance: true, reports: true, operations: true, compliance: true, master: false, admin: false,inventory: false,
+    finance: true, reports: true, operations: true, compliance: true, master: false, admin: false, inventory: false,
   });
 
   const sidebarRef = useRef(null);
@@ -240,11 +240,19 @@ export default function SideBar({ component }) {
     location.pathname.includes(`/${id}`);
 
   const isGroupActive = (group) => group.items.some((i) => isItemActive(i.id));
-  const toggleGroup = (key) => setOpenGroups((p) => ({ ...p, [key]: !p[key] }));
+  const EXCLUSIVE_GROUPS = ['inventory', 'master', 'admin'];
+  const toggleGroup = (key) => setOpenGroups((p) => {
+    const isExclusive = EXCLUSIVE_GROUPS.includes(key);
+    if (isExclusive && !p[key]) {
+      const closes = Object.fromEntries(EXCLUSIVE_GROUPS.map((k) => [k, false]));
+      return { ...p, ...closes, [key]: true };
+    }
+    return { ...p, [key]: !p[key] };
+  });
 
   // Shared nav content used in both desktop sidebar and mobile drawer
   const NavContent = ({ collapsed = false }) => (
-    <nav className="sidebar-scrollbar flex-1 overflow-y-auto bg-gray-50 py-2">
+    <nav className="sidebar-scrollbar overflow-y-auto bg-gray-50 dark:bg-slate-950 py-1" style={{ height: 'calc(100vh - 72px)', maxHeight: 'calc(100vh - 72px)', overflowY: 'auto' }}>
       {NAV_GROUPS.map((group) => {
         const visibleItems = group.items.filter((item) => {
           if (item.adminOnly) return user?.is_admin;
@@ -258,15 +266,14 @@ export default function SideBar({ component }) {
             {!collapsed ? (
               <button
                 onClick={() => toggleGroup(group.key)}
-                className={`w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${
-                  groupActive ? "text-indigo-500" : "text-gray-400 hover:text-gray-600"
-                }`}
+                className={`w-full flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${groupActive ? "text-indigo-500 dark:text-indigo-300" : "text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"
+                  }`}
               >
                 <span>{group.label}</span>
                 <ChevronRight size={12} className={isOpen ? "rotate-90" : ""} />
               </button>
             ) : (
-              <div className="mx-2 my-1 border-t border-gray-200" />
+              <div className="mx-2 my-1 border-t border-gray-200 dark:border-slate-800" />
             )}
             {(isOpen || collapsed) && visibleItems.map((item) => {
               const Icon = item.icon;
@@ -275,9 +282,10 @@ export default function SideBar({ component }) {
                 <button
                   key={item.id}
                   onClick={() => nav(`/${item.id}`)}
-                  className={`w-full flex items-center rounded-lg ${
-                    active ? "bg-indigo-50 text-indigo-600 font-medium" : "text-gray-600 hover:bg-gray-100"
-                  } sider-button ${collapsed ? "py-2.5 justify-center" : "px-3 py-2 space-x-2 justify-start pl-5"}`}
+                  className={`w-full flex items-center rounded-lg ${active
+                    ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-200 font-medium"
+                    : "text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                    } sider-button ${collapsed ? "py-1.5 justify-center" : "px-3 py-1 space-x-2 justify-start pl-5"}`}
                 >
                   <Icon size={15} className={collapsed ? "mx-auto" : "shrink-0"} />
                   {!collapsed && <span className="text-sm">{item.label}</span>}
@@ -304,15 +312,20 @@ export default function SideBar({ component }) {
       </div>
       <div className={`min-w-0 overflow-hidden transition-opacity duration-200 ${showText ? "max-w-[150px] opacity-100" : "max-w-0 opacity-0 pointer-events-none"}`}>
         <div className="min-w-[150px]">
-          <h1 className="text-sm font-bold text-indigo-600 leading-tight whitespace-nowrap">Financial Suite</h1>
-          <p className="text-[10px] text-gray-500 mt-0.5 whitespace-nowrap">by FessiT Solutions</p>
+          <h1 className="text-sm font-bold text-indigo-600 dark:text-indigo-300 leading-tight whitespace-nowrap">Financial Suite</h1>
+          <p className="text-[10px] text-gray-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">by FessiT Solutions</p>
           <div className="flex items-center gap-1.5 mt-1.5 whitespace-nowrap">
             <div className="flex gap-0.5">
               <div className="w-1 h-3 bg-orange-500 rounded-sm" />
-              <div className="w-1 h-3 bg-white border border-gray-300 rounded-sm" />
+
+              <div
+                className="w-1 h-3 rounded-sm border border-gray-300  dark:border-none"
+                style={{ backgroundColor: "#ffffff" }}
+              />
+
               <div className="w-1 h-3 bg-green-600 rounded-sm" />
             </div>
-            <span className="text-[10px] text-gray-600 font-medium tracking-wide">MADE IN INDIA</span>
+            <span className="text-[10px] text-gray-600 dark:text-slate-300 font-medium tracking-wide">MADE IN INDIA</span>
           </div>
         </div>
       </div>
@@ -320,44 +333,36 @@ export default function SideBar({ component }) {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden w-screen bg-gray-50">
+    <div className="flex h-screen overflow-hidden w-screen bg-gray-50 dark:bg-slate-950">
 
       {/* ── Desktop sidebar ─────────────────────────────────────── */}
       <div
         ref={sidebarRef}
-        className={`hidden md:flex ${desktopOpen ? "w-52" : "w-16"} shrink-0 bg-white border-r border-gray-200 h-screen flex-col transition-[width] duration-200`}
+        className="hidden md:flex w-52 shrink-0 bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800 h-screen flex-col overflow-hidden"
       >
-        <div className="shrink-0 p-4 border-b border-gray-200 h-[72px] flex justify-between items-center">
-          <Logo showText={desktopOpen} />
-          <div className="shrink-0 ml-2">
-            {desktopOpen ? (
-              <ChevronLeft className="cursor-pointer text-gray-500 hover:text-gray-700" size={20} strokeWidth={1.5} onClick={() => setDesktopOpen(false)} />
-            ) : (
-              <ChevronRight size={24} strokeWidth={1.5} className="cursor-pointer text-gray-500 hover:text-gray-700 -mr-6" onClick={() => setDesktopOpen(true)} />
-            )}
-          </div>
+        <div className="shrink-0 p-4 border-b border-gray-200 dark:border-slate-800 h-[72px] flex justify-between items-center">
+          <Logo showText={true} />
         </div>
-        <NavContent collapsed={!desktopOpen} />
+        <NavContent collapsed={false} />
       </div>
 
       {/* ── Mobile drawer overlay ────────────────────────────────── */}
       {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-[200]"
+          className="md:hidden fixed inset-0 bg-black/50 dark:bg-black/70 z-200"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* ── Mobile drawer ────────────────────────────────────────── */}
       <div
-        className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col z-[201] transition-transform duration-300 ease-in-out ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800 flex flex-col z-201 transition-transform duration-300 ease-in-out ${mobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
         style={{ isolation: "isolate" }}
       >
-        <div className="shrink-0 p-4 border-b border-gray-200 flex justify-between items-center">
+        <div className="shrink-0 p-4 border-b border-gray-200 dark:border-slate-800 flex justify-between items-center">
           <Logo showText />
-          <button onClick={() => setMobileOpen(false)} className="text-gray-500 hover:text-gray-700 ml-2">
+          <button onClick={() => setMobileOpen(false)} className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-100 ml-2">
             <X size={20} />
           </button>
         </div>
@@ -379,21 +384,21 @@ export default function SideBar({ component }) {
           )}
 
           {/* ── Header ─────────────────────────────────────────── */}
-          <header className="bg-white border-b border-gray-200 px-3 md:px-4 lg:px-6 py-3 md:py-4 sticky z-20 top-0 h-[72px]">
+          <header className="bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 px-3 md:px-4 lg:px-6 py-3 md:py-4 sticky z-20 top-0 h-[72px]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Hamburger — mobile only */}
                 <button
-                  className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                  className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-300"
                   onClick={() => setMobileOpen(true)}
                 >
                   <Menu size={20} />
                 </button>
                 <div>
-                  <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-800">
+                  <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-800 dark:text-slate-100">
                     {getPageTitle(location.pathname)}
                   </h2>
-                  <p className="text-xs lg:text-sm text-gray-500 hidden md:block">
+                  <p className="text-xs lg:text-sm text-gray-500 dark:text-slate-400 hidden md:block">
                     Welcome back! Here's your business overview.
                   </p>
                 </div>
@@ -404,7 +409,7 @@ export default function SideBar({ component }) {
                 <button
                   ref={bellRef}
                   onClick={() => setShowNotifications((p) => !p)}
-                  className="p-2 hover:bg-gray-100 rounded-lg relative"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg relative text-gray-600 dark:text-slate-300 transition-colors"
                 >
                   <Bell size={20} strokeWidth={1} />
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
@@ -413,10 +418,10 @@ export default function SideBar({ component }) {
                 <div ref={userMenuTriggerRef} className="relative">
                   <div className="flex items-center gap-2 md:gap-3 cursor-pointer" onClick={() => setShowUserMenu((p) => !p)}>
                     <div className="text-right hidden md:block">
-                      <p className="text-sm font-medium text-gray-700 leading-tight">{getDisplayName()}</p>
-                      <p className="text-xs text-gray-500">{user?.role || "User"}</p>
+                      <p className="text-sm font-medium text-gray-700 dark:text-slate-200 leading-tight">{getDisplayName()}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">{user?.role || "User"}</p>
                     </div>
-                    <div className="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    <div className="w-8 h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 bg-indigo-600 dark:bg-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm shadow-indigo-500/20">
                       {getUserInitials(getDisplayName())}
                     </div>
                   </div>
@@ -429,26 +434,25 @@ export default function SideBar({ component }) {
           {/* Notifications panel */}
           <div
             ref={modalRef}
-            className={`fixed z-[125] right-2 md:right-4 lg:right-6 top-[72px] transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${
-              showNotifications ? "opacity-100 scale-100 translate-y-2" : "opacity-0 scale-90 -translate-y-3 pointer-events-none"
-            }`}
+            className={`fixed z-125 right-2 md:right-4 lg:right-6 top-[72px] transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] transform origin-[90%_top] ${showNotifications ? "opacity-100 scale-100 translate-y-2" : "opacity-0 scale-90 -translate-y-3 pointer-events-none"
+              }`}
           >
-            <div className="bg-white shadow-2xl rounded-2xl w-[calc(100vw-1rem)] max-w-xs md:w-72 lg:w-80 border border-gray-100 overflow-hidden">
-              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-700">Notifications</h3>
-                <button onClick={() => setShowNotifications(false)} className="text-gray-400 hover:text-gray-600">
+            <div className="bg-white dark:bg-slate-900 shadow-2xl rounded-2xl w-[calc(100vw-1rem)] max-w-xs md:w-72 lg:w-80 border border-gray-100 dark:border-slate-700 overflow-hidden">
+              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 dark:border-slate-700">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-100">Notifications</h3>
+                <button onClick={() => setShowNotifications(false)} className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-200">
                   <X size={14} />
                 </button>
               </div>
-              <div className="px-4 py-3 text-sm text-gray-600 max-h-80 overflow-y-auto space-y-3 bg-white" onScroll={handleNotifScroll}>
+              <div className="px-4 py-3 text-sm text-gray-600 dark:text-slate-300 max-h-80 overflow-y-auto space-y-3 bg-white dark:bg-slate-900" onScroll={handleNotifScroll}>
                 {notifications.map((n) => (
-                  <div key={n.id} className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100 transition">
-                    <p className="font-medium text-gray-800">{n.title}</p>
-                    <p className="text-gray-600 text-xs mt-1">{n.message}</p>
-                    <p className="text-gray-400 text-xs mt-1">{n.time}</p>
+                  <div key={n.id} className="p-3 bg-gray-50 dark:bg-slate-800/80 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700 transition">
+                    <p className="font-medium text-gray-800 dark:text-slate-100">{n.title}</p>
+                    <p className="text-gray-600 dark:text-slate-300 text-xs mt-1">{n.message}</p>
+                    <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">{n.time}</p>
                   </div>
                 ))}
-                {loadingMore && <div className="text-center text-gray-400 py-2 text-xs">Loading more...</div>}
+                {loadingMore && <div className="text-center text-gray-400 dark:text-slate-500 py-2 text-xs">Loading more...</div>}
               </div>
             </div>
           </div>

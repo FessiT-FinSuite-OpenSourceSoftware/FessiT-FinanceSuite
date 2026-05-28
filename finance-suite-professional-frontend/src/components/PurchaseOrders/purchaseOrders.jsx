@@ -132,7 +132,7 @@ export default function PurchaseOrderList() {
         </button>
       </TabActionBar>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 mt-3">
         <StatCard label="Total Purchase Orders" value={purchaseOrders.length} />
         <StatCard label="Approved" value={countByStatus("Approved")} valueClass="text-green-600" />
         <StatCard label="Sent"     value={countByStatus("Sent")}     valueClass="text-blue-600" />

@@ -246,10 +246,10 @@ export default function InvoiceList() {
   };
 
   const statusOptions = statusModal
-    ? (isAdmin ? ["Issued", "Paid", "On Hold"]
+    ? (isAdmin ? ["Issued", "Paid", "On Hold","Re Issued"]
       : statusModal.currentStatus === "New" ? ["Issued"]
-      : statusModal.currentStatus === "Issued" ? ["Issued", "Paid", "On Hold"]
-      : statusModal.currentStatus === "On Hold" ? ["On Hold", "Issued", "Paid"]
+      : statusModal.currentStatus === "Issued" ? ["Issued", "Paid", "On Hold","Re Issued"]
+      : statusModal.currentStatus === "On Hold" ? ["On Hold", "Issued", "Paid","Re Issued"]
       : [statusModal.currentStatus])
     : [];
 
@@ -394,7 +394,7 @@ export default function InvoiceList() {
         </div>
       </TabActionBar>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 mt-3">
         <StatCard label="Total Invoices" value={invoices.length} />
         <StatCard label="Paid"    value={countByStatus("Paid")}  valueClass="text-green-600" />
         <StatCard label="Issued"  value={countRaised}            valueClass="text-blue-600" />

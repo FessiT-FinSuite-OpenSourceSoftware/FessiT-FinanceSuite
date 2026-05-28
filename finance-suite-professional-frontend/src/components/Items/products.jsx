@@ -18,8 +18,14 @@ import { authSelector } from "../../ReduxApi/auth";
 import { canRead, canWrite, canDelete, Module } from "../../utils/permissions";
 import { KeyUri } from "../../shared/key";
 import { RowActions, Pagination, StatCard, InfoCard, Field, DataTable, ConfirmModal } from "../../shared/ui";
+import { DonutChart, BarChartCard, HorizontalBarChart } from '../../shared/charts';
 
-const fmt = (value) => Number(value || 0).toLocaleString("en-IN");
+const toNumber = (value, fallback = 0) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+};
+
+const fmt = (value) => toNumber(value).toLocaleString("en-IN");
 const textValue = (value, fallback = "") =>
   typeof value === "string" ? value : value == null ? fallback : String(value);
 const DESCRIPTION_WORD_LIMIT = 25;
@@ -31,9 +37,9 @@ const limitWords = (value, maxWords) => {
 };
 
 const stockStatus = (stocks) => {
-  const value = Number(stocks || 0);
+  const value = toNumber(stocks);
   if (value <= 0) return "Out of Stock";
-  if (value <= 10) return "Low Stock";
+  if (value <= 25) return "Low Stock";
   return "In Stock";
 };
 
@@ -84,12 +90,12 @@ const normalizeProductRow = (item, categoryMap) => {
     categoryId,
     categoryLabel,
     manufacturer: item?.manufacturer || "",
-    stocks: Number(item?.stocks || 0),
-    soldStocks: Number(item?.sold_stocks ?? item?.soldStocks ?? 0),
-    salePrice: Number(item?.sale_price ?? item?.salePrice ?? 0),
-    discount: Number(item?.discount || 0),
-    purchasePrice: Number(item?.purchased_price ?? item?.purchasePrice ?? 0),
-    tax: Number(item?.tax || 0),
+    stocks: toNumber(item?.stocks),
+    soldStocks: toNumber(item?.sold_stocks ?? item?.soldStocks),
+    salePrice: toNumber(item?.sale_price ?? item?.salePrice),
+    discount: toNumber(item?.discount),
+    purchasePrice: toNumber(item?.purchased_price ?? item?.purchasePrice),
+    tax: toNumber(item?.tax),
   };
 };
 
@@ -268,6 +274,43 @@ export default function Products() {
     const totalValue = filteredProducts.reduce((sum, product) => sum + product.salePrice * product.stocks, 0);
     return { total, out, low, totalValue };
   }, [filteredProducts]);
+
+  const stockStatusData = useMemo(() => {
+    const inStock = filteredProducts.filter((product) => stockStatus(product.stocks) === "In Stock").length;
+    const data = [];
+    if (inStock) data.push({ name: "In Stock", value: inStock });
+    if (summary.low) data.push({ name: "Low Stock", value: summary.low });
+    if (summary.out) data.push({ name: "Out of Stock", value: summary.out });
+    return data;
+  }, [filteredProducts, summary.low, summary.out]);
+
+  const categoryValueData = useMemo(() => {
+    const counts = new Map();
+    filteredProducts.forEach((product) => {
+      const label = textValue(product.categoryLabel, "Unassigned") || "Unassigned";
+      const value = product.salePrice * product.stocks;
+      counts.set(label, (counts.get(label) || 0) + Math.max(0, value));
+    });
+    const sorted = [...counts.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    if (sorted.length <= 4) return sorted;
+    const top = sorted.slice(0, 3);
+    const otherValue = sorted.slice(3).reduce((sum, item) => sum + item.value, 0);
+    if (otherValue > 0) top.push({ name: "Other", value: otherValue });
+    return top;
+  }, [filteredProducts]);
+
+  const topProductsData = useMemo(() => {
+    return [...filteredProducts]
+      .filter((p) => p.soldStocks > 0)
+      .sort((a, b) => b.soldStocks - a.soldStocks)
+      .slice(0, 5)
+      .map((p) => ({
+        name: p.name,
+        value: p.soldStocks,
+      }))
+  }, [filteredProducts])
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
@@ -834,6 +877,32 @@ export default function Products() {
         <StatCard label="Inventory Value" value={`Rs. ${fmt(summary.totalValue)}`} valueClass="text-blue-700" />
       </div>
 
+            {summary.total > 0 && (
+        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-3 mb-2 h-full">
+          <DonutChart
+            title="Product stock status"
+            subtitle="Track stock health for filtered products."
+            badge={`${summary.total} items`}
+            data={stockStatusData}
+            colors={['#34d399', '#f59e0b', '#ef4444']}
+            tooltipLabel="Products"
+          />
+          <BarChartCard
+            title="Value by category"
+            subtitle="Top categories by current inventory value."
+            data={categoryValueData}
+            tooltipFormatter={(v) => [`Rs. ${fmt(v)}`, 'Value']}
+          />
+          <HorizontalBarChart
+            title="Top 5 by sales"
+            subtitle="Fastest selling products in current view."
+            data={topProductsData}
+            tooltipFormatter={(v) => [v, 'Units Sold']}
+            yAxisWidth={112}
+          />
+        </div>
+      )}
+
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-2">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
@@ -904,12 +973,15 @@ export default function Products() {
           { label: 'HSN/CAC',       render: (p) => <span className="text-xs text-slate-700">{p.hsn || '-'}</span> },
           { label: 'Item Code', render: (p) => <span className="text-xs text-slate-700">{p.itemCode || '-'}</span> },
           { label: 'Category',  render: (p) => <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">{textValue(p.categoryLabel, 'Unassigned') || 'Unassigned'}</span> },
-          { label: 'Stock',     render: (p) => <span className={`text-xs font-semibold ${stockCountClass(p.stocks)}`}>{fmt(p.stocks) - fmt(p.soldStocks)}</span> },
+          { label: 'Stock',     render: (p) => {
+            const availableStock = Math.max(toNumber(p.stocks) - toNumber(p.soldStocks), 0);
+            return <span className={`text-xs font-semibold ${stockCountClass(availableStock)}`}>{fmt(availableStock)}</span>;
+          } },
           { label: 'Sold',      render: (p) => <span className="text-xs font-semibold text-slate-500">{fmt(p.soldStocks)}</span> },
           {
             label: 'In Stock',
             render: (p) => {
-              const total = Number(p.stocks || 0), sold = Number(p.soldStocks || 0);
+              const total = toNumber(p.stocks), sold = toNumber(p.soldStocks);
               const inStock = Math.max(total - sold, 0);
               const pct = total > 0 ? Math.round((inStock / total) * 100) : 0;
               const color = pct > 50 ? 'bg-emerald-500' : pct > 20 ? 'bg-amber-400' : 'bg-red-500';
@@ -938,7 +1010,7 @@ export default function Products() {
           const saleAfterDiscount = product.salePrice - (product.salePrice * product.discount) / 100;
           const totalAfterTax = saleAfterDiscount + (saleAfterDiscount * product.tax) / 100;
           return (
-            <div className="px-4 py-4 bg-slate-50">
+            <div className="p-4 rounded-2xl bg-[#ECEEF2]">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
                 <InfoCard label="Description" value={product.description || '-'} className="xl:col-span-3" valueClassName="line-clamp-2 min-h-[2.5rem]" />
                 <InfoCard label="Manufacturer" value={product.manufacturer} />

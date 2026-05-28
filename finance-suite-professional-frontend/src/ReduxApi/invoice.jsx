@@ -135,6 +135,39 @@ export const fetchOneInvoice = (invoiceID) => async (dispatch) => {
   }
 }
 
+const normalizeMongoValue = (value) => {
+  if (Array.isArray(value)) return value.map(normalizeMongoValue)
+  if (value && typeof value === 'object') {
+    if (typeof value.$oid === 'string') return value.$oid
+    if (typeof value.$date === 'string') return value.$date
+    return Object.fromEntries(
+      Object.entries(value).map(([key, val]) => [key, normalizeMongoValue(val)])
+    )
+  }
+  return value
+}
+
+const buildInvoiceUpdatePayload = (invoiceData) => {
+  const payload = normalizeMongoValue(invoiceData || {})
+
+  if (payload.serviceId && !payload.service_type_id) {
+    payload.service_type_id = payload.serviceId
+  }
+
+  // Mongo/API-owned fields should not be sent back in an update body.
+  delete payload._id
+  delete payload.id
+  delete payload.linkedLogo
+  delete payload.created_at
+  delete payload.updated_at
+
+  // The edit form keeps `service` as UI display state; the API uses serviceId/service_type_id.
+  delete payload.service
+  delete payload.serviceId
+
+  return payload
+}
+
 
 // Update Invoice
 export const updateInvoice =
@@ -142,9 +175,10 @@ export const updateInvoice =
     dispatch(getInvoice())
 
     try {
+      const payload = buildInvoiceUpdatePayload(invoiceData)
       const { data } = await axiosInstance.put(
         `/invoices/${invoiceID}`,
-        invoiceData
+        payload
       )
       toast.success('Invoice updated successfully')
       dispatch(fetchInvoiceData())

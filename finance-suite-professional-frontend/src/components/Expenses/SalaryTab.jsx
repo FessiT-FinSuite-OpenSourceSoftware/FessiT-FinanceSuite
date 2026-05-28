@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search,ReceiptText  } from "lucide-react";
 import { fetchSalaries, createSalary, updateSalary, deleteSalary, salarySelector } from "../../ReduxApi/salary";
 import { fetchEmployees, employeeSelector } from "../../ReduxApi/employee";
 import { authSelector } from "../../ReduxApi/auth";
@@ -151,6 +151,7 @@ export default function SalaryTab() {
   const professionalTax = parseFloat(currentOrganisation?.professionalTaxAmount ?? currentOrganisation?.professional_tax_amount ?? 0) || 0;
 
   const [modal, setModal] = useState(null);
+  const [payslipModal, setPayslipModal] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const { data: employees, isLoading: empLoading } = useSelector(employeeSelector);
   const [search, setSearch] = useState("");
@@ -262,7 +263,27 @@ export default function SalaryTab() {
     { label: "Paid On", center: true, render: (r) => <span className="text-gray-600">{r.paid_on ? formatDate(r.paid_on) : "-"}</span> },
     {
       label: "Actions", right: true, stopPropagation: true,
-      render: (r) => <RowActions onEdit={() => openEdit(r)} onDelete={() => setDeleteModal({ id: getId(r), name: r.emp_name || "this salary record" })} />,
+      render: (r) => 
+      <div className="flex items-center justify-end gap-2">
+
+      <button
+        onClick={() => setPayslipModal(r)}
+        className={` ${payslipModal === r ? "text-green-600 dark:text-green-400" : "text-gray-600 dark:text-slate-300 hover:text-green-600 dark:hover:text-green-400"} : "text-gray-300 dark:text-slate-600 cursor-not-allowed"}`}
+        title="View Payslip"
+      >
+        <ReceiptText className="w-4 h-4" />
+      </button>
+
+      <RowActions
+        onEdit={() => openEdit(r)}
+        onDelete={() =>
+          setDeleteModal({
+            id: getId(r),
+            name: r.emp_name || "this salary record",
+          })
+        }
+      />
+    </div>,
     },
   ];
 
@@ -296,7 +317,7 @@ export default function SalaryTab() {
 
       <DataTable isLoading={isLoading} data={paginated} rowKey={getId} columns={columns}
         renderExpanded={(r) => (
-          <div className="px-4 py-4 bg-slate-50">
+          <div className="p-4 rounded-2xl bg-[#ECEEF2]">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               <InfoCard label="Department" value={r.department || "-"} />
               <InfoCard label="Gross Salary" value={`₹ ${fmt(r.gross_salary)}`} />
@@ -451,6 +472,26 @@ export default function SalaryTab() {
           onConfirm={handleDelete}
           onClose={() => setDeleteModal(null)}
         />
+      )}
+            {payslipModal && (
+        <Modal
+          title={`Payslip - ${payslipModal.emp_name}`}
+          onClose={() => setPayslipModal(null)}
+        >
+          <div className="py-10 flex flex-col items-center justify-center text-center">
+            <div className="h-16 w-16 rounded-2xl bg-indigo-100 flex items-center justify-center mb-4">
+              <ReceiptText className="w-8 h-8 text-indigo-600" />
+            </div>
+
+            <h3 className="text-lg font-semibold text-gray-800">
+              Payslip Component Coming Soon
+            </h3>
+
+            <p className="text-sm text-gray-500 mt-2 max-w-sm">
+              Later we will attach dedicated payslip component here.
+            </p>
+          </div>
+        </Modal>
       )}
     </div>
   );

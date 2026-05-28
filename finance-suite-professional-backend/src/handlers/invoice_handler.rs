@@ -198,6 +198,16 @@ pub async fn create_invoice(
         }
     }
 
+    if invoice.status == InvoiceStatus::ReIssued {
+        log::info!("Creating ReIssued invoice - stamping org logo if missing ✌️");
+        if let Ok(org) = service.get_organisation_by_id(&org_id.to_string()).await {
+            if !org.logo.is_empty() {
+                invoice.linked_logo = Some(org.logo);
+            }
+        }
+    }
+
+
     let invoice = service.create_invoice(invoice, &org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
@@ -346,6 +356,16 @@ pub async fn update_invoice(
 
     // Stamp the org logo when first transitioning to Issued
     if merged.status == InvoiceStatus::Issued && previous_status != InvoiceStatus::Issued && merged.linked_logo.is_none() {
+        if let Ok(org) = service.get_organisation_by_id(&org_id.to_string()).await {
+            if !org.logo.is_empty() {
+                merged.linked_logo = Some(org.logo);
+            }
+        }
+    }
+
+        if merged.status == InvoiceStatus::ReIssued {
+                    log::info!("Creating ReIssued invoice - stamping org logo if missing ✌️");
+
         if let Ok(org) = service.get_organisation_by_id(&org_id.to_string()).await {
             if !org.logo.is_empty() {
                 merged.linked_logo = Some(org.logo);

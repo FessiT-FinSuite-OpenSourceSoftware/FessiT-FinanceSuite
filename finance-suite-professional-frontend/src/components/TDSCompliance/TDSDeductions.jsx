@@ -238,7 +238,7 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
         emptyMessage="No deductions found."
         columns={columns}
         renderExpanded={(d) => (
-          <div className="px-4 py-4 bg-slate-50">
+          <div className="p-4 rounded-2xl bg-[#ECEEF2]">
             {d.source === "Invoice" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                 <InfoCard label="Invoice Number" value={d.invoice_number} />

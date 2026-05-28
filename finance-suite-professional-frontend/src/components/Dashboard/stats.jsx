@@ -55,7 +55,8 @@ export default function Stats() {
 
   const paid    = fyInvoices.filter(inv => inv.status === "Paid");
   const pending = fyInvoices.filter(inv =>
-    inv.status === "New" || inv.status === "Issued" || inv.status === "On Hold" || !inv.status
+    // inv.status === "New" || inv.status === "Issued" || inv.status === "On Hold" || inv.status === "Re Issued" || inv.status === "Partially Paid"
+    inv.status !== "Paid" && inv.status !== "Cancelled"
   );
 
   // Total revenue using stored conversion rates — no live API needed

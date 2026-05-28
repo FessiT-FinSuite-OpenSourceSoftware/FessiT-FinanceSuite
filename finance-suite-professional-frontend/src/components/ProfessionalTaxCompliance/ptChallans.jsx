@@ -289,7 +289,7 @@ export default function PtChallansTab() {
           to={periodRange.to}
           onChange={(next) => { setPeriodRange(next); setCurrentPage(1); }}
         />
-        <CreateButton onClick={openCreate} label="Add PT Challan" icon={Plus} />
+        <CreateButton onClick={openCreate} label="Add Challan" icon={Plus} />
       </TabActionBar>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -337,9 +337,8 @@ export default function PtChallansTab() {
           },
         ]}
         renderExpanded={(row) => (
-          <div className="px-4 py-4 bg-slate-50">
+          <div className="p-4 rounded-2xl bg-[#ECEEF2]">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-              <InfoCard label="Old Section" value={row.section || row.tds_section_old || "-"} />
               <InfoCard label="New Section" value={row.tds_section_new || "-"} />
               <InfoCard label="Period" value={row.period || "-"} />
               <InfoCard label="Mode of Payment" value={row.mode_of_payment || "-"} />

@@ -351,6 +351,27 @@ export default function EditInvoice() {
     setInvoiceData({ ...invoiceData, items: updatedItems });
   };
 
+  // Sanitize payload: remove _id and convert BSON ObjectId objects to strings
+  const sanitizePayload = (data) => {
+    const sanitized = { ...data };
+    delete sanitized._id;
+    delete sanitized.linkedLogo;
+    delete sanitized.service;
+
+    // Convert BSON ObjectId objects to strings
+    if (sanitized.customerId && typeof sanitized.customerId === "object" && sanitized.customerId.$oid) {
+      sanitized.customerId = sanitized.customerId.$oid;
+    }
+    if (sanitized.organisationId && typeof sanitized.organisationId === "object" && sanitized.organisationId.$oid) {
+      sanitized.organisationId = sanitized.organisationId.$oid;
+    }
+    if (sanitized.service_type_id && typeof sanitized.service_type_id === "object" && sanitized.service_type_id.$oid) {
+      sanitized.service_type_id = sanitized.service_type_id.$oid;
+    }
+
+    return sanitized;
+  };
+
   const invoiceDataSubmit = async (e) => {
     e.preventDefault();
 
@@ -414,9 +435,9 @@ export default function EditInvoice() {
     setInputErrors({});
 
     try {
-      const { linkedLogo, ...safePayload } = invoiceData;
+      const sanitized = sanitizePayload(invoiceData);
       const result = await dispatch(updateInvoice(id, {
-        ...safePayload,
+        ...sanitized,
         subTotal: _subTotal.toFixed(2),
         totalcgst: _totalCgst.toFixed(2),
         totalsgst: _totalSgst.toFixed(2),

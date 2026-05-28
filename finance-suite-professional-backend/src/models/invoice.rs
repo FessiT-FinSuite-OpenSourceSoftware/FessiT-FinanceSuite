@@ -35,6 +35,9 @@ pub enum InvoiceStatus {
     Paid,
     #[serde(rename = "On Hold")]
     OnHold,
+
+    #[serde(rename = "Re Issued")]
+    ReIssued,
     /// Catches legacy values like "Created", "Raised", "Draft"
     #[serde(other)]
     Legacy,
@@ -49,11 +52,12 @@ impl Default for InvoiceStatus {
 impl std::fmt::Display for InvoiceStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            InvoiceStatus::New     => write!(f, "New"),
-            InvoiceStatus::Issued  => write!(f, "Issued"),
-            InvoiceStatus::Paid    => write!(f, "Paid"),
-            InvoiceStatus::OnHold  => write!(f, "On Hold"),
-            InvoiceStatus::Legacy  => write!(f, "New"),
+            InvoiceStatus::New => write!(f, "New"),
+            InvoiceStatus::Issued => write!(f, "Issued"),
+            InvoiceStatus::Paid => write!(f, "Paid"),
+            InvoiceStatus::OnHold => write!(f, "On Hold"),
+            InvoiceStatus::Legacy => write!(f, "New"),
+            InvoiceStatus::ReIssued => write!(f, "Re Issued"),
         }
     }
 }
@@ -94,7 +98,11 @@ pub struct InvoiceItem {
     #[serde(default)]
     pub description: String,
 
-    #[serde(rename = "ProductId", deserialize_with = "deserialize_optional_object_id", default)]
+    #[serde(
+        rename = "ProductId",
+        deserialize_with = "deserialize_optional_object_id",
+        default
+    )]
     pub product_id: Option<ObjectId>,
 
     #[serde(default)]
@@ -123,13 +131,17 @@ pub struct InvoiceItem {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Invoice {
     /// MongoDB document _id
-    #[serde(rename = "_id", skip_serializing_if = "Option::is_none", skip_deserializing)]
+    #[serde(
+        rename = "_id",
+        skip_serializing_if = "Option::is_none",
+        skip_deserializing
+    )]
     pub id: Option<ObjectId>,
 
     // Domestic / International
     #[serde(default)]
     pub invoice_type: String,
-    
+
     // Currency Type
     #[serde(default)]
     pub currency_type: String,
@@ -238,7 +250,6 @@ pub struct Invoice {
     #[serde(default)]
     pub status: InvoiceStatus,
 
-
     #[serde(default)]
     pub payment_type: String,
 
@@ -246,21 +257,41 @@ pub struct Invoice {
     pub payment_reference: String,
 
     // Customer reference
-    #[serde(rename = "customerId", skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_object_id", default)]
+    #[serde(
+        rename = "customerId",
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_optional_object_id",
+        default
+    )]
     pub customer_id: Option<ObjectId>,
 
     // Organisation reference
-    #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_object_id", default)]
+    #[serde(
+        rename = "organisationId",
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_optional_object_id",
+        default
+    )]
     pub organisation_id: Option<ObjectId>,
 
-    #[serde(rename = "service_type_id", alias = "serviceTypeId", alias = "serviceId", skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_object_id", default)]
+    #[serde(
+        rename = "service_type_id",
+        alias = "serviceTypeId",
+        alias = "serviceId",
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_optional_object_id",
+        default
+    )]
     pub service_type_id: Option<ObjectId>,
 
     /// Logo of the org at the time the invoice was issued
-    #[serde(rename = "linkedLogo", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "linkedLogo",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub linked_logo: Option<String>,
 }
-
 
 /// For creation (POST /invoices)
 pub type CreateInvoiceRequest = Invoice;

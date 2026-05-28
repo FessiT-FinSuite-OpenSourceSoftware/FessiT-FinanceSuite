@@ -181,7 +181,7 @@ export default function EstimateList() {
         />
       </TabActionBar>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 mt-3">
         <StatCard label="Total Estimates" value={stats.total} />
         <StatCard label="Total Value" value={fmt(stats.totalValue)} valueClass="text-indigo-700" />
         <StatCard label="Accepted" value={stats.accepted} valueClass="text-green-700" />

@@ -149,7 +149,7 @@ export default function ProjectList() {
         rowKey={(proj, i) => `${proj.customerId}-${proj.projectIndex}`}
         columns={columns}
         renderExpanded={(proj) => (
-          <div className="px-8 py-3">
+          <div className="p-4 rounded-2xl bg-[#ECEEF2]">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Description</p>
             <p className="text-sm text-gray-700">{proj.description || 'No description provided.'}</p>
           </div>

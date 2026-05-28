@@ -111,6 +111,7 @@ export default function ChallansTab() {
   const [form, setForm] = useState(emptyChallan());
   const [search, setSearch] = useState("");
   const [sectionSearch, setSectionSearch] = useState("");
+  const [tdsSelector, setTdsSelector] = useState("");
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -429,7 +430,7 @@ export default function ChallansTab() {
           },
         ]}
         renderExpanded={(row) => (
-          <div className="px-4 py-4 bg-slate-50">
+          <div className="p-4 rounded-2xl bg-[#ECEEF2]">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               {/* <InfoCard label="Challan No" value={row.challan_no || row.challanNo || "-"} /> */}
               <InfoCard label="TDS Sections" value={formatTdsSections(row.tds_sections)} className="xl:col-span-2" />
@@ -483,45 +484,62 @@ export default function ChallansTab() {
           </FormField>
          
           <FormField label="TDS Sections" colSpan>
-            <div className="space-y-2">
-              {(form.tds_sections || []).map((sec, idx) => {
-                const s = TDS_FLAT_LIST.find((x) => x.code === sec.key);
-                return (
-                  <div key={idx} className="flex items-start gap-2">
-                    <div className="flex-1">
-                      <TdsSectionSelect
-                        value={sec.key}
-                        onChange={(key, rate, section) =>
-                          setForm((prev) => {
-                            const updated = [...prev.tds_sections];
-                            updated[idx] = { key, section_new: section?.newSection || "", section_old: section?.oldSection || "", nature: section?.nature || "" };
-                            return { ...prev, tds_sections: updated };
-                          })
-                        }
-                        inputCls={inputCls}
-                      />
-                      {s && (
-                        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-bold font-mono bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded">{s.code}</span>
-                          <span className="text-xs font-semibold text-blue-700">{s.newSection}</span>
-                          <span className="text-xs text-gray-400">({s.oldSection})</span>
-                          <span className="text-xs font-semibold text-green-700 bg-green-50 px-1.5 py-0.5 rounded">{s.rate}</span>
-                          <span className="text-xs text-gray-400 truncate max-w-[220px]" title={s.nature}>{s.nature}</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <TdsSectionSelect
+                    value={tdsSelector}
+                    onChange={(key, rate, section) => {
+                      if (!key) return;
+                      const existing = Array.isArray(form.tds_sections) ? form.tds_sections : [];
+                      if (existing.some((s) => s.key === key)) {
+                        toast.info("Section already selected");
+                        setTdsSelector("");
+                        return;
+                      }
+                      const added = { key, section_new: section?.newSection || "", section_old: section?.oldSection || "", nature: section?.nature || "" };
+                      setForm((prev) => ({ ...prev, tds_sections: [...(Array.isArray(prev.tds_sections) ? prev.tds_sections : []), added] }));
+                      setTdsSelector("");
+                    }}
+                    inputCls={`${inputCls} w-full`}
+                    onInputChange={(v) => setTdsSelector(v)}
+                    placeholder="Select section to add…"
+                  />
+                </div>
+                {(form.tds_sections || []).length > 0 && (
+                  <button type="button" onClick={() => setForm((prev) => ({ ...prev, tds_sections: [] }))}
+                    className="text-xs text-red-500 hover:underline px-2 py-1 bg-red-50 rounded">
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              {(form.tds_sections || []).length === 0 ? (
+                <div className="text-xs text-gray-400">No sections selected. Use the selector above to add.</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {(form.tds_sections || []).map((sec, idx) => {
+                    const s = TDS_FLAT_LIST.find((x) => x.code === sec.key) || {};
+                    return (
+                      <div key={idx} className="flex items-center gap-2 bg-white border border-slate-100 rounded-lg px-3 py-2 shadow-sm transition transform hover:scale-[1.02]">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold font-mono bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded">{sec.key || s.code}</span>
+                            <span className="text-sm font-semibold text-slate-800">{sec.section_new || s.newSection}</span>
+                            <span className="text-xs text-gray-400">({sec.section_old || s.oldSection})</span>
+                            {s.rate && <span className="text-xs font-semibold text-green-700 bg-green-50 px-1 py-0.5 rounded ml-2">{s.rate}</span>}
+                          </div>
+                          <div className="text-xs text-gray-500 truncate max-w-[260px] mt-0.5" title={sec.nature || s.nature}>{sec.nature || s.nature}</div>
                         </div>
-                      )}
-                    </div>
-                    <button type="button" onClick={() => setForm((prev) => ({ ...prev, tds_sections: prev.tds_sections.filter((_, i) => i !== idx) }))}
-                      className="mt-2 text-red-400 hover:text-red-600">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
-              <button type="button"
-                onClick={() => setForm((prev) => ({ ...prev, tds_sections: [...prev.tds_sections, { key: "", section_new: "", section_old: "", nature: "" }] }))}
-                className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                <Plus className="w-3 h-3" /> Add TDS Section
-              </button>
+                        <button aria-label={`Remove ${sec.key || s.code}`} type="button" onClick={() => setForm((prev) => ({ ...prev, tds_sections: (prev.tds_sections || []).filter((_, i) => i !== idx) }))}
+                          className="text-red-500 hover:text-red-700 ml-2">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </FormField>
           <FormField label="Financial Year">

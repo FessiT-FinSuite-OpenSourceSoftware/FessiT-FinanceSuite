@@ -155,7 +155,7 @@ export default function PTDeductions({ deductions = [], isLoading = false, selec
         emptyMessage="No professional tax deductions found."
         columns={columns}
         renderExpanded={(d) => (
-          <div className="px-4 py-4 bg-slate-50">
+          <div className="p-4 rounded-2xl bg-[#ECEEF2]">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               <InfoCard label="Employee" value={d.emp_name} />
               <InfoCard label="Employee ID" value={d.emp_id} />
