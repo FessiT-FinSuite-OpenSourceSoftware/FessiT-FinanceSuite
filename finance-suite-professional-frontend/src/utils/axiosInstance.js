@@ -115,13 +115,32 @@ axiosInstance.interceptors.request.use(
       config.headers['Content-Type'] = 'application/json';
     }
 
+    // Debug: log invoice create payload for diagnostics
+    try {
+      if (config && config.method && config.method.toLowerCase() === 'post' && config.url && config.url.includes('/invoices')) {
+        console.log('axiosInstance: POST /invoices request payload ->', config.data);
+      }
+    } catch (e) {
+      // ignore
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    try {
+      const req = response.config || {};
+      if (req.method && req.method.toLowerCase() === 'post' && req.url && req.url.includes('/invoices')) {
+        console.log('axiosInstance: POST /invoices response ->', { status: response.status, data: response.data, requestData: req.data });
+      }
+    } catch (e) {
+      // ignore
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 

@@ -28,7 +28,7 @@ export function TabActionBar({ searchValue, onSearchChange, searchPlaceholder = 
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-gray-500 dark:text-slate-400" />
+          {/* <Filter className="w-5 h-5 text-gray-500 dark:text-slate-400" /> */}
           {children}
         </div>
       </div>

@@ -24,6 +24,7 @@ import gstSummaryReducer from './gstSummary';
 import tdsSummaryReducer from './tdsSummary';
 import ptSummaryReducer from './ptSummary';
 import ptChallanReducer from './ptChallan';
+import gstChallanReducer from './gstChallan';
 import { injectStore } from '../utils/axiosInstance';
 
 const store = configureStore({
@@ -43,16 +44,17 @@ const store = configureStore({
     challan: challanReducer,
     category: categoryReducer,
     estimate: estimateReducer,
-    ledger:   ledgerReducer,
+    ledger: ledgerReducer,
     product: productReducer,
     gstSummary: gstSummaryReducer,
     tdsSummary: tdsSummaryReducer,
-    ptSummary:  ptSummaryReducer,
-  ptChallan: ptChallanReducer,
-  asset: assetReducer,
-  assetCategory: assetCategoryReducer,
-  deliveryChallan: deliveryChallanReducer,
-  employee: employeeReducer,
+    ptSummary: ptSummaryReducer,
+    ptChallan: ptChallanReducer,
+    asset: assetReducer,
+    assetCategory: assetCategoryReducer,
+    deliveryChallan: deliveryChallanReducer,
+    employee: employeeReducer,
+    gstChallan: gstChallanReducer,
   },
 });
 

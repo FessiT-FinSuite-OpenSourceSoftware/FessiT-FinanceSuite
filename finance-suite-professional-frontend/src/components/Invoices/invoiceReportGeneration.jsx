@@ -313,38 +313,41 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
         style={{ padding: "1rem", maxWidth: "820px" }}
       >
         {/* Header */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-center gap-3">
+        <div className="flex justify-between items-start mb-6 gap-4">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
             {data.company_logo && (
               <img
                 src={data.company_logo}
                 alt="Company Logo"
-                className="h-12 object-contain"
+                className="h-12 object-contain shrink-0"
               />
             )}
-            <div>
+
+            <div className="min-w-0">
               <h1 className="text-xl font-bold text-gray-900">
                 {data.company_name}
               </h1>
-              <p className="text-xs text-gray-700 whitespace-pre-line">
+
+              <p
+                className="text-xs text-gray-700 whitespace-pre-wrap break-words"
+              >
                 {data.company_address}
               </p>
+
               <p className="text-xs text-gray-700 mt-1">
                 GSTIN: {data.gstIN}
               </p>
+
               <p className="text-xs text-gray-700">
                 Email: {data.company_email} | Ph: +91 {data.company_phone}
               </p>
             </div>
           </div>
 
-          <div className="text-right">
-            <h2 className="text-2xl font-semibold text-black-300">
+          <div className="text-right flex-shrink-0">
+            <h2 className="text-2xl font-semibold text-black">
               TAX INVOICE
             </h2>
-            {/* <div className="mt-2 inline-flex px-3 py-1 rounded-full text-xs font-semibold border border-gray-400">
-              {isDomestic ? "₹ Domestic" : "🌍 International"}
-            </div> */}
           </div>
         </div>
 

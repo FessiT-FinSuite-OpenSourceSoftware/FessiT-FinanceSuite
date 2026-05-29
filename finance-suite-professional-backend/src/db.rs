@@ -5,6 +5,7 @@ use crate::models::{
     Category, Challan, CostCenter, Customer, Expense, GeneralExpense, IncomingInvoice, Invoice,
     Organisation, PartyCounter, Product, PurchaseOrder, Salary, User, Account, Service, AssetCategory, Employee,
     professional_tax_challan::ProfessionalTaxChallan,
+    gst_challan::GstChallan,
 };
 
 #[derive(Clone)]
@@ -129,5 +130,9 @@ impl MongoDbClient {
 
     pub fn get_employee_collection(&self) -> Collection<Employee> {
         self.database.collection::<Employee>("employees")
+    }
+
+    pub fn get_gst_challan_collection(&self) -> Collection<GstChallan> {
+        self.database.collection::<GstChallan>("gst_challans")
     }
 }

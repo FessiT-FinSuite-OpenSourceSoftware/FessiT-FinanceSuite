@@ -61,7 +61,21 @@ export const createInvoice = (invoiceData) => async (dispatch) => {
 
   try {
     console.log("the data that we are dealing with is ", invoiceData);
-    const { data } = await axiosInstance.post('/invoices', invoiceData)
+    // Build create payload: normalize and map serviceId -> service_type_id
+    const payload = normalizeMongoValue(invoiceData || {});
+    if (payload.serviceId && !payload.service_type_id) {
+      payload.service_type_id = payload.serviceId;
+    }
+    // Remove UI-only fields and Mongo-owned fields
+    delete payload._id;
+    delete payload.id;
+    delete payload.linkedLogo;
+    delete payload.created_at;
+    delete payload.updated_at;
+    delete payload.service;
+    delete payload.serviceId;
+
+    const { data } = await axiosInstance.post('/invoices', payload)
     toast.success('Invoice created successfully')
     dispatch(fetchInvoiceData())
     return data
@@ -108,7 +122,16 @@ export const fetchInvoiceData = (year, month) => async (dispatch) => {
     }
     const qs = params.toString() ? '?' + params.toString() : ''
     const { data } = await axiosInstance.get(`/invoices${qs}`)
-    dispatch(getInvoiceSuccess(data))
+    // Normalize incoming list items: convert Mongo object shapes and ensure serviceId is present
+    const normalizedList = Array.isArray(data)
+      ? data.map((item) => {
+          const n = normalizeMongoValue(item || {});
+          n.serviceId = n.serviceId || n.service || n.service_type_id || n.service_type_id;
+          n.service = n.service || n.serviceId || n.service_type_id || n.service_type_id;
+          return n;
+        })
+      : [];
+    dispatch(getInvoiceSuccess(normalizedList))
   } catch (error) {
     console.error('Error fetching invoices:', error)
     toast.error(
@@ -126,8 +149,12 @@ export const fetchOneInvoice = (invoiceID) => async (dispatch) => {
 
   try {
     const { data } = await axiosInstance.get(`/invoices/${invoiceID}?t=${Date.now()}`)
-    dispatch(getOneInvoice(data))
-    return data
+    // Normalize incoming invoice object so UI gets `serviceId` consistently
+    const normalized = normalizeMongoValue(data || {});
+    normalized.serviceId = normalized.serviceId || normalized.service || normalized.service_type_id || normalized.service_type_id;
+    normalized.service = normalized.service || normalized.serviceId || normalized.service_type_id || normalized.service_type_id;
+    dispatch(getOneInvoice(normalized))
+    return normalized
   } catch (error) {
     console.error('Error fetching invoice:', error)
     dispatch(getInvoiceFailure())

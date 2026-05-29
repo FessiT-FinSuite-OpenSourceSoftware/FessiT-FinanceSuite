@@ -5,6 +5,7 @@ import { fetchInvoiceData, invoiceSelector } from "../../ReduxApi/invoice";
 import { fetchIncomingInvoices, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
 import RecentGSTTransactions from "./RecentGSTTransactions";
 import PeriodSelector from "../../shared/PeriodSelector";
+import Challans from "./challans";
 
 const gstReturns = [
   {
@@ -248,6 +249,7 @@ export default function GSTCompliance() {
             {[
               // { key: "returns",      label: "Returns" },
               { key: "transactions", label: "Transactions" },
+              {key:"challans", label:"Challans"},
               // { key: "compliance",   label: "Compliance" },
               // { key: "reports",      label: "Reports" },
             ].map((t) => (
@@ -430,6 +432,10 @@ export default function GSTCompliance() {
               ))}
             </div>
           </>
+        )}
+
+        {activeTab === "challans" && (
+          <div><Challans /></div>
         )}
 
         {activeTab === "transactions" && (

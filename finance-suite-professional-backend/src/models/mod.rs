@@ -45,3 +45,5 @@ pub use assets::Asset;
 pub use asset_category::AssetCategory;
 pub use delivery_challan::DeliveryChallan;
 pub use employee::Employee;
+pub mod gst_challan;
+pub use gst_challan::GstChallan;

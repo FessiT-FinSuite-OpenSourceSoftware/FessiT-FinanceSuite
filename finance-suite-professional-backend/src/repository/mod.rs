@@ -43,3 +43,5 @@ pub use asset_repository::AssetRepository;
 pub use asset_category_repository::AssetCategoryRepository;
 pub use delivery_challan_repository::DeliveryChallanRepository;
 pub use employee_repository::EmployeeRepository;
+pub mod gst_challan_repository;
+pub use gst_challan_repository::GstChallanRepository;

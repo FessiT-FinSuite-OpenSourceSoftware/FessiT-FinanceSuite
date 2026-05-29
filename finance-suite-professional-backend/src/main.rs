@@ -22,7 +22,7 @@ use handlers::{
     configure_estimate_routes, configure_ledger_routes, configure_account_routes,
     configure_service_routes, configure_report_routes, configure_asset_routes,
     configure_asset_category_routes, configure_delivery_challan_routes, configure_employee_routes,
-    configure_professional_tax_challan_routes,
+    configure_professional_tax_challan_routes, configure_gst_challan_routes,
 };
 use repository::{
     CustomerRepository, ExpenseRepository, InvoiceRepository, IncomingInvoiceRepository,
@@ -30,9 +30,9 @@ use repository::{
     SalaryRepository, GeneralExpenseRepository, ChallanRepository, CategoryRepository, ProductRepository,
     EstimateRepository, LedgerRepository, AccountRepository, ServiceRepository, AssetRepository,
     AssetCategoryRepository, DeliveryChallanRepository, EmployeeRepository,
-    ProfessionalTaxChallanRepository,
+    ProfessionalTaxChallanRepository, GstChallanRepository,
 };
-use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService, ServiceService, AssetService, AssetCategoryService, DeliveryChallanService, EmployeeService, ProfessionalTaxChallanService};
+use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService, ServiceService, AssetService, AssetCategoryService, DeliveryChallanService, EmployeeService, ProfessionalTaxChallanService, GstChallanService};
 use utils::jwt_middleware::JwtMiddleware;
 
 #[actix_web::main]
@@ -173,6 +173,11 @@ async fn main() -> std::io::Result<()> {
     let pt_challan_repository = ProfessionalTaxChallanRepository::new(pt_challan_collection);
     let pt_challan_service = ProfessionalTaxChallanService::new(pt_challan_repository, user_repository.clone());
 
+    // GST Challans
+    let gst_challan_collection = db_client.get_gst_challan_collection();
+    let gst_challan_repository = GstChallanRepository::new(gst_challan_collection);
+    let gst_challan_service = GstChallanService::new(gst_challan_repository, user_repository.clone());
+
     log::info!("Starting server at http://{}:{}", host, port);
 
     HttpServer::new(move || {
@@ -210,6 +215,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(delivery_challan_service.clone()))
             .app_data(web::Data::new(employee_service.clone()))
             .app_data(web::Data::new(pt_challan_service.clone()))
+            .app_data(web::Data::new(gst_challan_service.clone()))
             .service(
                 web::scope("/api/v1")
                     .configure(configure_user_routes)
@@ -240,6 +246,7 @@ async fn main() -> std::io::Result<()> {
                             .configure(configure_delivery_challan_routes)
                             .configure(configure_employee_routes)
                             .configure(configure_professional_tax_challan_routes)
+                            .configure(configure_gst_challan_routes)
                     )
             )
     })
