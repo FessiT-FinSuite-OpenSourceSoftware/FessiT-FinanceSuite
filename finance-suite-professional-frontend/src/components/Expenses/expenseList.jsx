@@ -13,7 +13,8 @@ import SalaryTab from "./SalaryTab";
 import OthersTab from "./OthersTab";
 import IncomingInvoicesTab from "./IncomingInvoicesTab";
 import ProjectsTab from "./ProjectsTab";
-import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal } from "../../shared/ui";
+import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal, FilterChips } from "../../shared/ui";
+import MonthRangeSelector from "../../shared/MonthRangeSelector";
 
 const getExpenseId = (expense) => {
   if (!expense) return "";
@@ -63,6 +64,44 @@ const toInputDate = (ddmmyyyy) => {
   return `${y}-${m}-${d}`;
 };
 
+const getDateRange = (period) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let fromDate = new Date(today);
+  let toDate = new Date(today);
+  switch (period) {
+    case "this_month":   { fromDate.setDate(1); break; }
+    case "last_month":   { fromDate.setMonth(fromDate.getMonth() - 1); fromDate.setDate(1); toDate.setDate(0); break; }
+    case "last_3_months":{ fromDate.setMonth(fromDate.getMonth() - 2); fromDate.setDate(1); break; }
+    case "last_6_months":{ fromDate.setMonth(fromDate.getMonth() - 5); fromDate.setDate(1); break; }
+    default: return null;
+  }
+  return { from: fromDate, to: toDate };
+};
+
+const parseMonthRange = (from, to) => {
+  if (!from || !to) return null;
+  const fromDate = new Date(from + "-01");
+  const toDate = new Date(to + "-01");
+  toDate.setMonth(toDate.getMonth() + 1);
+  toDate.setDate(0);
+  return { from: fromDate, to: toDate };
+};
+
+const isInDateRange = (dateStr, fromDate, toDate) => {
+  if (!dateStr || !fromDate || !toDate) return true;
+  let date;
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+    const [d, m, y] = dateStr.split("-");
+    date = new Date(+y, +m - 1, +d);
+  } else {
+    date = new Date(dateStr);
+  }
+  if (isNaN(date.getTime())) return true;
+  date.setHours(0, 0, 0, 0);
+  return date >= fromDate && date <= toDate;
+};
+
 const toStoredDate = (yyyymmdd) => {
   if (!yyyymmdd) return "";
   const [y, m, d] = yyyymmdd.split("-");
@@ -88,6 +127,9 @@ export default function ExpenseList() {
   const [projects,      setProjects]      = useState([]);
   const [statusPopup,   setStatusPopup]   = useState(null);
   const [deleteModal,   setDeleteModal]   = useState(null);
+  const [dateFilter,    setDateFilter]    = useState("all");
+  const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
 
   const dispatch  = useDispatch();
   const nav       = useNavigate();
@@ -129,7 +171,28 @@ export default function ExpenseList() {
     catch (err) { toast.error(err.message || "Something went wrong while deleting expense"); }
   };
 
-  const expenses   = (expenseData || []).filter((exp) => !searchTerm || (exp.expense_title || "").toLowerCase().includes(searchTerm.toLowerCase()));
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+  const chips = [
+    projectFilter !== "All" && { key: "project", label: `Project: ${projectFilter}` },
+    dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && customDateRange.from && customDateRange.to ? `${fmtYM(customDateRange.from)} → ${fmtYM(customDateRange.to)}` : dateFilterLabel[dateFilter] },
+  ].filter(Boolean);
+  const removeChip = (key) => {
+    if (key === "project") setProjectFilter("All");
+    if (key === "date") { setDateFilter("all"); setCustomDateRange({ from: "", to: "" }); }
+    setCurrentPage(1);
+  };
+
+  const dateRangeObj = dateFilter === "custom"
+    ? parseMonthRange(customDateRange.from, customDateRange.to)
+    : getDateRange(dateFilter);
+
+  const expenses   = (expenseData || []).filter((exp) => {
+    if (searchTerm && !(exp.expense_title || "").toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    const expDate = exp.items?.[0]?.expense_date || exp.created_at || "";
+    return isInDateRange(expDate, dateRangeObj?.from, dateRangeObj?.to);
+  });
   const totalCount = expenses.length;
   const totalAmount = expenses.reduce((sum, exp) => sum + (parseFloat(exp.total_amount) || 0), 0);
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -205,6 +268,26 @@ export default function ExpenseList() {
               <option value="All">All Projects</option>
               {projects.map((proj) => <option key={proj} value={proj}>{proj}</option>)}
             </FilterSelect>
+            <div className="relative">
+              <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setCurrentPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
+                <option value="all">All Time</option>
+                <option value="this_month">Current Month</option>
+                <option value="last_month">Previous Month</option>
+                <option value="last_3_months">Last 3 Months</option>
+                <option value="last_6_months">Last 6 Months</option>
+                <option value="custom">Custom</option>
+              </FilterSelect>
+              {dateFilter === "custom" && dateDropdownOpen && (
+                <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+                  <MonthRangeSelector
+                    from={customDateRange.from}
+                    to={customDateRange.to}
+                    onChange={(range) => { setCustomDateRange(range); setCurrentPage(1); }}
+                    onComplete={() => setDateDropdownOpen(false)}
+                  />
+                </div>
+              )}
+            </div>
             <button
               onClick={() => nav("/expenses/addExpense")}
               disabled={!hasWrite}
@@ -213,6 +296,8 @@ export default function ExpenseList() {
               <Plus className="w-4 h-4" /><span className="hidden sm:inline">Create</span>
             </button>
           </TabActionBar>
+
+          <FilterChips chips={chips} onRemove={removeChip} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <StatCard label="Total Records" value={totalCount} />

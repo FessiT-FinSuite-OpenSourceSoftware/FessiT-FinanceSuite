@@ -9,8 +9,9 @@ import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
 import { orgamisationSelector } from "../../ReduxApi/organisation";
 import {
-  TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, TruncatedCell, ConfirmModal,
+  TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, TruncatedCell, ConfirmModal, FilterChips,
 } from "../../shared/ui";
+import MonthRangeSelector from "../../shared/MonthRangeSelector";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 import { isTauri, saveBytesToDownloads, showDownloadNotification } from "../../utils/pdfUtils";
@@ -21,6 +22,69 @@ const getInvoiceId = (invoice) => {
   if (typeof invoice._id === "string") return invoice._id;
   if (invoice._id?.$oid) return invoice._id.$oid;
   return "";
+};
+
+// Get date range for predefined periods
+const getDateRange = (period) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let fromDate = new Date(today);
+  let toDate = new Date(today);
+
+  switch (period) {
+    case "this_month": {
+      fromDate.setDate(1);
+      break;
+    }
+    case "last_month": {
+      fromDate.setMonth(fromDate.getMonth() - 1);
+      fromDate.setDate(1);
+      toDate.setDate(0); // Last day of previous month
+      break;
+    }
+    case "last_3_months": {
+      fromDate.setMonth(fromDate.getMonth() - 2);
+      fromDate.setDate(1);
+      break;
+    }
+    case "last_6_months": {
+      fromDate.setMonth(fromDate.getMonth() - 5);
+      fromDate.setDate(1);
+      break;
+    }
+    default:
+      return null;
+  }
+
+  return { from: fromDate, to: toDate };
+};
+
+// Format month string to Date range
+const parseMonthRange = (from, to) => {
+  if (!from || !to) return null;
+  const fromDate = new Date(from + "-01");
+  const toDate = new Date(to + "-01");
+  toDate.setMonth(toDate.getMonth() + 1);
+  toDate.setDate(0);
+  return { from: fromDate, to: toDate };
+};
+
+// Check if invoice date is within range
+const isInDateRange = (invoiceDate, fromDate, toDate) => {
+  if (!invoiceDate || !fromDate || !toDate) return true;
+  
+  let date;
+  if (typeof invoiceDate === "object" && invoiceDate.$date) {
+    date = new Date(invoiceDate.$date);
+  } else {
+    date = new Date(invoiceDate);
+  }
+  
+  if (Number.isNaN(date.getTime())) return true;
+  date.setHours(0, 0, 0, 0);
+  
+  return date >= fromDate && date <= toDate;
 };
 
 const formatDate = (value) => {
@@ -39,6 +103,8 @@ const getStatusColor = (status) => {
     case "PAID":    return "bg-green-100 text-green-800";
     case "ISSUED":  return "bg-blue-100 text-blue-800";
     case "ON HOLD": return "bg-yellow-100 text-yellow-800";
+    case "RE ISSUED": return "bg-purple-100 text-purple-800";
+    case "NEW": return "bg-red-100 text-yellow-800";
     default:        return "bg-gray-100 text-gray-800";
   }
 };
@@ -63,6 +129,9 @@ export default function InvoiceList() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [currencyFilter, setCurrencyFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
@@ -77,7 +146,7 @@ export default function InvoiceList() {
   const [deleteModal, setDeleteModal] = useState(null);
 
   useEffect(() => { dispatch(fetchInvoiceData()); }, [dispatch]);
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, currencyFilter, typeFilter]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, currencyFilter, typeFilter, dateFilter, customDateRange]);
   useEffect(() => {
     if (!statusModal) return;
     document.body.setAttribute("data-modal-open", "1");
@@ -172,6 +241,31 @@ export default function InvoiceList() {
 
   const invoices = Array.isArray(invoiceData) ? invoiceData : [];
 
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+  const chips = [
+    statusFilter !== "All" && { key: "status", label: `Status: ${statusFilter}` },
+    currencyFilter !== "All" && { key: "currency", label: `Currency: ${currencyFilter}` },
+    typeFilter !== "All" && { key: "type", label: `Type: ${typeFilter === "domestic" ? "Domestic" : "International"}` },
+    dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && customDateRange.from && customDateRange.to ? `${fmtYM(customDateRange.from)} → ${fmtYM(customDateRange.to)}` : dateFilterLabel[dateFilter] },
+  ].filter(Boolean);
+  const removeChip = (key) => {
+    if (key === "status") setStatusFilter("All");
+    if (key === "currency") setCurrencyFilter("All");
+    if (key === "type") setTypeFilter("All");
+    if (key === "date") { setDateFilter("all"); setCustomDateRange({ from: "", to: "" }); }
+    setCurrentPage(1);
+  };
+
+  // Get date range for filter
+  let dateRangeObj = null;
+  if (dateFilter === "custom") {
+    dateRangeObj = parseMonthRange(customDateRange.from, customDateRange.to);
+  } else {
+    dateRangeObj = getDateRange(dateFilter);
+  }
+
   const filtered = invoices.filter((invoice) => {
     const q = searchTerm.toLowerCase();
     const matchSearch =
@@ -186,7 +280,10 @@ export default function InvoiceList() {
     const matchType =
       typeFilter === "All" ||
       (typeFilter === "international" ? invoice.invoice_type === "international" : invoice.invoice_type !== "international");
-    return matchSearch && matchStatus && matchCurrency && matchType;
+    const matchDate = dateRangeObj 
+      ? isInDateRange(invoice.invoice_date || invoice.date, dateRangeObj.from, dateRangeObj.to)
+      : true;
+    return matchSearch && matchStatus && matchCurrency && matchType && matchDate;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -284,11 +381,11 @@ export default function InvoiceList() {
         const locked = (invoice.status || "New") === "Paid" && !isAdmin;
         return (
           <span
-            onClick={() => !locked && openStatusModal(invoice)}
-            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status || "New")} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
-          >
-            {invoice.status || "New"}
-          </span>
+  onClick={() => !locked && openStatusModal(invoice)}
+  className={`inline-flex items-center justify-center w-20 px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status || "New")} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
+>
+  {invoice.status || "New"}
+</span>
         );
       },
     },
@@ -345,6 +442,26 @@ export default function InvoiceList() {
           <option value="domestic">Domestic</option>
           <option value="international">International</option>
         </FilterSelect>
+        <div className="relative">
+          <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setCurrentPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
+            <option value="all">All Time</option>
+            <option value="this_month">Current Month</option>
+            <option value="last_month">Previous Month</option>
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="custom">Custom</option>
+          </FilterSelect>
+          {dateFilter === "custom" && dateDropdownOpen && (
+            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+              <MonthRangeSelector
+                from={customDateRange.from}
+                to={customDateRange.to}
+                onChange={(range) => { setCustomDateRange(range); setCurrentPage(1); }}
+                onComplete={() => setDateDropdownOpen(false)}
+              />
+            </div>
+          )}
+        </div>
         <div className="relative" ref={downloadMenuRef}>
           {/* <button
             onClick={() => setShowDownloadMenu((p) => !p)}
@@ -394,7 +511,9 @@ export default function InvoiceList() {
         </div>
       </TabActionBar>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 mt-3">
+      <FilterChips chips={chips} onRemove={removeChip} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total Invoices" value={invoices.length} />
         <StatCard label="Paid"    value={countByStatus("Paid")}  valueClass="text-green-600" />
         <StatCard label="Issued"  value={countRaised}            valueClass="text-blue-600" />

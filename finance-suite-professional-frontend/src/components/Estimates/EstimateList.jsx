@@ -22,7 +22,9 @@ import {
   Modal,
   FormField,
   inputCls,
+  FilterChips,
 } from "../../shared/ui";
+import MonthRangeSelector from "../../shared/MonthRangeSelector";
 
 const STATUS_OPTIONS = ["draft", "sent", "accepted", "rejected", "expired", "converted"];
 
@@ -66,8 +68,9 @@ export default function EstimateList() {
 
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [fromDate, setFromDate]         = useState("");
-  const [toDate, setToDate]             = useState("");
+  const [dateFilter, setDateFilter]     = useState("all");
+  const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [currentPage, setCurrentPage]   = useState(1);
   const [pageSize, setPageSize]         = useState(10);
   const [statusPopup, setStatusPopup]   = useState(null);
@@ -77,13 +80,30 @@ export default function EstimateList() {
     const params = { page: currentPage, limit: pageSize };
     if (search.trim())          params.search = search.trim();
     if (statusFilter !== "All") params.status = statusFilter;
-    if (fromDate)               params.from   = fromDate;
-    if (toDate)                 params.to     = toDate;
+    if (dateFilter === "custom" && customDateRange.from && customDateRange.to) {
+      params.from = customDateRange.from;
+      params.to = customDateRange.to;
+    }
     dispatch(fetchEstimates(params));
-  }, [dispatch, currentPage, pageSize, search, statusFilter, fromDate, toDate]);
+  }, [dispatch, currentPage, pageSize, search, statusFilter, dateFilter, customDateRange]);
 
-  useEffect(() => { setCurrentPage(1); }, [search, statusFilter, fromDate, toDate, pageSize]);
+  useEffect(() => { setCurrentPage(1); }, [search, statusFilter, dateFilter, customDateRange, pageSize]);
   useEffect(() => { doFetch(); }, [doFetch]);
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+
+  const chips = [
+    statusFilter !== "All" && { key: "status", label: `Status: ${cap(statusFilter)}` },
+    dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && customDateRange.from && customDateRange.to ? `${fmtYM(customDateRange.from)} → ${fmtYM(customDateRange.to)}` : dateFilterLabel[dateFilter] },
+  ].filter(Boolean);
+
+  const removeChip = (key) => {
+    if (key === "status") setStatusFilter("All");
+    if (key === "date") { setDateFilter("all"); setCustomDateRange({ from: "", to: "" }); }
+    setCurrentPage(1);
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const allData = Array.isArray(estimateData) ? estimateData : [];
@@ -173,6 +193,26 @@ export default function EstimateList() {
             <option key={s} value={s}>{cap(s)}</option>
           ))}
         </FilterSelect>
+        <div className="relative">
+          <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setCurrentPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
+            <option value="all">All Time</option>
+            <option value="this_month">Current Month</option>
+            <option value="last_month">Previous Month</option>
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="custom">Custom</option>
+          </FilterSelect>
+          {dateFilter === "custom" && dateDropdownOpen && (
+            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+              <MonthRangeSelector
+                from={customDateRange.from}
+                to={customDateRange.to}
+                onChange={(range) => { setCustomDateRange(range); setCurrentPage(1); }}
+                onComplete={() => setDateDropdownOpen(false)}
+              />
+            </div>
+          )}
+        </div>
 
         <CreateButton
           onClick={() => hasWrite && nav("/estimates/create")}
@@ -180,6 +220,8 @@ export default function EstimateList() {
           icon={Plus}
         />
       </TabActionBar>
+
+      <FilterChips chips={chips} onRemove={removeChip} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 mt-3">
         <StatCard label="Total Estimates" value={stats.total} />

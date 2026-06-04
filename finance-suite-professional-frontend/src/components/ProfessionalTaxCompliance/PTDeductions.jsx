@@ -61,32 +61,32 @@ export default function PTDeductions({ deductions = [], isLoading = false, selec
   const columns = [
     {
       label: "Period",
-      render: (d) => <span className="text-sm text-gray-700 whitespace-nowrap">{d.period || fmtDate(d.date)}</span>,
+      render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">{d.period || fmtDate(d.date)}</span>,
     },
     {
       label: "Employee",
       render: (d) => (
         <div>
-          <p className="text-sm font-medium text-gray-800 whitespace-nowrap">{d.emp_name}</p>
-          {d.emp_id && d.emp_id !== "-" && <p className="text-xs text-gray-400">ID: {d.emp_id}</p>}
+          <p className="text-sm font-medium text-gray-800 dark:text-slate-200 whitespace-nowrap">{d.emp_name}</p>
+          {d.emp_id && d.emp_id !== "-" && <p className="text-xs text-gray-400 dark:text-slate-500">ID: {d.emp_id}</p>}
         </div>
       ),
     },
     {
       label: "Department",
-      render: (d) => <span className="text-sm text-gray-600 whitespace-nowrap">{d.department || "-"}</span>,
+      render: (d) => <span className="text-sm text-gray-600 dark:text-slate-400 whitespace-nowrap">{d.department || "-"}</span>,
     },
     {
       label: "Gross Salary", right: true,
-      render: (d) => <span className="text-sm text-gray-700 whitespace-nowrap">₹ {fmt(d.gross_salary)}</span>,
+      render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">₹ {fmt(d.gross_salary)}</span>,
     },
     {
       label: "PT Amount", right: true,
-      render: (d) => <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">₹ {fmt(d.ptAmount)}</span>,
+      render: (d) => <span className="text-sm font-semibold text-gray-800 dark:text-slate-200 whitespace-nowrap">₹ {fmt(d.ptAmount)}</span>,
     },
     {
       label: "Net Salary", right: true,
-      render: (d) => <span className="text-sm text-gray-700 whitespace-nowrap">₹ {fmt(d.net_salary)}</span>,
+      render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">₹ {fmt(d.net_salary)}</span>,
     },
     {
       label: "Status",
@@ -116,9 +116,9 @@ export default function PTDeductions({ deductions = [], isLoading = false, selec
       </TabActionBar>
 
       {filtered.length > 0 && (
-        <div className="mb-3 px-1 flex gap-6 text-sm text-gray-600">
+        <div className="mb-3 px-1 flex gap-6 text-sm text-gray-600 dark:text-slate-400">
           <span>{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
-          <span className="font-semibold text-gray-800">Total PT: ₹ {fmt(totalPt)}</span>
+          <span className="font-semibold text-gray-800 dark:text-slate-200">Total PT: ₹ {fmt(totalPt)}</span>
         </div>
       )}
 
@@ -155,7 +155,7 @@ export default function PTDeductions({ deductions = [], isLoading = false, selec
         emptyMessage="No professional tax deductions found."
         columns={columns}
         renderExpanded={(d) => (
-          <div className="p-4 rounded-2xl bg-[#ECEEF2]">
+          <div className="p-4 rounded-2xl bg-[#ECEEF2] dark:bg-slate-700/50">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               <InfoCard label="Employee" value={d.emp_name} />
               <InfoCard label="Employee ID" value={d.emp_id} />

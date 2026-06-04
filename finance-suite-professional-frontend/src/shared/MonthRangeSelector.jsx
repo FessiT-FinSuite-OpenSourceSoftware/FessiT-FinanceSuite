@@ -10,9 +10,8 @@ export default function MonthRangeSelector({
   from = "",
   to = "",
   onChange,
-  // I removed the label by default to fix your flex alignment, 
-  // but you can pass it back in if you wrap everything in a taller container.
-  label = "", 
+  onComplete,
+  label = "",
 }) {
   const normalize = (nextFrom, nextTo) => {
     if (!nextFrom || !nextTo) return { from: nextFrom, to: nextTo };
@@ -62,7 +61,11 @@ export default function MonthRangeSelector({
             type="month"
             value={from}
             onClick={(e) => e.currentTarget.showPicker()}
-            onChange={(e) => onChange(normalize(e.target.value, to))}
+            onChange={(e) => {
+              const next = normalize(e.target.value, to);
+              onChange(next);
+              if (next.from && next.to) onComplete?.();
+            }}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
         </div>
@@ -86,7 +89,11 @@ export default function MonthRangeSelector({
             type="month"
             value={to}
             onClick={(e) => e.currentTarget.showPicker()}
-            onChange={(e) => onChange(normalize(from, e.target.value))}
+            onChange={(e) => {
+              const next = normalize(from, e.target.value);
+              onChange(next);
+              if (next.from && next.to) onComplete?.();
+            }}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
         </div>

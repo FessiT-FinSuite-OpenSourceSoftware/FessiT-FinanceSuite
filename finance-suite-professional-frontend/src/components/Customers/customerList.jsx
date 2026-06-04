@@ -9,8 +9,9 @@ import { toast } from "react-toastify";
 import { X } from "lucide-react";
 import {
   TabActionBar, FilterSelect, StatCard, DataTable, RowActions,
-  Pagination, ConfirmModal, Modal, FormField, inputCls,
+  Pagination, ConfirmModal, Modal, FormField, inputCls, FilterChips,
 } from "../../shared/ui";
+import MonthRangeSelector from "../../shared/MonthRangeSelector";
 
 function ProjectModal({ customerName, onSave, onClose }) {
   const [form, setForm] = useState({ projectName: "", projectOwner: "", description: "" });
@@ -69,9 +70,63 @@ export default function CustomerList() {
   const [statusModal, setStatusModal] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
 
   useEffect(() => { dispatch(fetchCustomerData()); }, [dispatch]);
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, roleFilter]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, roleFilter, dateFilter, customDateRange]);
+
+  const getDateRange = (period) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let fromDate = new Date(today);
+    let toDate = new Date(today);
+    switch (period) {
+      case "this_month": { fromDate.setDate(1); break; }
+      case "last_month": { fromDate.setMonth(fromDate.getMonth() - 1); fromDate.setDate(1); toDate.setDate(0); break; }
+      case "last_3_months": { fromDate.setMonth(fromDate.getMonth() - 2); fromDate.setDate(1); break; }
+      case "last_6_months": { fromDate.setMonth(fromDate.getMonth() - 5); fromDate.setDate(1); break; }
+      default: return null;
+    }
+    return { from: fromDate, to: toDate };
+  };
+
+  const parseMonthRange = (from, to) => {
+    if (!from || !to) return null;
+    const fromDate = new Date(from + "-01");
+    const toDate = new Date(to + "-01");
+    toDate.setMonth(toDate.getMonth() + 1);
+    toDate.setDate(0);
+    return { from: fromDate, to: toDate };
+  };
+
+  const isInDateRange = (dateStr, fromDate, toDate) => {
+    if (!dateStr || !fromDate || !toDate) return true;
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return true;
+    date.setHours(0, 0, 0, 0);
+    return date >= fromDate && date <= toDate;
+  };
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+
+  const dateRangeObj = dateFilter === "custom" ? parseMonthRange(customDateRange.from, customDateRange.to) : getDateRange(dateFilter);
+
+  const chips = [
+    statusFilter !== "All" && { key: "status", label: `Status: ${statusFilter}` },
+    roleFilter !== "All" && { key: "role", label: `Role: ${roleFilter}` },
+    dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && customDateRange.from && customDateRange.to ? `${fmtYM(customDateRange.from)} → ${fmtYM(customDateRange.to)}` : dateFilterLabel[dateFilter] },
+  ].filter(Boolean);
+
+  const removeChip = (key) => {
+    if (key === "status") setStatusFilter("All");
+    if (key === "role") setRoleFilter("All");
+    if (key === "date") { setDateFilter("all"); setCustomDateRange({ from: "", to: "" }); }
+    setCurrentPage(1);
+  };
 
   const filtered = customersData.filter((item) => {
     const matchesSearch =
@@ -83,7 +138,8 @@ export default function CustomerList() {
       (roleFilter === "Customer" && (item.role === "Customer" || item.role === "Both" || (!item.role && !item.is_vendor_too))) ||
       (roleFilter === "Vendor" && (item.role === "Vendor" || item.role === "Both" || (!item.role && item.is_vendor_too))) ||
       (roleFilter === "Both" && item.role === "Both");
-    return matchesSearch && matchesStatus && matchesRole;
+    const matchDate = dateRangeObj ? isInDateRange(item.created_at || item.createdAt, dateRangeObj.from, dateRangeObj.to) : true;
+    return matchesSearch && matchesStatus && matchesRole && matchDate;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -191,11 +247,33 @@ export default function CustomerList() {
           <option value="Vendor">Vendor</option>
           <option value="Both">Both</option>
         </FilterSelect>
+        {/* <div className="relative">
+          <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setCurrentPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
+            <option value="all">All Time</option>
+            <option value="this_month">Current Month</option>
+            <option value="last_month">Previous Month</option>
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="custom">Custom</option>
+          </FilterSelect>
+          {dateFilter === "custom" && dateDropdownOpen && (
+            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+              <MonthRangeSelector
+                from={customDateRange.from}
+                to={customDateRange.to}
+                onChange={(range) => { setCustomDateRange(range); setCurrentPage(1); }}
+                onComplete={() => setDateDropdownOpen(false)}
+              />
+            </div>
+          )}
+        </div> */}
         <button onClick={() => nav("/customers/addCustomer")} disabled={!hasWrite}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm ${hasWrite ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
           <Plus className="w-4 h-4" /><span className="hidden sm:inline">Create</span>
         </button>
       </TabActionBar>
+
+      <FilterChips chips={chips} onRemove={removeChip} />
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
         <StatCard label="Total"     value={customersData.length} />

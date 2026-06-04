@@ -226,7 +226,7 @@ export default function EditEstimate() {
   return (
     <div className="relative">
       {/* Top bar */}
-      <div className="sticky top-[88px] w-full z-30 rounded-lg bg-white border border-gray-300 py-4 -mt-15 shadow-sm">
+      <div className="sticky top-18 w-full z-30 rounded-lg bg-white border border-gray-300 py-4 shadow-sm">
         <div className="flex justify-between px-4">
           <div className="flex items-center gap-3">
             <ArrowLeft strokeWidth={1} className="cursor-pointer" onClick={() => nav("/estimates")} />
@@ -243,7 +243,7 @@ export default function EditEstimate() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg p-8 pb-6 mt-5">
+      <div className="bg-white rounded-lg shadow-lg p-4 pb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">Estimate Details</h2>
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div>

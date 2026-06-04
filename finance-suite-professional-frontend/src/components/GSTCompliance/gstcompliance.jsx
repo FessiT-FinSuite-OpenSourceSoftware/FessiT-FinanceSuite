@@ -109,7 +109,7 @@ const sumInvoiceTaxes = (items = []) => {
   );
 };
 
-const StatCardSkeleton = ({ colorClass = "bg-gray-100", borderClass = "border-gray-200" }) => (
+const StatCardSkeleton = ({ colorClass = "bg-white dark:bg-slate-800", borderClass = "border-gray-200 dark:border-slate-700" }) => (
   <div className={`${colorClass} p-6 rounded-lg border ${borderClass}`}>
     <div className="skeleton-shimmer h-3 w-28 mb-4" />
     <div className="skeleton-shimmer h-9 w-36 mb-3" />
@@ -242,9 +242,9 @@ export default function GSTCompliance() {
 
   return (
     <>
-      <div className="bg-white rounded-lg border-g shadow-lg p-3 pb-6">
+      <div className="compliance-surface bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700 shadow-lg p-3 pb-6">
         {/* Tabs + Action Buttons */}
-        <div className="flex items-center justify-between border-b border-gray-200 mb-3">
+        <div className="compliance-tabs flex items-center justify-between border-b border-gray-200 dark:border-slate-700 mb-3">
           <div className="flex">
             {[
               // { key: "returns",      label: "Returns" },
@@ -259,7 +259,7 @@ export default function GSTCompliance() {
                 className={`px-5 py-2 text-md font-medium transition-colors ${
                   activeTab === t.key
                     ? "border-b-2 border-blue-600 text-blue-600"
-                    : "text-gray-500 hover:text-gray-700"
+                    : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 }`}
               >
                 {t.label}
@@ -288,42 +288,42 @@ export default function GSTCompliance() {
   ) : (
     <>
       {/* Total GST Collected */}
-      <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-blue-300 transition-all">
+      <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-blue-300 transition-all">
         
         <div className="relative z-10">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Total GST Collected</p>
-          <h3 className="text-2xl font-black text-slate-900">{formatCurrency(outgoing.total_gst_collected || 0)}</h3>
+          <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Total GST Collected</p>
+          <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(outgoing.total_gst_collected || 0)}</h3>
          
         </div>
       </div>
 
       {/* Input Tax Credit */}
-      <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
+      <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
        
         <div className="relative z-10">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Input Tax Credit</p>
-          <h3 className="text-2xl font-black text-slate-900">{formatCurrency(incoming.total_gst_collected || 0)}</h3>
+          <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Input Tax Credit</p>
+          <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(incoming.total_gst_collected || 0)}</h3>
           
         </div>
       </div>
 
       {/* Net GST Payable */}
-      <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-purple-300 transition-all">
+      <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-purple-300 transition-all">
         
         <div className="relative z-10">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Net GST Payable</p>
-          <h3 className="text-2xl font-black text-slate-900">{formatCurrency(netPayable)}</h3>
+          <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Net GST Payable</p>
+          <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(netPayable)}</h3>
          
         </div>
       </div>
 
       {/* Returns Pending */}
-      <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
+      <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
         
         <div className="relative z-10">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Returns Pending</p>
+          <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Returns Pending</p>
           <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-black text-slate-900">{pendingReturnCount}</h3>
+            <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{pendingReturnCount}</h3>
           </div>
         </div>
       </div>
@@ -435,7 +435,7 @@ export default function GSTCompliance() {
         )}
 
         {activeTab === "challans" && (
-          <div><Challans /></div>
+          <div><Challans selectedMonths={selectedMonths} /></div>
         )}
 
         {activeTab === "transactions" && (

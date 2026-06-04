@@ -6,7 +6,8 @@ import { fetchPurchaseOrderData, deletePurchaseOrder, purchaseOrderSelector } fr
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
 import { getCurrencySymbol } from "../../utils/formatNumber";
-import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal } from "../../shared/ui";
+import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal, FilterChips } from "../../shared/ui";
+import MonthRangeSelector from "../../shared/MonthRangeSelector";
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -38,12 +39,66 @@ export default function PurchaseOrderList() {
   const [searchTerm,     setSearchTerm]     = useState("");
   const [statusFilter,   setStatusFilter]   = useState("All");
   const [currencyFilter, setCurrencyFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [currentPage,    setCurrentPage]    = useState(1);
   const [pageSize,       setPageSize]       = useState(10);
   const [deleteModal,    setDeleteModal]    = useState(null);
 
   useEffect(() => { dispatch(fetchPurchaseOrderData()); }, [dispatch]);
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, currencyFilter]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, currencyFilter, dateFilter, customDateRange]);
+
+  const getDateRange = (period) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let fromDate = new Date(today);
+    let toDate = new Date(today);
+    switch (period) {
+      case "this_month": { fromDate.setDate(1); break; }
+      case "last_month": { fromDate.setMonth(fromDate.getMonth() - 1); fromDate.setDate(1); toDate.setDate(0); break; }
+      case "last_3_months": { fromDate.setMonth(fromDate.getMonth() - 2); fromDate.setDate(1); break; }
+      case "last_6_months": { fromDate.setMonth(fromDate.getMonth() - 5); fromDate.setDate(1); break; }
+      default: return null;
+    }
+    return { from: fromDate, to: toDate };
+  };
+
+  const parseMonthRange = (from, to) => {
+    if (!from || !to) return null;
+    const fromDate = new Date(from + "-01");
+    const toDate = new Date(to + "-01");
+    toDate.setMonth(toDate.getMonth() + 1);
+    toDate.setDate(0);
+    return { from: fromDate, to: toDate };
+  };
+
+  const isInDateRange = (dateStr, fromDate, toDate) => {
+    if (!dateStr || !fromDate || !toDate) return true;
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return true;
+    date.setHours(0, 0, 0, 0);
+    return date >= fromDate && date <= toDate;
+  };
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+
+  const dateRangeObj = dateFilter === "custom" ? parseMonthRange(customDateRange.from, customDateRange.to) : getDateRange(dateFilter);
+
+  const chips = [
+    statusFilter !== "All" && { key: "status", label: `Status: ${statusFilter}` },
+    currencyFilter !== "All" && { key: "currency", label: `Currency: ${currencyFilter}` },
+    dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && customDateRange.from && customDateRange.to ? `${fmtYM(customDateRange.from)} → ${fmtYM(customDateRange.to)}` : dateFilterLabel[dateFilter] },
+  ].filter(Boolean);
+
+  const removeChip = (key) => {
+    if (key === "status") setStatusFilter("All");
+    if (key === "currency") setCurrencyFilter("All");
+    if (key === "date") { setDateFilter("all"); setCustomDateRange({ from: "", to: "" }); }
+    setCurrentPage(1);
+  };
 
   const purchaseOrders = Array.isArray(purchaseOrderData) ? purchaseOrderData : [];
 
@@ -52,7 +107,8 @@ export default function PurchaseOrderList() {
     const matchStatus = statusFilter === "All" || po.status === statusFilter;
     const cur = po.currency_type || "INR";
     const matchCurrency = currencyFilter === "All" || (currencyFilter === "Others" ? !["INR", "USD", "EUR"].includes(cur) : cur === currencyFilter);
-    return matchSearch && matchStatus && matchCurrency;
+    const matchDate = dateRangeObj ? isInDateRange(po.po_date, dateRangeObj.from, dateRangeObj.to) : true;
+    return matchSearch && matchStatus && matchCurrency && matchDate;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -123,6 +179,26 @@ export default function PurchaseOrderList() {
           <option value="EUR">EUR (€)</option>
           <option value="Others">Others</option>
         </FilterSelect>
+        <div className="relative">
+          <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setCurrentPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
+            <option value="all">All Time</option>
+            <option value="this_month">Current Month</option>
+            <option value="last_month">Previous Month</option>
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="custom">Custom</option>
+          </FilterSelect>
+          {dateFilter === "custom" && dateDropdownOpen && (
+            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+              <MonthRangeSelector
+                from={customDateRange.from}
+                to={customDateRange.to}
+                onChange={(range) => { setCustomDateRange(range); setCurrentPage(1); }}
+                onComplete={() => setDateDropdownOpen(false)}
+              />
+            </div>
+          )}
+        </div>
         <button
           onClick={() => nav("/purchases/addPurchaseOrder")}
           disabled={!hasWrite}
@@ -131,6 +207,8 @@ export default function PurchaseOrderList() {
           <Plus className="w-4 h-4" /><span className="hidden sm:inline">Create</span>
         </button>
       </TabActionBar>
+
+      <FilterChips chips={chips} onRemove={removeChip} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 mt-3">
         <StatCard label="Total Purchase Orders" value={purchaseOrders.length} />

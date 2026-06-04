@@ -39,10 +39,10 @@ const limitWords = (value, maxWords) => {
 }
 
 const statusColor = (s) => {
-  if (s === 'active') return 'bg-green-100 text-green-800'
-  if (s === 'repair') return 'bg-yellow-100 text-yellow-800'
-  if (s === 'maintenance') return 'bg-blue-100 text-blue-800'
-  return 'bg-red-100 text-red-800'
+  if (s === 'active') return 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300'
+  if (s === 'repair') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300'
+  if (s === 'maintenance') return 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300'
+  return 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300'
 }
 
 const stockStatus = (stocks) => {
@@ -539,13 +539,13 @@ export default function AssetList() {
   const LoadingSkeleton = () => (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Toolbar skeleton */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="h-12 bg-slate-200 rounded-xl animate-pulse w-full md:max-w-xl"></div>
+          <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse w-full md:max-w-xl"></div>
           <div className="flex items-center gap-2">
-            <div className="h-12 w-24 bg-slate-200 rounded-xl animate-pulse"></div>
-            <div className="h-12 w-28 bg-slate-200 rounded-xl animate-pulse"></div>
-            <div className="h-12 w-20 bg-slate-200 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-24 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-28 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-20 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
           </div>
         </div>
       </div>
@@ -553,15 +553,15 @@ export default function AssetList() {
       {/* Stats skeleton */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="h-4 bg-slate-200 rounded animate-pulse mb-2 w-20"></div>
-            <div className="h-8 bg-slate-200 rounded animate-pulse w-16"></div>
+          <div key={i} className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm">
+            <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mb-2 w-20"></div>
+            <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-16"></div>
           </div>
         ))}
       </div>
 
       {/* Filters skeleton */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="h-5 bg-slate-200 rounded animate-pulse w-12"></div>
           <div className="flex flex-wrap gap-3">
@@ -573,12 +573,12 @@ export default function AssetList() {
       </div>
 
       {/* Table skeleton */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 shadow-sm overflow-hidden">
         <div className="p-4">
           {/* Table header */}
-          <div className="grid grid-cols-9 gap-4 pb-4 border-b border-slate-200">
+          <div className="grid grid-cols-9 gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
             {[...Array(9)].map((_, i) => (
-              <div key={i} className="h-4 bg-slate-200 rounded animate-pulse"></div>
+              <div key={i} className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
             ))}
           </div>
           {/* Table rows */}
@@ -594,7 +594,7 @@ export default function AssetList() {
 
       {/* Pagination skeleton */}
       <div className="flex justify-between items-center">
-        <div className="h-4 bg-slate-200 rounded animate-pulse w-32"></div>
+        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-32"></div>
         <div className="flex gap-2">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-10 w-10 bg-slate-200 rounded-lg animate-pulse"></div>
@@ -610,34 +610,34 @@ export default function AssetList() {
     <div className="w-full ">
       {/* Subtle loading overlay for refreshes when data exists */}
       {isLoading && hasLoadedOnce && (
-        <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
-          <div className="bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
+        <div className="absolute inset-0 bg-white/50 dark:bg-slate-950/60 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
+          <div className="bg-white rounded-xl shadow-lg dark:bg-slate-900 px-4 py-3 flex items-center gap-3">
             <RefreshCcw className="w-4 h-4 animate-spin text-blue-600" />
-            <span className="text-sm font-medium text-slate-700">Refreshing assets...</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Refreshing assets...</span>
           </div>
         </div>
       )}
       {/* Toolbar */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-2">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm mb-2">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:max-w-xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Search asset, item code, manufacturer..."
-              className="w-full rounded-xl border border-slate-300 pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 py-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => dispatch(fetchAssetData())}
               disabled={isLoading}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
               <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> 
               {isLoading ? 'Refreshing...' : 'Refresh'}
             </button>
             {isAdmin && (
               <button onClick={() => setShowCategoryManager(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
                 Categories
               </button>
             )}
@@ -685,21 +685,21 @@ export default function AssetList() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-2">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm mb-2">
         <div className="flex flex-col gap-3 items-end justify-end">
          
           <div className="flex flex-wrap gap-3">
-            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
               <option value="All">All Categories</option>
               {categoryOptions.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
               <option value="All">All Statuses</option>
               {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
             </select>
             
             
-            <select value={assetTypeFilter} onChange={(e) => setAssetTypeFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+            <select value={assetTypeFilter} onChange={(e) => setAssetTypeFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
               <option value="All">All Types</option>
               <option value="owned">Owned</option>
               <option value="rental">Rented</option>
@@ -713,8 +713,8 @@ export default function AssetList() {
         isLoading={isLoading && !isInitialLoad}
         data={paginated}
         rowKey={(a) => a.id}
-        wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-        tbodyClass="divide-y divide-slate-200"
+        wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 shadow-sm"
+        tbodyClass="divide-y divide-slate-200 dark:divide-slate-800"
         emptyMessage="No assets matched your filters."
         loadingMessage="Loading assets..."
         columns={[
@@ -722,25 +722,25 @@ export default function AssetList() {
             label: 'Image', stopPropagation: true,
             render: (a) => a.image ? (
               <button type="button" onClick={(e) => { e.stopPropagation(); const src = assetImageSrc(a); if (src) openPreviewModal(src, a.name || 'Asset Image') }} className="block">
-                <img src={assetImageSrc(a)} alt={a.name} onError={(e) => { e.currentTarget.style.display = 'none' }} className="h-8 w-10 rounded-lg object-cover border border-slate-200" />
+                <img src={assetImageSrc(a)} alt={a.name} onError={(e) => { e.currentTarget.style.display = 'none' }} className="h-8 w-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
               </button>
-            ) : <div className="h-8 w-10 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-400">No img</div>,
+            ) : <div className="h-8 w-10 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-400">No img</div>,
           },
           {
             label: 'Name',
             render: (a) => (
-              <><div className="whitespace-nowrap text-sm font-semibold text-slate-900">{a.name}</div><div className="text-xs text-slate-400">{a.manufacturer || a.vendor}</div></>
+              <><div className="whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{a.name}</div><div className="text-xs text-slate-400">{a.manufacturer || a.vendor}</div></>
             ),
           },
           {
             label: 'Description',
             render: (a) => (
-              <div className="text-xs text-slate-600 line-clamp-2 cursor-help max-w-[140px]" onMouseEnter={(e) => openDescriptionPreview(e, a)} onMouseLeave={closeDescriptionPreview}>{a.description || '-'}</div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 cursor-help max-w-[140px]" onMouseEnter={(e) => openDescriptionPreview(e, a)} onMouseLeave={closeDescriptionPreview}>{a.description || '-'}</div>
             ),
           },
-          { label: 'HSN/CAC', render: (a) => <span className="text-xs text-slate-700">{a.hsn || '-'}</span> },
-          { label: 'Item Code', render: (a) => <span className="text-xs text-slate-700">{a.item_code || '-'}</span> },
-          { label: 'Category', render: (a) => <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">{textValue(a.categoryLabel, 'Unassigned') || 'Unassigned'}</span> },
+          { label: 'HSN/CAC', render: (a) => <span className="text-xs text-slate-700 dark:text-slate-300">{a.hsn || '-'}</span> },
+          { label: 'Item Code', render: (a) => <span className="text-xs text-slate-700 dark:text-slate-300">{a.item_code || '-'}</span> },
+          { label: 'Category', render: (a) => <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">{textValue(a.categoryLabel, 'Unassigned') || 'Unassigned'}</span> },
 
           {
             label: 'Status', stopPropagation: true,
@@ -750,7 +750,7 @@ export default function AssetList() {
               <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusColor(a.asset_status)}`}>{a.asset_status ? a.asset_status.charAt(0).toUpperCase() + a.asset_status.slice(1) : '-'}</span>
             ),
           },
-          { label: 'Purchase Price', render: (a) => <span className="text-xs font-semibold text-slate-900">Rs. {fmt(a.purchased_price)}</span> },
+          { label: 'Purchase Price', render: (a) => <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">Rs. {fmt(a.purchased_price)}</span> },
           {
             label: 'Actions', right: true, stopPropagation: true,
             render: (a) => (
@@ -777,7 +777,7 @@ export default function AssetList() {
           const invoiceSrc = a.invoice_image ? imageCache[a.invoice_image] : ''
           const invoiceIsPdf = isSrcPdf(a.invoice_image)
           return (
-            <div className="p-4 rounded-2xl bg-[#ECEEF2]">
+            <div className="p-4 rounded-2xl bg-[#ECEEF2] dark:bg-slate-950">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
                 <InfoCard label="Description" value={a.description || '-'} className="xl:col-span-3" valueClassName="line-clamp-2 min-h-[2.5rem]" />
                 <InfoCard label="Manufacturer" value={a.manufacturer || '-'} />
@@ -793,15 +793,15 @@ export default function AssetList() {
                 <InfoCard label="Serial No" value={a.serial_no || '-'} />
                 <InfoCard label="Asset Type" value={a.asset_type ? a.asset_type.charAt(0).toUpperCase() + a.asset_type.slice(1) : '-'} />
                 <InfoCard label="Notes" value={a.notes || '-'} className="xl:col-span-3" />
-                <div className="xl:col-span-1 rounded-xl border border-slate-200 bg-white p-3">
+                <div className="xl:col-span-1 rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Invoice / Receipt</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{a.invoice_image ? 'Available' : '-'}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{a.invoice_image ? 'Available' : '-'}</p>
                   <div className="mt-3 flex flex-row gap-2">
                     <button
                       type="button"
                       onClick={() => invoiceSrc && openPreviewModal(invoiceSrc, 'Invoice / Receipt', invoiceIsPdf)}
                       disabled={!invoiceSrc}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Eye className="h-3.5 w-3.5" />
                       View
@@ -810,18 +810,18 @@ export default function AssetList() {
                       type="button"
                       onClick={() => invoiceSrc && downloadFromSource(invoiceSrc, `${a.name || 'Asset'} Invoice Receipt`, invoiceIsPdf)}
                       disabled={!invoiceSrc}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Download className="h-3.5 w-3.5" />
                       Download
                     </button>
                   </div>
                 </div>
-                {/* <div className="rounded-xl border border-slate-200 bg-white p-3">
+                {/* <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Stock Level</p>
                   <div className="mt-3 flex items-center gap-2">
                     <div className="h-1.5 flex-1 rounded-full bg-slate-200"><div className={`h-1.5 rounded-full ${barColor}`} style={{ width: `${pct}%` }} /></div>
-                    <span className="text-xs font-semibold text-slate-600">{pct}%</span>
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{pct}%</span>
                   </div>
                 </div> */}
               </div>
@@ -836,19 +836,19 @@ export default function AssetList() {
 
       {previewModal.open && ReactDOM.createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/75 p-4" onClick={closePreviewModal}>
-          <div className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h3 className="text-lg font-semibold text-slate-900">{previewModal.title}</h3>
+          <div className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{previewModal.title}</h3>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={handleDownload} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" title="Download">
+                <button type="button" onClick={handleDownload} className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" title="Download">
                   <Download className="h-5 w-5" />
                 </button>
-                <button type="button" onClick={closePreviewModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                <button type="button" onClick={closePreviewModal} className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
-            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4">
+            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
               {previewModal.isPdf ? (
                 <iframe
                   src={`${previewModal.src}#toolbar=0`} 
@@ -867,11 +867,11 @@ export default function AssetList() {
 
       {descriptionPreview && (
         <div
-          className="pointer-events-none fixed w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl"
+          className="pointer-events-none fixed w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-2xl"
           style={{ zIndex: 250, left: descriptionPreview.left, top: descriptionPreview.top }}
         >
-          <h4 className="mt-1 text-base font-semibold text-slate-900">{descriptionPreview.title}</h4>
-          <p className="mt-3 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
+          <h4 className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">{descriptionPreview.title}</h4>
+          <p className="mt-3 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700 dark:text-slate-300">
             {descriptionPreview.description}
           </p>
         </div>
@@ -880,33 +880,33 @@ export default function AssetList() {
       {/* Create / Edit Modal */}
       {showModal && ReactDOM.createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 shrink-0">
+          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4 shrink-0">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                   {editingId ? 'Edit Asset' : 'Create New Asset'}
                 </h3>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   {editingId ? 'Update the asset and save the changes.' : 'Fill in the asset details to create a new asset.'}
                 </p>
               </div>
-              <button onClick={closeModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="w-5 h-5" /></button>
+              <button onClick={closeModal} className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="w-5 h-5" /></button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6 overflow-y-auto">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">Asset Image</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Asset Image</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <div className="mt-3 flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => activeModalImageSrc && openPreviewModal(activeModalImageSrc, form.name || 'Asset Image')}
                     disabled={!activeModalImageSrc}
-                    className="h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center disabled:cursor-not-allowed"
+                    className="h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 flex items-center justify-center disabled:cursor-not-allowed"
                   >
                     {activeModalImageSrc ? (
                       <img src={activeModalImageSrc} alt="Preview" className="h-full w-full object-cover" />
@@ -914,7 +914,7 @@ export default function AssetList() {
                       <span className="text-xs text-slate-400">No image</span>
                     )}
                   </button>
-                  <div className="min-w-0 flex-1 text-sm text-slate-500">
+                  <div className="min-w-0 flex-1 text-sm text-slate-500 dark:text-slate-400">
                     <p className="truncate">
                       {assetImageFile ? assetImageFile.name : 'Choose an asset image to preview it here.'}
                     </p>
@@ -923,7 +923,7 @@ export default function AssetList() {
                         type="button"
                         onClick={() => activeModalImageSrc && openPreviewModal(activeModalImageSrc, form.name || 'Asset Image')}
                         disabled={!activeModalImageSrc}
-                        className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Preview
                       </button>
@@ -934,12 +934,12 @@ export default function AssetList() {
 
               {/* Invoice / Receipt Image */}
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">Invoice / Receipt Image</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Invoice / Receipt Image</label>
                 <input
                   type="file"
                   accept="image/*,application/pdf"
                   onChange={handleInvoiceImageChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 />
                 {(invoiceImagePreview || imageCache[form.invoice_image]) && (
                   <div className="mt-3 flex items-center gap-3">
@@ -950,7 +950,7 @@ export default function AssetList() {
                         const pdf = invoiceImageFile ? isFilePdf(invoiceImageFile) : isSrcPdf(form.invoice_image)
                         if (src) openPreviewModal(src, 'Invoice / Receipt', pdf)
                       }}
-                      className="h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center"
+                      className="h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 flex items-center justify-center"
                     >
                       {(invoiceImageFile ? isFilePdf(invoiceImageFile) : isSrcPdf(form.invoice_image)) ? (
                         <span className="text-xs font-semibold text-red-500">PDF</span>
@@ -962,7 +962,7 @@ export default function AssetList() {
                         />
                       )}
                     </button>
-                    <div className="min-w-0 flex-1 text-sm text-slate-500">
+                    <div className="min-w-0 flex-1 text-sm text-slate-500 dark:text-slate-400">
                       <p className="truncate">{invoiceImageFile ? invoiceImageFile.name : 'Existing invoice file'}</p>
                       <button
                         type="button"
@@ -971,7 +971,7 @@ export default function AssetList() {
                           const pdf = invoiceImageFile ? isFilePdf(invoiceImageFile) : isSrcPdf(form.invoice_image)
                           if (src) openPreviewModal(src, 'Invoice / Receipt', pdf)
                         }}
-                        className="mt-2 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        className="mt-2 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                       >
                         Preview
                       </button>
@@ -986,16 +986,16 @@ export default function AssetList() {
               <Field label="Item Code" name="item_code" value={form.item_code} onChange={handleChange} placeholder="Item / SKU code" />
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Category *</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Category *</label>
                 <select name="category" value={form.category} onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                   <option value="" disabled>Select category</option>
                   <option value="__add_category__">+ Add new category</option>
                   {categoryOptions.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
                 </select>
                 {form.category === '__add_category__' && (
-                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       New Category
                     </label>
                     <div className="flex gap-2">
@@ -1004,7 +1004,7 @@ export default function AssetList() {
                         value={newCategoryName}
                         onChange={(e) => setNewCategoryName(e.target.value)}
                         placeholder="Enter category name"
-                        className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                        className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
                       />
                       <button
                         type="button"
@@ -1022,9 +1022,9 @@ export default function AssetList() {
               <Field label="Supplier" name="vendor" value={form.vendor} onChange={handleChange} placeholder="Vendor / supplier" />
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Payment Mode</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Payment Mode</label>
                 <select name="payment_mode" value={form.payment_mode} onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                   {PAYMENT_OPTIONS.map((p) => <option key={p} value={p}>{p.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>)}
                 </select>
               </div>
@@ -1033,9 +1033,9 @@ export default function AssetList() {
               <Field label="Warranty Period" name="warranty_period" value={form.warranty_period} onChange={handleChange} placeholder="e.g. 1 year" />
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Asset Status</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Asset Status</label>
                 <select name="asset_status" value={form.asset_status} onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                   {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                 </select>
               </div>
@@ -1045,18 +1045,18 @@ export default function AssetList() {
               <Field label="Purchased Price" name="purchased_price" type="number" value={form.purchased_price} onChange={handleChange} placeholder="0" />
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Tax %</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Tax %</label>
                 <select name="tax" value={form.tax} onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                   {['0', '5', '12', '18', '28'].map((t) => <option key={t} value={t}>{t}%</option>)}
                 </select>
               </div>
 
               <Field label="Serial No" name="serial_no" value={form.serial_no} onChange={handleChange} placeholder="Serial number" />
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Asset Type</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Asset Type</label>
                 <select name="asset_type" value={form.asset_type} onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                   <option value="owned">Owned</option>
                   <option value="rental">Rental</option>
                 </select>
@@ -1064,14 +1064,14 @@ export default function AssetList() {
               <Field label="Assigned To" name="assigned_to" value={form.assigned_to} onChange={handleChange} placeholder="Person or department" />
               <Field label="Assigned Date" name="assigned_date" type="date" value={form.assigned_date} onChange={handleChange} />
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Notes</label>
                 <textarea
                   name="notes"
                   value={form.notes}
                   onChange={handleChange}
                   rows={3}
                   placeholder={`Any additional notes (up to ${NOTES_WORD_LIMIT} words)...`}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                 />
                 <p className={`mt-1 text-xs text-right ${
                   form.notes.trim().split(/\s+/).filter(Boolean).length >= NOTES_WORD_LIMIT
@@ -1083,8 +1083,8 @@ export default function AssetList() {
               </div>
 
             </div>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4 shrink-0">
-              <button onClick={closeModal} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+            <div className="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-700 px-6 py-4 shrink-0">
+              <button onClick={closeModal} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
               <button onClick={handleSubmit} disabled={isLoading || !form.name.trim() || !form.category}
                 className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed">
                 {editingId ? 'Update' : 'Save'}
@@ -1106,15 +1106,15 @@ export default function AssetList() {
       {/* Status Modal */}
       {statusModal && ReactDOM.createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-80">
-            <h3 className="text-base font-semibold text-gray-800 mb-4">Update Status</h3>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-80 dark:bg-slate-900">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">Update Status</h3>
             <select defaultValue={statusModal.current}
               onChange={(e) => setStatusModal((prev) => ({ ...prev, selected: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm mb-4">
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 mb-4">
               {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
             </select>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setStatusModal(null)} className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setStatusModal(null)} className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
               <button onClick={() => handleStatusChange(statusModal.id, statusModal.selected || statusModal.current)}
                 className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Update</button>
             </div>

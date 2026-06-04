@@ -103,7 +103,7 @@ export default function EditDeliveryChallan() {
   return (
     <div className="relative">
       {/* Top bar */}
-      <div className="sticky top-[88px] w-full z-100 rounded-lg bg-white border border-gray-300 py-4 shadow-sm">
+      <div className="sticky top-18 w-full z-100 rounded-lg bg-white border border-gray-300 py-4 shadow-sm">
         <div className="flex justify-between items-center">
           <div className="px-4 py-2 flex items-center gap-3">
             <ArrowLeft strokeWidth={1} onClick={() => nav(-1)} className="cursor-pointer" />
@@ -129,7 +129,7 @@ export default function EditDeliveryChallan() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg p-8 pb-6 mt-5 space-y-8">
+      <div className="bg-white rounded-lg shadow-lg p-8 pb-6 space-y-8">
 
         {/* Challan Details */}
         <div>

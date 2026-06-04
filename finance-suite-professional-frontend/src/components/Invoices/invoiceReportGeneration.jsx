@@ -258,6 +258,46 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
     .map((line) => line.trim())
     .filter(Boolean);
 
+  const formatDateDDMMYYYY = (dateValue) => {
+    if (!dateValue) return "-";
+
+    try {
+      // Handle already formatted dates
+      if (typeof dateValue === "string") {
+        // DD-MM-YYYY → keep as is
+        if (/^\d{2}-\d{2}-\d{4}$/.test(dateValue)) {
+          return dateValue;
+        }
+
+        // YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+          const [year, month, day] = dateValue.split("-");
+          return `${day}-${month}-${year}`;
+        }
+
+        // DD/MM/YYYY
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateValue)) {
+          const [day, month, year] = dateValue.split("/");
+          return `${day}-${month}-${year}`;
+        }
+      }
+
+      const d = new Date(dateValue);
+
+      if (isNaN(d.getTime())) {
+        return dateValue;
+      }
+
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+
+      return `${day}-${month}-${year}`;
+    } catch {
+      return dateValue;
+    }
+  };
+
   return (
     <div className="bg-gray-100 min-h-screen py-6 print:bg-white invoice-wrapper">
       {/* Top bar – hidden in print, aligned with invoice width */}
@@ -318,8 +358,8 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
             {data.company_logo && (
               <img
                 src={data.company_logo}
-                alt="Company Logo"
-                className="h-12 object-contain shrink-0"
+                alt="Logo"
+                className="h-12 object-contain shrink-0 self-center"
               />
             )}
 
@@ -329,7 +369,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
               </h1>
 
               <p
-                className="text-xs text-gray-700 whitespace-pre-wrap break-words"
+                className="text-xs text-gray-700 whitespace-pre-wrap wrap-break-word w-[300px]"
               >
                 {data.company_address}
               </p>
@@ -344,7 +384,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
             </div>
           </div>
 
-          <div className="text-right flex-shrink-0">
+          <div className="text-right shrink-0">
             <h2 className="text-2xl font-semibold text-black">
               TAX INVOICE
             </h2>
@@ -360,16 +400,16 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                 {/* LEFT COLUMN – Invoice side */}
                 <td className="w-1/2 align-top border-r border-gray-400 px-4 py-2">
                   <FieldRow label="Invoice No." value={data.invoice_number} />
-                  <FieldRow label="Invoice Date" value={data.invoice_date} />
+                  <FieldRow label="Invoice Date" value={formatDateDDMMYYYY(data.invoice_date)} />
                   <FieldRow label="Terms" value={data.invoice_terms} />
-                  <FieldRow label="Due Date" value={data.invoice_dueDate || "-"} />
+                  <FieldRow label="Due Date" value={formatDateDDMMYYYY(data.invoice_dueDate) || "-"} />
                   <FieldRow label="Place of Supply" value={data.place_of_supply || "-"} />
                 </td>
 
                 {/* RIGHT COLUMN – P.O. side */}
                 <td className="w-1/2 align-top px-4 py-2">
                   <FieldRow label="P O Number" value={data.po_number || "-"} />
-                  <FieldRow label="P O Date" value={data.po_date || "-"} />
+                  <FieldRow label="P O Date" value={formatDateDDMMYYYY(data.po_date) || "-"} />
                   {isInternational && (
                     <>
                       <FieldRow label="LUT No" value={data.lut_no || data.lutNo} />
@@ -564,8 +604,15 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                   <div className="border border-gray-400 rounded p-2">
                     <BankFieldRow label="Account Name" value={orgData?.accountHolder} />
                     <BankFieldRow label="Account Number" value={orgData?.accountNumber} />
-                    <BankFieldRow label="Account Type" value={orgData?.accountType} />
-                    <BankFieldRow label="IFSC Code" value={orgData?.ifscCode} />
+                    <BankFieldRow
+                      label="Account Type"
+                      value={
+                        orgData?.accountType
+                          ? orgData.accountType.charAt(0).toUpperCase() +
+                          orgData.accountType.slice(1)
+                          : "-"
+                      }
+                    />                    <BankFieldRow label="IFSC Code" value={orgData?.ifscCode} />
                     <BankFieldRow label="Bank Name" value={orgData?.bankName} />
                     <BankFieldRow label="Branch" value={orgData?.bankBranch} />
                     {isInternational && <BankFieldRow label="Swift Code" value={orgData?.swiftCode} />}

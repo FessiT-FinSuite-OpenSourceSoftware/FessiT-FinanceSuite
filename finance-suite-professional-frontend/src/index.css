@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 .print-area {
   /* width: 230mm; */
@@ -351,6 +352,51 @@ body.dark {
   background: transparent;
 }
 
+.dark .finsuite-sidebar-shell,
+.dark .finsuite-sidebar-header,
+.dark .finsuite-sidebar-nav {
+  background-color: #020617 !important;
+}
+
+.dark .finsuite-sidebar-shell,
+.dark .finsuite-sidebar-header {
+  border-color: #1e293b !important;
+}
+
+.dark .finsuite-sidebar-popover {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+.dark .compliance-surface {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  box-shadow: none !important;
+}
+
+.dark .compliance-tabs {
+  border-color: #334155 !important;
+}
+
+.dark .compliance-stat-card {
+  background-color: #111827 !important;
+  border-color: #334155 !important;
+  box-shadow: none !important;
+}
+
+.dark .compliance-stat-card:hover {
+  background-color: #172033 !important;
+  border-color: #64748b !important;
+}
+
+.dark .compliance-stat-label {
+  color: #94a3b8 !important;
+}
+
+.dark .compliance-stat-value {
+  color: #f8fafc !important;
+}
+
 /* Chrome, Safari, Edge */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
@@ -386,4 +432,137 @@ input[type="number"] {
 svg:focus, svg *:focus, .recharts-pie-sector:focus, .recharts-layer:focus {
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* GST Summary Card Dark Mode Styling */
+.dark tr:hover {
+  background-color: #1e293b !important;
+}
+
+.dark tr.hover\:bg-gray-50:hover {
+  background-color: #1e293b !important;
+}
+
+.dark table thead {
+  background-color: #111827 !important;
+  border-color: #334155 !important;
+}
+
+.dark table thead th {
+  background-color: #0f172a !important;
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+.dark td {
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+.dark .fessit-data-table tbody > tr,
+.dark .fessit-data-table tbody > tr > td {
+  border-top-width: 0 !important;
+  border-bottom-width: 0 !important;
+  border-color: transparent !important;
+}
+
+.dark tr td {
+  color: #cbd5e1 !important;
+}
+
+.dark tr td:not(:where(.text-blue-700, .text-green-700, .text-orange-700, .text-red-700, .text-purple-700)) {
+  color: #cbd5e1 !important;
+}
+
+.dark .bg-green-50 {
+  background-color: rgba(34, 197, 94, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+.dark .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.dark .bg-orange-50 {
+  background-color: rgba(249, 115, 22, 0.1) !important;
+  border-color: rgba(249, 115, 22, 0.3) !important;
+}
+
+.dark .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.dark .bg-purple-50 {
+  background-color: rgba(168, 85, 247, 0.1) !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+}
+
+.dark .text-green-600 {
+  color: #86efac !important;
+}
+
+.dark .text-green-700 {
+  color: #22c55e !important;
+}
+
+.dark .text-red-600 {
+  color: #fca5a5 !important;
+}
+
+.dark .text-red-700 {
+  color: #ef4444 !important;
+}
+
+.dark .text-orange-600 {
+  color: #fdba74 !important;
+}
+
+.dark .text-orange-700 {
+  color: #f97316 !important;
+}
+
+.dark .text-blue-600 {
+  color: #93c5fd !important;
+}
+
+.dark .text-blue-700 {
+  color: #3b82f6 !important;
+}
+
+.dark .text-purple-600 {
+  color: #d8b4fe !important;
+}
+
+.dark .text-purple-700 {
+  color: #a855f7 !important;
+}
+
+/* Period Selector & Dropdowns Dark Mode Styling */
+select:not([class*="bg-"]):not([type="file"]) {
+  color-scheme: light;
+}
+
+.dark select:not([class*="bg-"]):not([type="file"]) {
+  color-scheme: dark;
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark select option {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  padding: 4px 8px;
+}
+
+.dark select option:hover {
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark select option:checked {
+  background: linear-gradient(#334155, #334155) !important;
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
 }

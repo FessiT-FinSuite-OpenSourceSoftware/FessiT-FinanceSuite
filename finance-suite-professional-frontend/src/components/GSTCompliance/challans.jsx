@@ -104,7 +104,17 @@ const formatTdsSections = (tdsSections) => {
     .join(", ");
 };
 
-export default function ChallansTab() {
+function inSelectedMonths(dateStr, monthSet) {
+  if (!dateStr) return false;
+  const raw = String(dateStr).trim();
+  if (/^\d{4}-\d{2}/.test(raw)) return monthSet.has(raw.slice(0, 7));
+  if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) return monthSet.has(`${raw.slice(6,10)}-${raw.slice(3,5)}`);
+  const d = new Date(raw);
+  if (!isNaN(d)) return monthSet.has(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+  return false;
+}
+
+export default function ChallansTab({ selectedMonths }) {
   const dispatch = useDispatch();
   const { gstchallanData, isLoading } = useSelector(challanSelector);
   const challanData = gstchallanData;
@@ -302,10 +312,16 @@ export default function ChallansTab() {
     setDeleteModal(null);
   };
 
+  const monthSet = useMemo(() =>
+    new Set((selectedMonths || []).map(({ year, month }) => `${year}-${String(month).padStart(2, "0")}`)),
+    [selectedMonths]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const sq = sectionSearch.trim().toLowerCase();
     return (Array.isArray(challanData) ? challanData : []).filter((row) => {
+      if (monthSet.size > 0 && !inSelectedMonths(row.payment_date, monthSet)) return false;
       const section = row.section || "";
       const challanNo = row.challan_no || row.challanNo || "";
       const paymentDate = row.payment_date || "";
@@ -325,7 +341,7 @@ export default function ChallansTab() {
         section.toLowerCase().includes(sq);
       return matchesSearch && matchesSection;
     });
-  }, [challanData, search, sectionSearch]);
+  }, [challanData, search, sectionSearch, monthSet]);
 
   const totalAmount = filtered.reduce((sum, row) => sum + (parseFloat(row.amount_paid) || 0), 0);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -339,16 +355,6 @@ export default function ChallansTab() {
         onSearchChange={(value) => { setSearch(value); setCurrentPage(1); }}
         searchPlaceholder="Search by challan no, section, or payment date..."
       >
-        {/* <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            value={sectionSearch}
-            onChange={(e) => { setSectionSearch(e.target.value); setCurrentPage(1); }}
-            placeholder="Search section code..."
-            className="pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 w-44"
-          />
-        </div> */}
         <CreateButton onClick={openCreate} label="Add Challan" icon={Plus} />
       </TabActionBar>
 
@@ -642,7 +648,7 @@ export default function ChallansTab() {
               />
               <label
                 htmlFor="challanFileUpload"
-                className="px-4 py-2 bg-gray-100 border border-gray-300 rounded cursor-pointer hover:bg-gray-200 text-sm"
+              className="px-4 py-2 bg-gray-100 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-600 text-sm text-gray-700 dark:text-slate-200"
               >
                 {form.file || docFile ? "Change File" : "Choose File"}
               </label>
@@ -664,19 +670,19 @@ export default function ChallansTab() {
 
       {previewModal.open && ReactDOM.createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/75 p-4" onClick={closePreview}>
-          <div className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h3 className="text-lg font-semibold text-slate-900 truncate max-w-[80%]">{previewModal.title}</h3>
+          <div className="max-w-5xl w-full rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[80%]">{previewModal.title}</h3>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={handlePreviewDownload} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" title="Download">
+                <button type="button" onClick={handlePreviewDownload} className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" title="Download">
                   <Download className="h-5 w-5" />
                 </button>
-                <button type="button" onClick={closePreview} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+                <button type="button" onClick={closePreview} className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
-            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4">
+            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 dark:bg-slate-800 p-4">
               {previewModal.isPdf ? (
                 <iframe src={`${previewModal.src}#toolbar=0`} title={previewModal.title} className="w-full rounded-xl" style={{ height: "75vh" }} />
               ) : (

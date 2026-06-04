@@ -134,11 +134,7 @@ export default function RecentInvoices() {
                 placeholder="Search invoices..."
                 value={searchTerm}
                 onChange={handleChange}
-                className="w-1/4 pl-10 pr-4 py-2 
-             border border-gray-300 rounded-lg 
-             bg-white text-gray-900 
-             placeholder-gray-500
-             focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full max-w-sm pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -209,7 +205,7 @@ export default function RecentInvoices() {
 
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(
+                        className={`inline-flex items-center justify-center w-28 px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(
                           invoice?.status
                         )}`}
                       >

@@ -11,6 +11,7 @@ const getConfig = () => ({
 const KeyUri = {
   // local server
   BACKENDURI: "http://127.0.0.1:8082/api/v1",
+  // BACKENDURI: "http://54.206.93.33:8082/api/v1",
 };
 
 // Configure axios defaults for CORS

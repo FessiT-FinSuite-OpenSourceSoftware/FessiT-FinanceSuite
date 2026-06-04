@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { ChevronDown, ChevronRight, RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import { useTheme } from "../../shared/ThemeContext";
 
 const fmt = (n) => {
   const val = Number(n) || 0;
@@ -81,27 +82,29 @@ function KpiCard({ label, value, sub, positive, icon: Icon }) {
 
 function Section({ title, total, children, accent = "indigo", defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
+  const { theme } = useTheme();
+  const triggerHoverClass = theme === "dark" ? "hover:bg-slate-800" : "hover:bg-gray-50";
   const colors = {
-    indigo: "bg-indigo-50 border-indigo-200 text-indigo-800",
-    red:    "bg-red-50 border-red-200 text-red-800",
-    orange: "bg-orange-50 border-orange-200 text-orange-800",
-    green:  "bg-green-50 border-green-200 text-green-800",
+    indigo: "bg-indigo-50 border-indigo-200 text-indigo-800 dark:bg-indigo-500/10 dark:border-indigo-400/30 dark:text-indigo-200",
+    red:    "bg-red-50 border-red-200 text-red-800 dark:bg-red-500/10 dark:border-red-400/30 dark:text-red-200",
+    orange: "bg-orange-50 border-orange-200 text-orange-800 dark:bg-orange-500/10 dark:border-orange-400/30 dark:text-orange-200",
+    green:  "bg-green-50 border-green-200 text-green-800 dark:bg-green-500/10 dark:border-green-400/30 dark:text-green-200",
   };
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+        className={`w-full flex items-center justify-between px-5 py-4 transition-colors ${triggerHoverClass}`}
       >
         <div className="flex items-center gap-2">
-          {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-          <span className="font-semibold text-gray-800">{title}</span>
+          {open ? <ChevronDown className="w-4 h-4 text-gray-400 dark:text-slate-500" /> : <ChevronRight className="w-4 h-4 text-gray-400 dark:text-slate-500" />}
+          <span className="font-semibold text-gray-800 dark:text-slate-100">{title}</span>
         </div>
         <span className={`px-3 py-1 rounded-full text-sm font-bold border ${colors[accent]}`}>
           Total: {fmt(total)}
         </span>
       </button>
-      {open && <div className="border-t border-gray-100">{children}</div>}
+      {open && <div className="border-t border-gray-100 dark:border-slate-800">{children}</div>}
     </div>
   );
 }
@@ -327,9 +330,9 @@ export default function ProfitLossPage() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45 }}
-            className="grid gap-4 xl:grid-cols-3"
+            className="grid min-w-0 gap-4 xl:grid-cols-3"
           >
-            <div className="xl:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="min-w-0 xl:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-sm font-semibold text-gray-700">P&amp;L Breakdown</p>
@@ -338,7 +341,7 @@ export default function ProfitLossPage() {
                 <div className="text-xs text-gray-500">{expenseBreakdown.length} segments</div>
               </div>
               <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" debounce={120}>
                   <PieChart>
                     <Pie
                       data={expenseBreakdown}
@@ -348,6 +351,7 @@ export default function ProfitLossPage() {
                       outerRadius={110}
                       paddingAngle={4}
                       stroke="transparent"
+                      isAnimationActive={false}
                     >
                       {expenseBreakdown.map((entry) => (
                         <Cell key={entry.name} fill={entry.color} />
@@ -360,7 +364,7 @@ export default function ProfitLossPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="min-w-0 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-sm font-semibold text-gray-700">Sales Monthwise</p>
@@ -369,13 +373,13 @@ export default function ProfitLossPage() {
                 <div className="text-xs text-gray-500">{salesTrendData.length} months</div>
               </div>
               <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" debounce={120}>
                   <LineChart data={salesTrendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="#9ca3af" />
                     <YAxis tickFormatter={(value) => value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`} tick={{ fontSize: 11 }} stroke="#9ca3af" />
                     <Tooltip formatter={(value) => [fmt(value), "Sales"]} />
-                    <Line type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                    <Line type="monotone" dataKey="sales" stroke="#4f46e5" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -439,7 +443,7 @@ export default function ProfitLossPage() {
                 ]}
                 rows={sec.operating_expenses.employee_expenses.items}
               />
-              <div className="flex justify-end px-5 py-2 bg-orange-50">
+              <div className="flex justify-end px-5 py-2 bg-orange-50 ">
                 <span className="text-xs font-semibold text-orange-700">Subtotal: {fmt(sec.operating_expenses.employee_expenses.total)}</span>
               </div>
             </div>

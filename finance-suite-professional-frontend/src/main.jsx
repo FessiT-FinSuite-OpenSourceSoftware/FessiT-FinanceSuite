@@ -7,6 +7,7 @@ import {ToastContainer} from 'react-toastify'
 import {Provider} from 'react-redux'
 import store from './ReduxApi'
 import { registerSW } from 'virtual:pwa-register'
+import { ThemeProvider } from './shared/ThemeContext'
 registerSW({ immediate: true })
 
 document.addEventListener('wheel', (e) => {
@@ -17,11 +18,13 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Router>
     <Provider store={store}>
+    <ThemeProvider>
     <App />
     <ToastContainer 
     hideProgressBar
     autoClose={1200}
     />
+    </ThemeProvider>
     </Provider>
     </Router>
   </StrictMode>,

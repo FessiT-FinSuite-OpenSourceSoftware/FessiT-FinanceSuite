@@ -167,17 +167,44 @@ const InvoiceReportGenerationV2 = ({ invoiceData, orgData, onBack }) => {
 
         <div className="p-6 flex flex-col flex-1">
           {/* Header */}
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex items-center gap-3">
-              {data.company_logo && <img src={data.company_logo} alt="Logo" className="h-12 object-contain" />}
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">{data.company_name}</h1>
-                <p className="text-xs text-gray-500 whitespace-pre-line">{data.company_address}</p>
-                <p className="text-xs text-gray-500">GSTIN: {data.gstIN}</p>
-                <p className="text-xs text-gray-500">Email: {data.company_email} | Ph: +91 {data.company_phone}</p>
+          <div className="flex justify-between items-start mb-6 gap-6">
+            {/* Company Section */}
+            <div className="flex items-start gap-3 max-w-[420px]">
+              {data.company_logo && (
+                <img
+  src={data.company_logo}
+  alt="Logo"
+  className="h-12 object-contain flex-shrink-0 self-center"
+/>
+              )}
+
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-gray-900 leading-tight">
+                  {data.company_name}
+                </h1>
+
+                <p className="mt-1 text-xs text-gray-600 leading-5 max-w-[320px] break-words whitespace-pre-wrap">
+                  {data.company_address}
+                </p>
+
+                {data.gstIN && (
+                  <p className="mt-1 text-xs text-gray-600">
+                    GSTIN: {data.gstIN}
+                  </p>
+                )}
+
+                <p className="text-xs text-gray-600 break-all">
+                  {data.company_email}
+                </p>
+
+                <p className="text-xs text-gray-600">
+                  +91 {data.company_phone}
+                </p>
               </div>
             </div>
-            <div className="text-right">
+
+            {/* Invoice Badge */}
+            <div className="text-right shrink-0">
               <div
                 style={{
                   backgroundColor: "#4f46e5",
@@ -199,7 +226,6 @@ const InvoiceReportGenerationV2 = ({ invoiceData, orgData, onBack }) => {
                   TAX INVOICE
                 </span>
               </div>
-              {/* <p className="text-xs text-gray-400 mt-1">{isDomestic ? "Domestic" : "International"}</p> */}
             </div>
           </div>
 
@@ -555,7 +581,12 @@ const InvoiceReportGenerationV2 = ({ invoiceData, orgData, onBack }) => {
                     {[
                       ["Account Name", orgData?.accountHolder],
                       ["Account No.", orgData?.accountNumber],
-                      ["Account Type", orgData?.accountType],
+                      ["Account Type", 
+                        orgData?.accountType
+                          ? orgData.accountType.charAt(0).toUpperCase() +
+                          orgData.accountType.slice(1)
+                          : "-"
+                      ],
                       ["IFSC Code", orgData?.ifscCode],
                       ["Bank Name", orgData?.bankName],
                       ["Branch", orgData?.bankBranch],

@@ -292,7 +292,7 @@ export default function EditIncomingInvoice() {
   return (
     <div className="relative">
       {/* Sticky Top Bar */}
-      <div className="sticky top-[88px] w-full z-100 rounded-lg bg-white border border-gray-300 py-4 shadow-sm">
+      <div className="sticky top-18 w-full z-100 rounded-lg bg-white border border-gray-300 py-4 shadow-sm">
         <div className="flex justify-between items-center">
           <div className="px-4 py-2 flex items-center gap-3">
             <ArrowLeft strokeWidth={1} onClick={() => nav(-1)} className="cursor-pointer" />

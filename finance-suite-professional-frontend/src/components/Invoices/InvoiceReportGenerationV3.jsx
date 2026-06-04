@@ -167,45 +167,160 @@ const InvoiceReportGenerationV3 = ({ invoiceData, orgData, onBack }) => {
         style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: "13px", color: "#333", lineHeight: "1.5", padding: "32px", maxWidth: "820px", boxSizing: "border-box", display: "flex", flexDirection: "column" }}
       >
         {/* ── Header ── */}
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "28px" }}>
-          {/* Left: logo + company */}
-          <div style={{ width: "58%" }}>
-            {data.company_logo && (
-              <img src={data.company_logo} alt="Logo" style={{ height: "48px", display: "block", marginBottom: "8px", objectFit: "contain" }} />
-            )}
-            <div style={{ lineHeight: "1.4", fontSize: "12px" }}>
-              <strong style={{ fontSize: "14px" }}>{data.company_name}</strong><br />
-              <span style={{ whiteSpace: "pre-line" }}>{data.company_address}</span><br />
-              {data.gstIN && <span>GSTIN: {data.gstIN}<br /></span>}
-              {data.company_email && <span>Email: {data.company_email}<br /></span>}
-              {data.company_phone && <span>Ph: +91 {data.company_phone}</span>}
-            </div>
-          </div>
+      <div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "28px",
+    gap: "20px",
+  }}
+>
+  {/* Left: Logo + Company */}
+  <div
+    style={{
+      width: "50%",
+      maxWidth: "350px",
+      minWidth: 0,
+    }}
+  >
+    {data.company_logo && (
+      <img
+        src={data.company_logo}
+        alt="Logo"
+        style={{
+          height: "48px",
+          display: "block",
+          marginBottom: "8px",
+          objectFit: "contain",
+        }}
+      />
+    )}
 
-          {/* Right: invoice meta */}
-          <div style={{ textAlign: "right", fontSize: "12px" }}>
-            <div style={{ fontSize: "26px", fontWeight: "600", marginBottom: "12px", color: "#111" }}>TAX INVOICE</div>
-            <table style={{ marginLeft: "auto", borderCollapse: "collapse" }}>
-              <tbody>
-                {[
-                  ["Invoice No.", data.invoice_number || "-"],
-                  ["Date", data.invoice_date || "-"],
-                  ["Due Date", data.invoice_dueDate || "-"],
-                  ["Terms", data.invoice_terms || "-"],
-                  ["Place of Supply", data.place_of_supply || "-"],
-                  ["P.O. Number", data.po_number || "-"],
-                  ["P.O. Date", data.po_date || "-"],
-                  ...(isInternational ? [["LUT No.", data.lut_no || "-"], ["IEC No.", data.iec_no || "-"]] : []),
-                ].map(([label, value]) => (
-                  <tr key={label}>
-                    <td style={{ padding: "2px 8px 2px 0", fontWeight: "600", color: "#555", whiteSpace: "nowrap", textAlign: "right" }}>{label}</td>
-                    <td style={{ padding: "2px 0", color: "#333", textAlign: "left", whiteSpace: "nowrap" }}>: {value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+    <div
+      style={{
+        lineHeight: "1.4",
+        fontSize: "12px",
+        overflowWrap: "break-word",
+        wordBreak: "break-word",
+      }}
+    >
+      <strong style={{ fontSize: "14px" }}>
+        {data.company_name}
+      </strong>
+      <br />
+
+      <span
+        style={{
+          whiteSpace: "pre-wrap",
+          overflowWrap: "break-word",
+          wordBreak: "break-word",
+          display: "inline-block",
+          maxWidth: "100%",
+        }}
+      >
+        {data.company_address}
+      </span>
+      <br />
+
+      {data.gstIN && (
+        <>
+          <span>GSTIN: {data.gstIN}</span>
+          <br />
+        </>
+      )}
+
+      {data.company_email && (
+        <>
+          <span
+            style={{
+              overflowWrap: "break-word",
+              wordBreak: "break-word",
+            }}
+          >
+            Email: {data.company_email}
+          </span>
+          <br />
+        </>
+      )}
+
+      {data.company_phone && (
+        <span>Ph: +91 {data.company_phone}</span>
+      )}
+    </div>
+  </div>
+
+  {/* Right: Invoice Meta */}
+  <div
+    style={{
+      textAlign: "right",
+      fontSize: "12px",
+      flexShrink: 0,
+    }}
+  >
+    <div
+      style={{
+        fontSize: "26px",
+        fontWeight: "600",
+        marginBottom: "12px",
+        color: "#111",
+        whiteSpace: "nowrap",
+      }}
+    >
+      TAX INVOICE
+    </div>
+
+    <table
+      style={{
+        marginLeft: "auto",
+        borderCollapse: "collapse",
+      }}
+    >
+      <tbody>
+        {[
+          ["Invoice No.", data.invoice_number || "-"],
+          ["Date", data.invoice_date || "-"],
+          ["Due Date", data.invoice_dueDate || "-"],
+          ["Terms", data.invoice_terms || "-"],
+          ["Place of Supply", data.place_of_supply || "-"],
+          ["P.O. Number", data.po_number || "-"],
+          ["P.O. Date", data.po_date || "-"],
+          ...(isInternational
+            ? [
+                ["LUT No.", data.lut_no || "-"],
+                ["IEC No.", data.iec_no || "-"],
+              ]
+            : []),
+        ].map(([label, value]) => (
+          <tr key={label}>
+            <td
+              style={{
+                padding: "2px 8px 2px 0",
+                fontWeight: "600",
+                color: "#555",
+                whiteSpace: "nowrap",
+                textAlign: "right",
+              }}
+            >
+              {label}
+            </td>
+
+            <td
+              style={{
+                padding: "2px 0",
+                color: "#333",
+                textAlign: "left",
+                whiteSpace: "nowrap",
+              }}
+            >
+              : {value}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
 
         {/* ── Bill To / Ship To ── */}
         <div style={{ display: "flex", gap: "32px", marginBottom: "24px", fontSize: "12px" }}>
@@ -374,7 +489,12 @@ const InvoiceReportGenerationV3 = ({ invoiceData, orgData, onBack }) => {
                   {[
                     ["Account Name", orgData?.accountHolder],
                     ["Account No.", orgData?.accountNumber],
-                    ["Account Type", orgData?.accountType],
+                    ["Account Type", 
+                        orgData?.accountType
+                          ? orgData.accountType.charAt(0).toUpperCase() +
+                          orgData.accountType.slice(1)
+                          : "-"
+                      ],
                     ["Bank", orgData?.bankName],
                     ["IFSC", orgData?.ifscCode],
                     ["Branch", orgData?.bankBranch],

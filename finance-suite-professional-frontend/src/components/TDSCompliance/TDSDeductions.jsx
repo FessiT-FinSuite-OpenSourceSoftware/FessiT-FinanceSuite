@@ -71,13 +71,13 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
   const columns = [
     {
       label: "Date",
-      render: (d) => <span className="text-sm text-gray-700 whitespace-nowrap">{fmtDate(d.date)}</span>,
+      render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">{fmtDate(d.date)}</span>,
     },
     {
       label: "Deductee",
       render: (d) => (
         <div>
-          <p className="text-sm font-medium text-gray-800 whitespace-nowrap">{d.deductee}</p>
+          <p className="text-sm font-medium text-gray-800 dark:text-slate-200 whitespace-nowrap">{d.deductee}</p>
           {d.invoice_number && d.invoice_number !== "-" && (
             <p className="text-xs text-blue-600 font-mono">{d.invoice_number}</p>
           )}
@@ -89,7 +89,7 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
     },
     {
       label: "PAN",
-      render: (d) => <span className="text-sm text-gray-700 font-mono whitespace-nowrap">{d.pan}</span>,
+      render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 font-mono whitespace-nowrap">{d.pan}</span>,
     },
     {
       label: "Section",
@@ -99,7 +99,7 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
             ? <span className="inline-flex px-2 py-0.5 text-xs font-bold font-mono rounded bg-indigo-100 text-indigo-700">{d.tds_section_key}</span>
             : <span className="text-sm text-gray-400">—</span>
           } */}
-          {d.tds_section_old && <p className="text-s font-semibold text-gray-900">{d.tds_section_key}</p>}
+          {d.tds_section_old && <p className="text-s font-semibold text-gray-900 dark:text-slate-200">{d.tds_section_key}</p>}
           {/* {d.tds_section_new && <p className="text-[10px] text-indigo-500">{d.tds_section_new}</p>} */}
         </div>
       ),
@@ -115,15 +115,15 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
     },
     {
       label: "Amount", right: true,
-      render: (d) => <span className="text-sm text-gray-700 whitespace-nowrap">₹ {fmt(d.amount)}</span>,
+      render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">₹ {fmt(d.amount)}</span>,
     },
     {
       label: "TDS Rate", right: true,
-      render: (d) => <span className="text-sm text-gray-700 whitespace-nowrap">{d.tdsRate}%</span>,
+      render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">{d.tdsRate}%</span>,
     },
     {
       label: "TDS Amount", right: true,
-      render: (d) => <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">₹ {fmt(d.tdsAmount)}</span>,
+      render: (d) => <span className="text-sm font-semibold text-gray-800 dark:text-slate-200 whitespace-nowrap">₹ {fmt(d.tdsAmount)}</span>,
     },
     {
       label: "Status",
@@ -152,7 +152,7 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
             value={sectionSearch}
             onChange={(e) => { setSectionSearch(e.target.value); setCurrentPage(1); }}
             placeholder="Search section code..."
-            className="pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 w-44"
+          className="pl-8 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 w-44 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder:text-slate-500"
           />
         </div>
         <FilterSelect value={sourceFilter} onChange={(v) => { setSourceFilter(v); setCurrentPage(1); }}>
@@ -168,9 +168,9 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
       </TabActionBar>
 
       {filtered.length > 0 && (
-        <div className="mb-3 px-1 flex gap-6 text-sm text-gray-600">
+        <div className="mb-3 px-1 flex gap-6 text-sm text-gray-600 dark:text-slate-400">
           <span>{filtered.length} record{filtered.length !== 1 ? "s" : ""}</span>
-          <span className="font-semibold text-gray-800">Total TDS: ₹ {fmt(totalTds)}</span>
+          <span className="font-semibold text-gray-800 dark:text-slate-200">Total TDS: ₹ {fmt(totalTds)}</span>
         </div>
       )}
        {(
@@ -238,7 +238,7 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
         emptyMessage="No deductions found."
         columns={columns}
         renderExpanded={(d) => (
-          <div className="p-4 rounded-2xl bg-[#ECEEF2]">
+          <div className="p-4 rounded-2xl bg-[#ECEEF2] dark:bg-slate-700/50">
             {d.source === "Invoice" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                 <InfoCard label="Invoice Number" value={d.invoice_number} />

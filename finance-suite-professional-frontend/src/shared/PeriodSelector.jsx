@@ -55,15 +55,19 @@ const PRESETS_PAST = [
   { label: "Custom Date Range",   key: "custom" },
 ];
 
-/**
- * PeriodSelector
- *
- * Props:
- *   onChange(months: Array<{year, month}>)  — called with the selected month(s)
- *
- * Single-month mode (legacy): if you only need one month, read months[0].
- */
+
+function useDark() {
+  const [dark, setDark] = React.useState(() => document.documentElement.classList.contains("dark"));
+  React.useEffect(() => {
+    const obs = new MutationObserver(() => setDark(document.documentElement.classList.contains("dark")));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
+
 export default function PeriodSelector({ onChange }) {
+  const dark = useDark();
   const now = new Date();
   const currentFYStart = getFYStart(now);
 
@@ -177,16 +181,16 @@ export default function PeriodSelector({ onChange }) {
   }
 
   return (
-    <div className=" flex flex-wrap items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="flex flex-wrap items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
 
       {/* FY pill */}
-      <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
-        <span className="text-xs text-gray-400 font-medium">FY</span>
+      <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5">
+        <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">FY</span>
         <select
           value={fyStart}
           onChange={(e) => handleFYChange(Number(e.target.value))}
-          className="text-xs font-semibold text-gray-700 bg-transparent border-none outline-none cursor-pointer"
+          className="text-xs font-semibold text-gray-700 dark:text-slate-200 bg-transparent dark:bg-slate-700 border-none outline-none cursor-pointer"
         >
           {fyOptions.map((y) => (
             <option key={y} value={y}>FY {y}-{String(y + 1).slice(-2)}</option>
@@ -194,15 +198,15 @@ export default function PeriodSelector({ onChange }) {
         </select>
       </div>
 
-      <span className="text-gray-300">|</span>
+      <span className="text-gray-300 dark:text-slate-600">|</span>
 
       {/* Period pill */}
-      <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
-        <span className="text-xs text-gray-400 font-medium">Period</span>
+      <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5">
+        <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">Period</span>
         <select
           value={preset}
           onChange={(e) => setPreset(e.target.value)}
-          className="text-xs font-semibold text-gray-700 bg-transparent border-none outline-none cursor-pointer"
+          className="text-xs font-semibold text-gray-700 dark:text-slate-200 bg-transparent dark:bg-slate-700 border-none outline-none cursor-pointer"
         >
           {PRESETS.filter(p => !disabledPresets.has(p.key)).map((p) => (
             <option key={p.key} value={p.key}>{p.label}</option>
@@ -213,15 +217,15 @@ export default function PeriodSelector({ onChange }) {
       {/* Custom pickers — appear inline */}
       {preset === "custom" && (
         <>
-          <span className="text-gray-300">|</span>
-          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
-            <span className="text-xs text-gray-400 font-medium">From</span>
-            <MonthPicker value={customFrom} fyStart={fyStart} onChange={({ year, month }) => handleCustomFrom(year, month)} maxValue={customTo} />
+          <span className="text-gray-300 dark:text-slate-600">|</span>
+          <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5">
+            <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">From</span>
+            <MonthPicker value={customFrom} fyStart={fyStart} dark={dark} onChange={({ year, month }) => handleCustomFrom(year, month)} maxValue={customTo} />
           </div>
-          <span className="text-xs text-gray-400">→</span>
-          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
-            <span className="text-xs text-gray-400 font-medium">To</span>
-            <MonthPicker value={customTo} fyStart={fyStart} onChange={({ year, month }) => handleCustomTo(year, month)} minValue={customFrom} />
+          <span className="text-xs text-gray-400 dark:text-slate-500">→</span>
+          <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5">
+            <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">To</span>
+            <MonthPicker value={customTo} fyStart={fyStart} dark={dark} onChange={({ year, month }) => handleCustomTo(year, month)} minValue={customFrom} />
           </div>
         </>
       )}
@@ -236,7 +240,7 @@ export default function PeriodSelector({ onChange }) {
       {(fyStart !== currentFYStart || preset !== "this_month") && (
         <button
           onClick={handleReset}
-          className="text-xs text-gray-500 hover:text-red-500 border border-gray-200 hover:border-red-300 bg-gray-50 hover:bg-red-50 rounded-lg px-3 py-1.5 flex items-center gap-1 transition-all"
+          className="text-xs text-gray-500 dark:text-slate-400 hover:text-red-500 border border-gray-200 dark:border-slate-600 hover:border-red-300 bg-gray-50 dark:bg-slate-700 hover:bg-red-50 rounded-lg px-3 py-1.5 flex items-center gap-1 transition-all"
           title="Reset to default"
         >
           ↺ Reset
@@ -246,7 +250,7 @@ export default function PeriodSelector({ onChange }) {
   );
 }
 
-function MonthPicker({ value, fyStart, onChange, minValue, maxValue }) {
+function MonthPicker({ value, fyStart, dark, onChange, minValue, maxValue }) {
   const allFYMonths = fyMonths(fyStart);
 
   function isDisabled(year, month) {
@@ -263,7 +267,7 @@ function MonthPicker({ value, fyStart, onChange, minValue, maxValue }) {
         const [y, m] = e.target.value.split("-").map(Number);
         onChange({ year: y, month: m });
       }}
-      className="text-xs font-semibold text-gray-700 bg-transparent border-none outline-none cursor-pointer"
+      className="text-xs font-semibold text-gray-700 dark:text-slate-200 bg-transparent dark:bg-slate-700 border-none outline-none cursor-pointer"
     >
       {allFYMonths.filter(({ year, month }) => !isDisabled(year, month)).map(({ year, month }) => (
         <option
@@ -304,7 +308,7 @@ function ActiveBadge({ preset, fyStart, now }) {
 
   if (!label) return null;
   return (
-    <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1 whitespace-nowrap">
+    <span className="text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-900/50 rounded px-2 py-1 whitespace-nowrap">
       {label}
     </span>
   );

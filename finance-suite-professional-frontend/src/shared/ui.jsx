@@ -2,8 +2,41 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { Search, Filter, Edit2, Trash2, X, ChevronDown } from "lucide-react";
 
+function useDark() {
+  const [dark, setDark] = React.useState(() => document.documentElement.classList.contains("dark"));
+  React.useEffect(() => {
+    const obs = new MutationObserver(() => setDark(document.documentElement.classList.contains("dark")));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
+
+// ── Filter Chips ──────────────────────────────────────────────────────────────
+export function FilterChips({ chips, onRemove }) {
+  if (!chips?.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2 px-1 pb-2 ">
+      {chips.map((chip) => (
+        <span key={chip.key} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+          {chip.label}
+          <button type="button" onClick={() => onRemove(chip.key)} className="ml-0.5 hover:text-red-500 transition-colors">
+            <X className="w-3 h-3" />
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // ── Stat Card ────────────────────────────────────────────────────────────────
-export function StatCard({ label, value, valueClass = "text-gray-900" }) {
+export function StatCard({ label, value, valueClass = "text-gray-900 dark:text-slate-100", isLoading = false }) {
+  if (isLoading) return (
+    <div className="bg-white dark:bg-slate-950 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm animate-pulse">
+      <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-2/3 mb-3" />
+      <div className="h-7 bg-gray-200 dark:bg-slate-700 rounded w-1/2" />
+    </div>
+  );
   return (
     <div className="bg-white dark:bg-slate-950 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
       <p className="text-sm text-gray-600 dark:text-slate-300 mb-1">{label}</p>
@@ -14,15 +47,18 @@ export function StatCard({ label, value, valueClass = "text-gray-900" }) {
 
 // ── Tab Action Bar ────────────────────────────────────────────────────────────
 export function TabActionBar({ searchValue, onSearchChange, searchPlaceholder = "Search...", sticky = true, children }) {
+  const searchId = React.useId();
   return (
-    <div className={`${sticky ? "sticky top-[88px] z-10 " : ""}rounded-lg bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 py-4 shadow-sm mb-2`}>
+    <div className={`${sticky ? "sticky top-[88px] z-10 " : ""}rounded-lg bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 py-4 shadow-sm mb-4`}>
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 w-5 h-5" />
           <input
+            id={searchId}
+            name="search"
             type="text"
             placeholder={searchPlaceholder}
-            className="w-full pl-10 pr-4 py-2 border border-gray-700 dark:border-slate-600 rounded-lg text-sm dark:bg-slate-900 dark:text-slate-100"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm dark:bg-slate-900 dark:text-slate-100"
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
           />
@@ -38,9 +74,13 @@ export function TabActionBar({ searchValue, onSearchChange, searchPlaceholder = 
 
 // ── Filter Select ─────────────────────────────────────────────────────────────
 export function FilterSelect({ value, onChange, children }) {
+  const dark = useDark();
+  const selectId = React.useId();
   return (
     <select
-      className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm dark:bg-slate-900 dark:text-slate-100"
+      id={selectId}
+      style={dark ? { background: "#1e293c", color: "#e2e8f0" } : {}}
+      className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-slate-100"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
@@ -67,7 +107,7 @@ export function TableWrapper({ children, className }) {
   return (
     <div className={className || "bg-white dark:bg-slate-950 rounded-lg shadow-sm overflow-hidden"}>
       <div className="overflow-x-auto">
-        <table className="w-full">{children}</table>
+        <table className="fessit-data-table w-full">{children}</table>
       </div>
     </div>
   );
@@ -76,7 +116,7 @@ export function TableWrapper({ children, className }) {
 // ── Table Head ────────────────────────────────────────────────────────────────
 export function TableHead({ columns }) {
   return (
-    <thead className="bg-gray-50 dark:bg-slate-950 border-b border-gray-200 dark:border-slate-700">
+    <thead className="bg-gray-50 dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800/60">
       <tr>
         {columns.map((col) => (
           <th
@@ -143,14 +183,14 @@ export function Modal({ title, onClose, onSave, saveLabel = "Save", size = "sm",
   }, []);
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/70 backdrop-blur-[2px] overflow-y-auto p-4">
-      <div className={`bg-white rounded-xl shadow-2xl ring-1 ring-black/10 p-6 w-full ${MODAL_SIZE[size] || MODAL_SIZE.sm} relative max-h-[calc(100vh-2rem)] overflow-y-auto`}>
+      <div className={`bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-black/10 dark:ring-slate-700 p-6 w-full ${MODAL_SIZE[size] || MODAL_SIZE.sm} relative max-h-[calc(100vh-2rem)] overflow-y-auto`}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold text-gray-800">{title}</h3>
-          <button onClick={onClose}><X className="w-5 h-5 text-gray-500" /></button>
+          <h3 className="text-base font-semibold text-gray-800 dark:text-slate-100">{title}</h3>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-500 dark:text-slate-400" /></button>
         </div>
         <div className="grid grid-cols-2 gap-4">{children}</div>
         <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">Cancel</button>
           <button onClick={onSave} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">{saveLabel}</button>
         </div>
       </div>
@@ -163,7 +203,7 @@ export function Modal({ title, onClose, onSave, saveLabel = "Save", size = "sm",
 export function FormField({ label, children, colSpan = false }) {
   return (
     <div className={colSpan ? "col-span-2" : ""}>
-      <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>
+      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">{label}</label>
       {children}
     </div>
   );
@@ -182,7 +222,7 @@ export function TruncatedCell({ text, maxWidth = "max-w-[180px]", className = ""
 }
 
 // ── Shared input class ────────────────────────────────────────────────────────
-export const inputCls = "border border-gray-300 rounded px-3 py-2 w-full text-sm";
+export const inputCls = "border border-gray-300 dark:border-slate-600 rounded px-3 py-2 w-full text-sm bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder:text-slate-500";
 
 // ── Confirm Delete Modal ─────────────────────────────────────────────────────
 export function ConfirmModal({ title = "Confirm Delete", message, onConfirm, onClose, confirmLabel = "Delete", confirmClass = "bg-red-600 hover:bg-red-700" }) {
@@ -192,11 +232,11 @@ export function ConfirmModal({ title = "Confirm Delete", message, onConfirm, onC
   }, []);
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-96">
-        <h3 className="text-base font-semibold text-gray-800 mb-3">{title}</h3>
-        <p className="text-sm text-gray-600 mb-6">{message}</p>
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl p-6 w-96">
+        <h3 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-3">{title}</h3>
+        <p className="text-sm text-gray-600 dark:text-slate-400 mb-6">{message}</p>
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">Cancel</button>
           <button onClick={onConfirm} className={`px-4 py-2 text-sm rounded-lg text-white ${confirmClass}`}>{confirmLabel}</button>
         </div>
       </div>
@@ -208,9 +248,9 @@ export function ConfirmModal({ title = "Confirm Delete", message, onConfirm, onC
 // ── Info Card (expandable row detail) ────────────────────────────────────────
 export function InfoCard({ label, value, className = "", valueClassName = "" }) {
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white p-3 ${className}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className={`mt-1 text-sm font-semibold text-slate-800 ${valueClassName}`}>{value || "-"}</p>
+    <div className={`rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 ${className}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</p>
+      <p className={`mt-1 text-sm font-semibold text-slate-800 dark:text-slate-200 ${valueClassName}`}>{value || "-"}</p>
     </div>
   );
 }
@@ -219,11 +259,11 @@ export function InfoCard({ label, value, className = "", valueClassName = "" }) 
 export function Field({ label, name, value, onChange, placeholder, type = "text", readOnly = false }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
+      <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{label}</label>
       <input
         type={type} name={name} value={value} onChange={onChange}
         placeholder={placeholder} readOnly={readOnly}
-        className={`w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400 ${readOnly ? "cursor-not-allowed bg-slate-100 text-slate-500 focus:ring-0" : ""
+        className={`w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 ${readOnly ? "cursor-not-allowed bg-slate-100 text-slate-500 focus:ring-0 dark:bg-slate-900 dark:text-slate-500" : ""
           }`}
       />
     </div>
@@ -263,7 +303,7 @@ function ExpandedRow({ colSpan, children, onDone, closing }) {
 }
 
 // ── Data Table ───────────────────────────────────────────────────────────────
-export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wrapperClass, tbodyClass = "divide-y divide-gray-200 dark:divide-slate-700", emptyMessage }) {
+export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wrapperClass, tbodyClass = "divide-y divide-gray-200 dark:divide-y-0", emptyMessage }) {
   const [openId, setOpenId] = React.useState(null);
   const [closingId, setClosingId] = React.useState(null);
   const expandable = typeof renderExpanded === "function";
@@ -393,27 +433,25 @@ export function TdsSectionSelect({ value, onChange, inputCls: cls }) {
       </div>
 
       {open && (
-        <div className="absolute z-50 top-full left-0 w-full bg-white border border-gray-300 rounded-lg shadow-xl mt-1">
-          <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-400">{filtered.length} section{filtered.length !== 1 ? "s" : ""} found</span>
+        <div className="absolute z-50 top-full left-0 w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-xl mt-1">
+          <div className="px-3 py-1.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+            <span className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} section{filtered.length !== 1 ? "s" : ""} found</span>
             {selected && <span className="text-xs text-blue-600 font-medium">{selected.newSection} selected</span>}
           </div>
           <div className="max-h-72 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-gray-400">No matching section found</div>
+              <div className="px-4 py-3 text-sm text-gray-400 dark:text-slate-500">No matching section found</div>
             ) : filtered.map((s) => (
               <div
                 key={s.code}
                 onMouseDown={() => { onChange(s.code, s.rateNum, s); setOpen(false); setSearch(""); }}
-                className={`px-4 py-2 text-sm cursor-pointer hover:bg-blue-50 border-b border-gray-50 last:border-0 ${s.code === value ? "bg-blue-50" : ""
-                  }`}
+                className={`px-4 py-2 text-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 border-b border-gray-50 dark:border-slate-700 last:border-0 ${s.code === value ? "bg-blue-50 dark:bg-slate-700" : ""}`}
               >
                 <div className="flex items-center gap-3 whitespace-nowrap overflow-hidden">
-                  <span className="font-mono text-xs text-gray-400 shrink-0">{s.code}</span>
-
-                  <span className="font-semibold text-blue-700 text-xs shrink-0">{s.newSection}</span>
-                  <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">{s.oldSection}</span>
-                  <span className="text-xs text-gray-600 truncate flex-1">{s.nature}</span>
+                  <span className="font-mono text-xs text-gray-400 dark:text-slate-500 shrink-0">{s.code}</span>
+                  <span className="font-semibold text-blue-700 dark:text-blue-400 text-xs shrink-0">{s.newSection}</span>
+                  <span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded shrink-0">{s.oldSection}</span>
+                  <span className="text-xs text-gray-600 dark:text-slate-400 truncate flex-1">{s.nature}</span>
                   <span className={`text-xs font-bold shrink-0 px-2 py-0.5 rounded ${s.slab ? "bg-orange-100 text-orange-600" : "bg-green-100 text-green-700"
                     }`}>
                     {s.rate}
@@ -628,6 +666,8 @@ export function UnitSelect({ value, onChange }) {
 
 // ── Pagination Bar ────────────────────────────────────────────────────────────
 export function Pagination({ currentPage, totalPages, pageSize, totalCount, onPageChange, onPageSizeChange }) {
+  const dark = useDark();
+  const pageSizeId = React.useId();
   if (totalCount <= 5) return null;
   const start = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalCount);
@@ -646,17 +686,20 @@ export function Pagination({ currentPage, totalPages, pageSize, totalCount, onPa
   };
 
   return (
-    <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3 mt-0 rounded-b-lg">
-      <div className="flex items-center gap-2 text-sm text-gray-600">
+    <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-3 mt-0 rounded-b-lg">
+      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
         <span>Rows per page:</span>
         <select
-          className="border border-gray-300 rounded px-2 py-1 text-sm bg-white"
+          id={pageSizeId}
+          name="page-size"
+          style={dark ? { background: "#334155", color: "#e2e8f0" } : {}}
+          className="border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm bg-white dark:bg-slate-700 dark:text-slate-200"
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
         >
           {[5, 10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
-        <span className="text-gray-400">|</span>
+        <span className="text-gray-400 dark:text-slate-600">|</span>
         <span>{totalCount === 0 ? "0" : `${start}–${end}`} of {totalCount}</span>
       </div>
 
@@ -664,22 +707,23 @@ export function Pagination({ currentPage, totalPages, pageSize, totalCount, onPa
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="px-3 py-1 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 py-1 rounded-lg text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Prev
         </button>
 
         {getPages().map((page, idx) =>
           page === "..." ? (
-            <span key={`ellipsis-${idx}`} className="px-2 py-1 text-sm text-gray-400">…</span>
+            <span key={`ellipsis-${idx}`} className="px-2 py-1 text-sm text-gray-400 dark:text-slate-500">…</span>
           ) : (
             <button
               key={page}
               onClick={() => onPageChange(page)}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === page
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                currentPage === page
                   ? "bg-blue-600 text-white"
-                  : "border border-gray-300 text-gray-700 hover:bg-gray-100"
-                }`}
+                  : "border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+              }`}
             >
               {page}
             </button>
@@ -689,7 +733,7 @@ export function Pagination({ currentPage, totalPages, pageSize, totalCount, onPa
         <button
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages || totalPages === 0}
-          className="px-3 py-1 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 py-1 rounded-lg text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Next
         </button>

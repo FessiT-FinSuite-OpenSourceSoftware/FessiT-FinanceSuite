@@ -64,7 +64,7 @@ export default function GstSummaryCard() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
+            <tr className="bg-gray-50 border-b border-gray-200 ">
               <th className="py-2 px-4 text-left text-xs font-semibold text-gray-500 uppercase">Source</th>
               <th className="py-2 px-4 text-right text-xs font-semibold text-gray-500 uppercase">Count</th>
               <th className="py-2 px-4 text-right text-xs font-semibold text-gray-500 uppercase">Amount</th>
@@ -114,14 +114,14 @@ export default function GstSummaryCard() {
               total={gen?.total_gst_collected}
             />
             {/* Combined subtotal — incoming invoices + expenses + general expenses */}
-            <tr className="bg-orange-50 border-b border-orange-100">
-              <td className="py-3 px-4 text-sm font-semibold text-orange-700">Combined (Incoming + Expenses)</td>
-              <td className="py-3 px-4 text-sm text-orange-600 text-right">{comb?.expense_count} records</td>
-              <td className="py-3 px-4 text-sm text-orange-600 text-right">{fmt(comb?.total_amount)}</td>
-              <td className="py-3 px-4 text-sm text-orange-600 text-right">{fmt(comb?.total_cgst)}</td>
-              <td className="py-3 px-4 text-sm text-orange-600 text-right">{fmt(comb?.total_sgst)}</td>
-              <td className="py-3 px-4 text-sm text-orange-600 text-right">{fmt(comb?.total_igst)}</td>
-              <td className="py-3 px-4 text-sm font-bold text-orange-700 text-right">{fmt(comb?.total_gst_collected)}</td>
+            <tr className="bg-orange-50 dark:bg-orange-900/20 border-b border-orange-100 dark:border-orange-900/40">
+              <td className="py-3 px-4 text-sm font-semibold text-orange-700 dark:text-orange-400">Combined (Incoming + Expenses)</td>
+              <td className="py-3 px-4 text-sm text-orange-600 dark:text-orange-400 text-right">{comb?.expense_count} records</td>
+              <td className="py-3 px-4 text-sm text-orange-600 dark:text-orange-400 text-right">{fmt(comb?.total_amount)}</td>
+              <td className="py-3 px-4 text-sm text-orange-600 dark:text-orange-400 text-right">{fmt(comb?.total_cgst)}</td>
+              <td className="py-3 px-4 text-sm text-orange-600 dark:text-orange-400 text-right">{fmt(comb?.total_sgst)}</td>
+              <td className="py-3 px-4 text-sm text-orange-600 dark:text-orange-400 text-right">{fmt(comb?.total_igst)}</td>
+              <td className="py-3 px-4 text-sm font-bold text-orange-700 dark:text-orange-300 text-right">{fmt(comb?.total_gst_collected)}</td>
             </tr>
           </tbody>
         </table>
@@ -129,23 +129,23 @@ export default function GstSummaryCard() {
 
       {/* Net GST Payable summary */}
       <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-green-50 rounded-lg p-3">
-          <p className="text-xs text-green-600 font-medium mb-1">Outgoing GST Collected</p>
-          <p className="text-base font-bold text-green-700">{fmt(net?.outgoing_gst_collected)}</p>
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-900/40">
+          <p className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">Outgoing GST Collected</p>
+          <p className="text-base font-bold text-green-700 dark:text-green-400">{fmt(net?.outgoing_gst_collected)}</p>
         </div>
-        <div className="bg-red-50 rounded-lg p-3">
-          <p className="text-xs text-red-600 font-medium mb-1">Incoming + Expense GST</p>
-          <p className="text-base font-bold text-red-700">{fmt((net?.incoming_gst_collected || 0) + (net?.expense_gst_collected || 0))}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-900/40">
+          <p className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">Incoming + Expense GST</p>
+          <p className="text-base font-bold text-red-700 dark:text-red-400">{fmt((net?.incoming_gst_collected || 0) + (net?.expense_gst_collected || 0))}</p>
         </div>
-        <div className="bg-orange-50 rounded-lg p-3">
-          <p className="text-xs text-orange-600 font-medium mb-1">Incoming GST (Input Credit)</p>
-          <p className="text-base font-bold text-orange-700">{fmt(net?.incoming_gst_collected)}</p>
+        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 border border-orange-200 dark:border-orange-900/40">
+          <p className="text-xs text-orange-600 dark:text-orange-400 font-medium mb-1">Incoming GST (Input Credit)</p>
+          <p className="text-base font-bold text-orange-700 dark:text-orange-400">{fmt(net?.incoming_gst_collected)}</p>
         </div>
-        <div className={`rounded-lg p-3 ${(net?.net_payable || 0) >= 0 ? "bg-blue-50" : "bg-purple-50"}`}>
-          <p className={`text-xs font-medium mb-1 ${(net?.net_payable || 0) >= 0 ? "text-blue-600" : "text-purple-600"}`}>
+        <div className={`rounded-lg p-3 border transition-colors ${(net?.net_payable || 0) >= 0 ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/40" : "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-900/40"}`}>
+          <p className={`text-xs font-medium mb-1 ${(net?.net_payable || 0) >= 0 ? "text-blue-600 dark:text-blue-400" : "text-purple-600 dark:text-purple-400"}`}>
             Net GST Payable
           </p>
-          <p className={`text-base font-bold ${(net?.net_payable || 0) >= 0 ? "text-blue-700" : "text-purple-700"}`}>
+          <p className={`text-base font-bold ${(net?.net_payable || 0) >= 0 ? "text-blue-700 dark:text-blue-400" : "text-purple-700 dark:text-purple-400"}`}>
             {fmt(net?.net_payable)}
           </p>
         </div>

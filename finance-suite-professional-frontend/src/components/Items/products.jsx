@@ -17,7 +17,7 @@ import {
 import { authSelector } from "../../ReduxApi/auth";
 import { canRead, canWrite, canDelete, Module } from "../../utils/permissions";
 import { KeyUri } from "../../shared/key";
-import { RowActions, Pagination, StatCard, InfoCard, Field, DataTable, ConfirmModal } from "../../shared/ui";
+import { RowActions, Pagination, StatCard, InfoCard, Field, DataTable, ConfirmModal, FilterChips } from "../../shared/ui";
 import { DonutChart, BarChartCard, HorizontalBarChart } from '../../shared/charts';
 
 const toNumber = (value, fallback = 0) => {
@@ -219,6 +219,19 @@ export default function Products() {
   useEffect(() => {
     setCurrentPage(1);
   }, [search, categoryFilter, stockFilter, taxFilter, sortBy]);
+
+  const chips = [
+    categoryFilter !== "All" && { key: "category", label: `Category: ${categoryOptions.find(c => c.id === categoryFilter)?.label || categoryFilter}` },
+    stockFilter !== "All" && { key: "stock", label: `Stock: ${stockFilter === "out" ? "Out of Stock" : stockFilter === "low" ? "Low Stock" : "In Stock"}` },
+    taxFilter !== "All" && { key: "tax", label: `Tax: ${taxFilter}%` },
+  ].filter(Boolean);
+
+  const removeChip = (key) => {
+    if (key === "category") setCategoryFilter("All");
+    if (key === "stock") setStockFilter("All");
+    if (key === "tax") setTaxFilter("All");
+    setCurrentPage(1);
+  };
 
   useEffect(() => {
     if (!previewModal.open && !showModal && !stockModal.open) return;
@@ -494,13 +507,13 @@ export default function Products() {
   const LoadingSkeleton = () => (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Toolbar skeleton */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="h-12 bg-slate-200 rounded-xl animate-pulse w-full md:max-w-xl"></div>
+          <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse w-full md:max-w-xl"></div>
           <div className="flex items-center gap-2">
-            <div className="h-12 w-24 bg-slate-200 rounded-xl animate-pulse"></div>
-            <div className="h-12 w-28 bg-slate-200 rounded-xl animate-pulse"></div>
-            <div className="h-12 w-20 bg-slate-200 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-24 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-28 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
+            <div className="h-12 w-20 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
           </div>
         </div>
       </div>
@@ -508,29 +521,29 @@ export default function Products() {
       {/* Stats skeleton */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {[...Array(2)].map((_, i) => (
-          <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="h-4 bg-slate-200 rounded animate-pulse mb-2 w-20"></div>
-            <div className="h-8 bg-slate-200 rounded animate-pulse w-16"></div>
+          <div key={i} className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm">
+            <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mb-2 w-20"></div>
+            <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-16"></div>
           </div>
         ))}
       </div>
 
       {/* Filters skeleton */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-10 bg-slate-200 rounded-xl animate-pulse"></div>
+            <div key={i} className="h-10 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"></div>
           ))}
         </div>
       </div>
 
       {/* Table skeleton */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 shadow-sm overflow-hidden">
         <div className="p-4">
           {/* Table header */}
-          <div className="grid grid-cols-11 gap-4 pb-4 border-b border-slate-200">
+          <div className="grid grid-cols-11 gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
             {[...Array(11)].map((_, i) => (
-              <div key={i} className="h-4 bg-slate-200 rounded animate-pulse"></div>
+              <div key={i} className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
             ))}
           </div>
           {/* Table rows */}
@@ -546,7 +559,7 @@ export default function Products() {
 
       {/* Pagination skeleton */}
       <div className="flex justify-between items-center">
-        <div className="h-4 bg-slate-200 rounded animate-pulse w-32"></div>
+        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-32"></div>
         <div className="flex gap-2">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="h-10 w-10 bg-slate-200 rounded-lg animate-pulse"></div>
@@ -562,14 +575,14 @@ export default function Products() {
     <div className=" w-full relative">
       {/* Subtle loading overlay for refreshes when data exists */}
       {isLoading && hasLoadedOnce && (
-        <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
-          <div className="bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3">
+        <div className="absolute inset-0 bg-white/50 dark:bg-slate-950/60 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
+          <div className="bg-white rounded-xl shadow-lg dark:bg-slate-900 px-4 py-3 flex items-center gap-3">
             <RefreshCcw className="w-4 h-4 animate-spin text-blue-600" />
-            <span className="text-sm font-medium text-slate-700">Refreshing products...</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Refreshing products...</span>
           </div>
         </div>
       )}
-      <div className="mb-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-2 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:max-w-xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -578,7 +591,7 @@ export default function Products() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search product, HSN, manufacturer..."
-              className="w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 py-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded-xl border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 pl-10 pr-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
@@ -587,7 +600,7 @@ export default function Products() {
               type="button"
               onClick={() => dispatch(fetchProductData())}
               disabled={isLoading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               {isLoading ? 'Refreshing...' : 'Refresh'}
@@ -596,7 +609,7 @@ export default function Products() {
               <button
                 type="button"
                 onClick={() => setShowCategoryManager(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Categories
               </button>
@@ -621,23 +634,23 @@ export default function Products() {
       {previewModal.open && ReactDOM.createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/75 p-4" onClick={closePreviewModal}>
           <div
-            className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl"
+            className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl dark:bg-slate-900"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">{previewModal.title}</h3>
-                {/* <p className="text-sm text-slate-500">Close the preview by clicking outside or the button below.</p> */}
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{previewModal.title}</h3>
+                {/* <p className="text-sm text-slate-500 dark:text-slate-400">Close the preview by clicking outside or the button below.</p> */}
               </div>
               <button
                 type="button"
                 onClick={closePreviewModal}
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4">
+            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
               <img
                 src={previewModal.src}
                 alt={previewModal.title}
@@ -651,12 +664,12 @@ export default function Products() {
 
       {descriptionPreview && (
         <div
-          className="pointer-events-none fixed w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl"
+          className="pointer-events-none fixed w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-2xl"
           style={{ zIndex: 250, left: descriptionPreview.left, top: descriptionPreview.top }}
         >
           {/* <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Description Preview</p> */}
-          <h4 className="mt-1 text-base font-semibold text-slate-900">{descriptionPreview.title}</h4>
-          <p className="mt-3 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700">
+          <h4 className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">{descriptionPreview.title}</h4>
+          <p className="mt-3 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-slate-700 dark:text-slate-300">
             {descriptionPreview.description}
           </p>
         </div>
@@ -664,20 +677,20 @@ export default function Products() {
 
       {showModal && ReactDOM.createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                   {editingProductId ? "Edit Item" : "Create New Item"}
                 </h3>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   {editingProductId ? "Update the Item and save the changes." : "Fill in the Item details to create a new item."}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -685,19 +698,19 @@ export default function Products() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">Item Image</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Item Image</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <div className="mt-3 flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => activeModalImageSrc && openPreviewModal(activeModalImageSrc, form.name || "Item Image")}
                     disabled={!activeModalImageSrc}
-                    className="h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center disabled:cursor-not-allowed"
+                    className="h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 flex items-center justify-center disabled:cursor-not-allowed"
                   >
                     {productImagePreview ? (
                       <img src={productImagePreview} alt="Preview" className="h-full w-full object-cover" />
@@ -705,7 +718,7 @@ export default function Products() {
                       <span className="text-xs text-slate-400">No image</span>
                     )}
                   </button>
-                  <div className="min-w-0 flex-1 text-sm text-slate-500">
+                  <div className="min-w-0 flex-1 text-sm text-slate-500 dark:text-slate-400">
                     <p className="truncate">
                       {productImageFile ? productImageFile.name : "Choose a Item image to preview it here."}
                     </p>
@@ -714,7 +727,7 @@ export default function Products() {
                         type="button"
                         onClick={() => activeModalImageSrc && openPreviewModal(activeModalImageSrc, form.name || "Product Image")}
                         disabled={!activeModalImageSrc}
-                        className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         Preview
                       </button>
@@ -735,12 +748,12 @@ export default function Products() {
               <Field label="Item Code" name="itemCode" value={form.itemCode} onChange={handleFormChange} placeholder="Enter item code" />
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Category</label>
                 <select
                   name="category"
                   value={form.category}
                   onChange={handleFormChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 >
                   <option value="" disabled>
                     Select category
@@ -753,8 +766,8 @@ export default function Products() {
                   ))}
                 </select>
                 {form.category === "__add_category__" && (
-                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       New Category
                     </label>
                     <div className="flex gap-2">
@@ -763,7 +776,7 @@ export default function Products() {
                         value={newCategoryName}
                         onChange={(e) => setNewCategoryName(e.target.value)}
                         placeholder="Enter category name"
-                        className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                        className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
                       />
                       <button
                         type="button"
@@ -788,7 +801,7 @@ export default function Products() {
                   placeholder="0"
                   readOnly
                 />
-                <span className="mt-1 text-xs text-slate-500 flex items-center gap-1">
+                <span className="mt-1 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                   <Info className="h-3 w-3" />
                   Stock is managed separately using the add stock action.
                 </span>
@@ -798,12 +811,12 @@ export default function Products() {
               <Field label="Procured Price (Without Tax)" name="purchasePrice" type="number" value={form.purchasePrice} onChange={handleFormChange} placeholder="0" />
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Tax</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Tax</label>
                 <select
                   name="tax"
                   value={form.tax}
                   onChange={handleFormChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 >
                   {["0", "5", "12", "18", "28"].map((tax) => (
                     <option key={tax} value={tax}>
@@ -814,11 +827,11 @@ export default function Products() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-700 px-6 py-4">
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -838,29 +851,29 @@ export default function Products() {
 
       {stockModal.open && ReactDOM.createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Add Stock</h3>
-                <p className="text-sm text-slate-500 truncate max-w-[220px]">{stockModal.productName}</p>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Add Stock</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{stockModal.productName}</p>
               </div>
-              <button type="button" onClick={closeStockModal} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+              <button type="button" onClick={closeStockModal} className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6">
-              <label className="mb-1 block text-sm font-medium text-slate-700">Quantity to Add</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Quantity to Add</label>
               <input
                 type="number"
                 min="1"
                 value={stockModal.quantity}
                 onChange={(e) => setStockModal((prev) => ({ ...prev, quantity: e.target.value }))}
                 placeholder="Enter quantity"
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-              <button type="button" onClick={closeStockModal} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            <div className="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-700 px-6 py-4">
+              <button type="button" onClick={closeStockModal} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
                 Cancel
               </button>
               <button type="button" onClick={handleAddStock} disabled={isLoading} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
@@ -871,6 +884,8 @@ export default function Products() {
         </div>,
         document.body
       )}
+
+      <FilterChips chips={chips} onRemove={removeChip} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-2">
         <StatCard label="Total Products" value={summary.total} />
@@ -903,9 +918,9 @@ export default function Products() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-2">
+      <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm mb-2">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
             <option value="All">All Categories</option>
             {categoryOptions.map((category) => (
               <option key={category.id} value={category.id}>
@@ -914,14 +929,14 @@ export default function Products() {
             ))}
           </select>
 
-          <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
             <option value="All">All Stock</option>
             <option value="out">Out of Stock</option>
             <option value="low">Low Stock</option>
             <option value="in">In Stock</option>
           </select>
 
-          <select value={taxFilter} onChange={(e) => setTaxFilter(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <select value={taxFilter} onChange={(e) => setTaxFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
             <option value="All">All Taxes</option>
             {["0", "5", "12", "18", "28"].map((tax) => (
               <option key={tax} value={tax}>
@@ -930,7 +945,7 @@ export default function Products() {
             ))}
           </select>
 
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
             <option value="name-asc">Name A-Z</option>
             <option value="name-desc">Name Z-A</option>
             <option value="stock-desc">Stock High-Low</option>
@@ -945,8 +960,8 @@ export default function Products() {
         isLoading={isLoading && !isInitialLoad}
         data={paginatedProducts}
         rowKey={(p) => p.id}
-        wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-        tbodyClass="divide-y divide-slate-200"
+        wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 shadow-sm"
+        tbodyClass="divide-y divide-slate-200 dark:divide-slate-800"
         emptyMessage="No products matched your filters."
         loadingMessage="Loading products..."
         columns={[
@@ -954,30 +969,30 @@ export default function Products() {
             label: 'Image', stopPropagation: true,
             render: (product) => product.image ? (
               <button type="button" onClick={(e) => { e.stopPropagation(); const src = productImageSrc(product); if (src) openPreviewModal(src, product.name || 'Product Image'); }} className="block">
-                <img src={productImageSrc(product)} alt={product.name} onError={(e) => { e.currentTarget.style.display = 'none'; }} className="h-8 w-10 rounded-lg object-cover border border-slate-200" />
+                <img src={productImageSrc(product)} alt={product.name} onError={(e) => { e.currentTarget.style.display = 'none'; }} className="h-8 w-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
               </button>
-            ) : <div className="h-8 w-10 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-400">No img</div>,
+            ) : <div className="h-8 w-10 rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-400">No img</div>,
           },
           {
             label: 'Name',
             render: (product) => (
-              <><div className="whitespace-nowrap text-sm font-semibold text-slate-900">{product.name}</div><div className="text-xs text-slate-400">{product.manufacturer}</div></>
+              <><div className="whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100">{product.name}</div><div className="text-xs text-slate-400">{product.manufacturer}</div></>
             ),
           },
           {
             label: 'Description',
             render: (product) => (
-              <div className="text-xs text-slate-600 line-clamp-2 cursor-help max-w-[140px]" onMouseEnter={(e) => openDescriptionPreview(e, product)} onMouseLeave={closeDescriptionPreview}>{product.description || '-'}</div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 cursor-help max-w-[140px]" onMouseEnter={(e) => openDescriptionPreview(e, product)} onMouseLeave={closeDescriptionPreview}>{product.description || '-'}</div>
             ),
           },
-          { label: 'HSN/CAC',       render: (p) => <span className="text-xs text-slate-700">{p.hsn || '-'}</span> },
-          { label: 'Item Code', render: (p) => <span className="text-xs text-slate-700">{p.itemCode || '-'}</span> },
-          { label: 'Category',  render: (p) => <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">{textValue(p.categoryLabel, 'Unassigned') || 'Unassigned'}</span> },
+          { label: 'HSN/CAC',       render: (p) => <span className="text-xs text-slate-700 dark:text-slate-300">{p.hsn || '-'}</span> },
+          { label: 'Item Code', render: (p) => <span className="text-xs text-slate-700 dark:text-slate-300">{p.itemCode || '-'}</span> },
+          { label: 'Category',  render: (p) => <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">{textValue(p.categoryLabel, 'Unassigned') || 'Unassigned'}</span> },
           { label: 'Stock',     render: (p) => {
             const availableStock = Math.max(toNumber(p.stocks) - toNumber(p.soldStocks), 0);
             return <span className={`text-xs font-semibold ${stockCountClass(availableStock)}`}>{fmt(availableStock)}</span>;
           } },
-          { label: 'Sold',      render: (p) => <span className="text-xs font-semibold text-slate-500">{fmt(p.soldStocks)}</span> },
+          { label: 'Sold',      render: (p) => <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{fmt(p.soldStocks)}</span> },
           {
             label: 'In Stock',
             render: (p) => {
@@ -987,13 +1002,13 @@ export default function Products() {
               const color = pct > 50 ? 'bg-emerald-500' : pct > 20 ? 'bg-amber-400' : 'bg-red-500';
               return (
                 <div className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-12 rounded-full bg-slate-200"><div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} /></div>
+                  <div className="h-1.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700"><div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} /></div>
                   <span className={`text-xs font-semibold ${pct > 50 ? 'text-emerald-600' : pct > 20 ? 'text-amber-600' : 'text-red-600'}`}>({pct}%)</span>
                 </div>
               );
             },
           },
-          { label: 'Sale Price', render: (p) => <span className="text-xs font-semibold text-slate-900">Rs. {fmt(p.salePrice)}</span> },
+          { label: 'Sale Price', render: (p) => <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">Rs. {fmt(p.salePrice)}</span> },
           {
             label: 'Actions', right: true, stopPropagation: true,
             render: (product) => (
@@ -1010,7 +1025,7 @@ export default function Products() {
           const saleAfterDiscount = product.salePrice - (product.salePrice * product.discount) / 100;
           const totalAfterTax = saleAfterDiscount + (saleAfterDiscount * product.tax) / 100;
           return (
-            <div className="p-4 rounded-2xl bg-[#ECEEF2]">
+            <div className="p-4 rounded-2xl bg-[#ECEEF2] dark:bg-slate-950">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
                 <InfoCard label="Description" value={product.description || '-'} className="xl:col-span-3" valueClassName="line-clamp-2 min-h-[2.5rem]" />
                 <InfoCard label="Manufacturer" value={product.manufacturer} />

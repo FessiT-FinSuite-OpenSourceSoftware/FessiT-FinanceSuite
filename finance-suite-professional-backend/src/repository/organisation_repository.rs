@@ -423,12 +423,28 @@ impl OrganisationRepository{
 
     pub async fn get_next_invoice_sequence_by_id(&self, org_id: &ObjectId) -> Result<i32, ApiError> {
         log::info!("Getting next invoice sequence for org_id: {}", org_id);
-        
+
+        // Fetch current org to check sequence and year
+        let org = self.collection.find_one(doc! { "_id": org_id }, None).await?
+            .ok_or_else(|| ApiError::NotFound("Organisation not found".to_string()))?;
+
+        if org.last_invoice_sequence >= 999 {
+            // Reset sequence to 1 and bump the year in startingInvoiceNo
+            let current_year = org.starting_invoice_no.parse::<i32>().unwrap_or_else(|_| {
+                chrono::Utc::now().format("%Y").to_string().parse::<i32>().unwrap_or(2024)
+            });
+            let next_year = (current_year + 1).to_string();
+            self.collection.update_one(
+                doc! { "_id": org_id },
+                doc! { "$set": { "lastInvoiceSequence": 1, "startingInvoiceNo": &next_year } },
+                None,
+            ).await?;
+            log::info!("Sequence reset to 1, year bumped to {}", next_year);
+            return Ok(1);
+        }
+
         let filter = doc! { "_id": org_id };
-        let update = doc! {
-            "$inc": { "lastInvoiceSequence": 1 }
-        };
-        
+        let update = doc! { "$inc": { "lastInvoiceSequence": 1 } };
         let options = mongodb::options::FindOneAndUpdateOptions::builder()
             .upsert(false)
             .return_document(mongodb::options::ReturnDocument::After)
@@ -454,23 +470,15 @@ impl OrganisationRepository{
         }
     }
 
-    pub async fn peek_next_invoice_sequence_by_id(&self, org_id: &ObjectId) -> Result<i32, ApiError> {
+    pub async fn peek_next_invoice_sequence_by_id(&self, org_id: &ObjectId) -> Result<(i32, String), ApiError> {
         let filter = doc! { "_id": org_id };
-        let result = self.collection.find_one(filter, None).await?;
-
-        match result {
-            Some(org) => {
-                if let Ok(doc) = mongodb::bson::to_document(&org) {
-                    if let Ok(current_sequence) = doc.get_i32("lastInvoiceSequence") {
-                        return Ok(current_sequence + 1);
-                    }
-                }
-                Ok(1)
-            }
-            None => {
-                Err(ApiError::NotFound("Organisation not found".to_string()))
-            }
+        let org = self.collection.find_one(filter, None).await?
+            .ok_or_else(|| ApiError::NotFound("Organisation not found".to_string()))?;
+        if org.last_invoice_sequence >= 999 {
+            let current_year = org.starting_invoice_no.parse::<i32>().unwrap_or(2024);
+            return Ok((1, (current_year + 1).to_string()));
         }
+        Ok((org.last_invoice_sequence + 1, org.starting_invoice_no.clone()))
     }
 
     pub async fn get_user_by_id(&self, _user_id: &str) -> Result<Option<crate::models::users::User>, ApiError> {

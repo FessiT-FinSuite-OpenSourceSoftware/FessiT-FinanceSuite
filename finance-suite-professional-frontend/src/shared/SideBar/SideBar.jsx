@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, memo } from "react";
 import ReactDOM from "react-dom";
 import { useLocation, useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
+import { AnimatePresence, motion } from "framer-motion";
 import { authSelector, logoutUser, clearAuth } from "../../ReduxApi/auth";
 import { canRead, Module } from "../../utils/permissions";
 import {
@@ -10,6 +11,14 @@ import {
   UserLockIcon, Layers, FolderKanban, Boxes, LogOut, BookOpen,
   ReceiptText, BarChart2, Package, Truck, UserCheck,
 } from "lucide-react";
+import ThemeToggle from "../ThemeToggle";
+import { useTheme } from "../ThemeContext";
+
+const SIDEBAR_EXPANDED_WIDTH = 220;
+const SIDEBAR_COLLAPSED_WIDTH = 72;
+const SIDEBAR_STORAGE_KEY = "finsuite-sidebar-collapsed";
+const SIDEBAR_SPRING = { type: "spring", stiffness: 320, damping: 34, mass: 0.8 };
+const CONTENT_FADE = { duration: 0.18, ease: "easeOut" };
 
 function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
   const [pos, setPos] = useState({ top: 0, right: 0 });
@@ -131,8 +140,27 @@ function getPageTitle(pathname) {
 }
 
 export default function SideBar({ component }) {
-  const [desktopOpen, setDesktopOpen] = useState(true);
+  const { theme } = useTheme();
+  const headerIconHoverClass = theme === "dark"
+    ? "hover:bg-slate-800 hover:text-slate-200"
+    : "hover:bg-gray-100 hover:text-gray-900";
+  const sidebarToggleClass = theme === "dark"
+    ? "border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+    : "border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900";
+  const collapsedSidebarToggleClass = theme === "dark"
+    ? "border-slate-700 bg-slate-900 text-slate-400 shadow-black/30 hover:bg-slate-800 hover:text-slate-100"
+    : "border-gray-200 bg-white text-gray-500 shadow-slate-900/10 hover:bg-gray-100 hover:text-gray-900";
+
+  const [desktopCollapsed, setDesktopCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [hoveredGroup, setHoveredGroup] = useState(null);
+  const [popoverTop, setPopoverTop] = useState(96);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -148,11 +176,31 @@ export default function SideBar({ component }) {
   const userMenuRef = useRef(null);
   const userMenuTriggerRef = useRef(null);
   const mainRef = useRef(null);
+  const popoverCloseTimerRef = useRef(null);
 
   const location = useLocation();
   const nav = useNavigate();
   const { user } = useSelector(authSelector);
   const dispatch = useDispatch();
+  const sidebarWidth = desktopCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
+  const expanded = !desktopCollapsed;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(desktopCollapsed));
+    } catch { /* localStorage may be unavailable in restricted environments */ }
+  }, [desktopCollapsed]);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        setHoveredGroup(null);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   // Close mobile drawer on route change
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
@@ -250,48 +298,209 @@ export default function SideBar({ component }) {
     return { ...p, [key]: !p[key] };
   });
 
-  // Shared nav content used in both desktop sidebar and mobile drawer
+  const getVisibleItems = (group) => group.items.filter((item) => {
+    if (item.adminOnly) return user?.is_admin;
+    return item.module === null || canRead(user, item.module);
+  });
+
+  const handleNavigate = (id) => {
+    nav(`/${id}`);
+    setHoveredGroup(null);
+    setMobileOpen(false);
+  };
+
+  const clearPopoverCloseTimer = () => {
+    if (popoverCloseTimerRef.current) {
+      window.clearTimeout(popoverCloseTimerRef.current);
+      popoverCloseTimerRef.current = null;
+    }
+  };
+
+  const schedulePopoverClose = () => {
+    clearPopoverCloseTimer();
+    popoverCloseTimerRef.current = window.setTimeout(() => {
+      setHoveredGroup(null);
+    }, 140);
+  };
+
+  const openCollapsedPopover = (key, target) => {
+    if (!desktopCollapsed || !target) return;
+    clearPopoverCloseTimer();
+    const rect = target.getBoundingClientRect();
+    const maxTop = Math.max(84, window.innerHeight - 280);
+    setPopoverTop(Math.min(Math.max(rect.top - 4, 84), maxTop));
+    setHoveredGroup(key);
+  };
+
+  const NavItem = ({ item, collapsed = false, inPopover = false }) => {
+    const Icon = item.icon;
+    const active = isItemActive(item.id);
+    const stateClass = theme === "dark"
+      ? active
+        ? "bg-slate-800 text-indigo-200 ring-1 ring-indigo-400/25 shadow-none"
+        : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
+      : active
+        ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-900/5"
+        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900";
+
+    return (
+      <motion.button
+        type="button"
+        key={item.id}
+        onClick={() => handleNavigate(item.id)}
+        aria-current={active ? "page" : undefined}
+        aria-label={collapsed && !inPopover ? item.label : undefined}
+        title={collapsed && !inPopover ? item.label : undefined}
+        whileHover={{ x: collapsed || inPopover ? 0 : 2 }}
+        whileTap={{ scale: 0.98 }}
+        className={`group relative flex w-full items-center rounded-lg text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 ${
+          collapsed && !inPopover ? "h-11 justify-center px-0" : "min-h-8 gap-2 px-2 py-1"
+        } ${stateClass}`}
+      >
+        {active && (
+          <motion.span
+            layoutId="sidebar-active-indicator"
+            className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-indigo-500 dark:bg-indigo-300"
+            transition={SIDEBAR_SPRING}
+          />
+        )}
+        <motion.span
+          className="flex h-5 w-5 shrink-0 items-center justify-center"
+          animate={{ scale: active ? 1.04 : 1 }}
+          transition={SIDEBAR_SPRING}
+        >
+          <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+        </motion.span>
+        <AnimatePresence initial={false}>
+          {(!collapsed || inPopover) && (
+            <motion.span
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -6 }}
+              transition={CONTENT_FADE}
+              className="truncate font-medium"
+            >
+              {item.label}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </motion.button>
+    );
+  };
+
+  // Shared nav content used in desktop sidebar and responsive drawer
   const NavContent = ({ collapsed = false }) => (
-    <nav className="sidebar-scrollbar overflow-y-auto bg-gray-50 dark:bg-slate-950 py-1" style={{ height: 'calc(100vh - 72px)', maxHeight: 'calc(100vh - 72px)', overflowY: 'auto' }}>
+    <nav
+      aria-label="Primary navigation"
+      className={`finsuite-sidebar-nav sidebar-scrollbar relative overflow-y-auto bg-gray-50/80 dark:bg-slate-950 ${
+        collapsed ? "px-2 py-3" : "px-1 py-1.5"
+      }`}
+      style={{ height: "calc(100vh - 72px)", maxHeight: "calc(100vh - 72px)", overflowY: "auto" }}
+    >
       {NAV_GROUPS.map((group) => {
-        const visibleItems = group.items.filter((item) => {
-          if (item.adminOnly) return user?.is_admin;
-          return item.module === null || canRead(user, item.module);
-        });
+        const visibleItems = getVisibleItems(group);
         if (!visibleItems.length) return null;
         const isOpen = openGroups[group.key];
-        const groupActive = isGroupActive(group);
+        const groupActive = visibleItems.some((i) => isItemActive(i.id));
+        const GroupIcon = visibleItems.find((item) => isItemActive(item.id))?.icon || visibleItems[0].icon;
+        const popoverOpen = collapsed && hoveredGroup === group.key;
+        const collapsedGroupStateClass = theme === "dark"
+          ? groupActive
+            ? "bg-slate-800 text-indigo-200 ring-1 ring-indigo-400/25"
+            : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
+          : groupActive
+            ? "bg-indigo-50 text-indigo-700"
+            : "text-gray-500 hover:bg-gray-100 hover:text-gray-900";
+
         return (
-          <div key={group.key} className="mb-1">
-            {!collapsed ? (
+          <div
+            key={group.key}
+            className={`relative ${collapsed ? "mb-2" : "mb-1"}`}
+            onMouseEnter={(e) => collapsed && openCollapsedPopover(group.key, e.currentTarget)}
+            onMouseLeave={() => collapsed && schedulePopoverClose()}
+            onFocus={(e) => collapsed && openCollapsedPopover(group.key, e.currentTarget)}
+          >
+            {collapsed ? (
+              <motion.button
+                type="button"
+                onClick={(e) => {
+                  if (hoveredGroup === group.key) setHoveredGroup(null);
+                  else openCollapsedPopover(group.key, e.currentTarget);
+                }}
+                aria-label={group.label}
+                aria-expanded={popoverOpen}
+                title={group.label}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.98 }}
+                className={`relative flex h-11 w-full items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 ${collapsedGroupStateClass}`}
+              >
+                {groupActive && (
+                  <motion.span
+                    layoutId="sidebar-collapsed-group-indicator"
+                    className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-indigo-500 dark:bg-indigo-300"
+                    transition={SIDEBAR_SPRING}
+                  />
+                )}
+                <GroupIcon size={18} strokeWidth={groupActive ? 2.2 : 1.8} />
+              </motion.button>
+            ) : (
               <button
+                type="button"
                 onClick={() => toggleGroup(group.key)}
-                className={`w-full flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${groupActive ? "text-indigo-500 dark:text-indigo-300" : "text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"
-                  }`}
+                aria-expanded={isOpen}
+                className={`flex min-h-6 w-full items-center justify-between rounded-lg px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-widest outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 ${
+                  groupActive
+                    ? "text-indigo-600 dark:text-indigo-300"
+                    : "text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-300"
+                }`}
               >
                 <span>{group.label}</span>
-                <ChevronRight size={12} className={isOpen ? "rotate-90" : ""} />
+                <motion.span animate={{ rotate: isOpen ? 90 : 0 }} transition={CONTENT_FADE}>
+                  <ChevronRight size={14} />
+                </motion.span>
               </button>
-            ) : (
-              <div className="mx-2 my-1 border-t border-gray-200 dark:border-slate-800" />
             )}
-            {(isOpen || collapsed) && visibleItems.map((item) => {
-              const Icon = item.icon;
-              const active = isItemActive(item.id);
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => nav(`/${item.id}`)}
-                  className={`w-full flex items-center rounded-lg ${active
-                    ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-200 font-medium"
-                    : "text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-900 dark:hover:text-slate-100"
-                    } sider-button ${collapsed ? "py-1.5 justify-center" : "px-3 py-1 space-x-2 justify-start pl-5"}`}
+
+            <AnimatePresence initial={false}>
+              {!collapsed && isOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22, ease: "easeInOut" }}
+                  className="overflow-hidden"
                 >
-                  <Icon size={15} className={collapsed ? "mx-auto" : "shrink-0"} />
-                  {!collapsed && <span className="text-sm">{item.label}</span>}
-                </button>
-              );
-            })}
+                  <div className="mt-0.5 space-y-px">
+                    {visibleItems.map((item) => <NavItem key={item.id} item={item} />)}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {popoverOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8, scale: 0.97 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.97 }}
+                  transition={CONTENT_FADE}
+                  className="finsuite-sidebar-popover fixed left-[76px] z-300 min-w-60 rounded-xl border border-gray-200 bg-white p-2 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40 before:absolute before:-left-3 before:top-0 before:h-full before:w-3 before:content-['']"
+                  style={{ top: popoverTop }}
+                  onMouseEnter={() => {
+                    clearPopoverCloseTimer();
+                    setHoveredGroup(group.key);
+                  }}
+                  onMouseLeave={schedulePopoverClose}
+                >
+                  <p className="px-3 pb-2 pt-1 text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">
+                    {group.label}
+                  </p>
+                  <div className="space-y-1">
+                    {visibleItems.map((item) => <NavItem key={item.id} item={item} inPopover />)}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         );
       })}
@@ -299,9 +508,9 @@ export default function SideBar({ component }) {
   );
 
   const Logo = ({ showText }) => (
-    <div className="flex items-center gap-3 flex-1 min-w-0">
+    <div className={`flex items-center min-w-0 ${showText ? "flex-1 gap-2.5" : "shrink-0 gap-3"}`}>
       <div className="relative shrink-0">
-        <svg width="36" height="36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <svg width={showText ? 36 : 28} height={showText ? 36 : 28} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
           <circle cx="50" cy="50" r="48" fill="#1e40af" opacity="0.1" />
           <path d="M 25 70 L 35 55 L 45 60 L 55 40 L 65 45 L 75 30" stroke="#1e40af" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M 30 35 L 30 75 M 30 35 L 50 35 M 30 53 L 45 53" stroke="#0ea5e9" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -336,38 +545,80 @@ export default function SideBar({ component }) {
     <div className="flex h-screen overflow-hidden w-screen bg-gray-50 dark:bg-slate-950">
 
       {/* ── Desktop sidebar ─────────────────────────────────────── */}
-      <div
+      <motion.aside
         ref={sidebarRef}
-        className="hidden md:flex w-52 shrink-0 bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800 h-screen flex-col overflow-hidden"
+        initial={{ x: -24, opacity: 0, width: sidebarWidth }}
+        animate={{ x: 0, opacity: 1, width: sidebarWidth }}
+        transition={SIDEBAR_SPRING}
+        className="finsuite-sidebar-shell hidden lg:flex shrink-0 bg-white/95 dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800 h-screen flex-col overflow-visible shadow-sm shadow-slate-900/5 dark:shadow-black/20"
+        aria-label="Primary sidebar"
       >
-        <div className="shrink-0 p-4 border-b border-gray-200 dark:border-slate-800 h-[72px] flex justify-between items-center">
-          <Logo showText={true} />
+        <div className={`finsuite-sidebar-header relative shrink-0 border-b border-gray-200 dark:border-slate-800 h-[72px] flex items-center ${expanded ? "px-2 justify-between" : "px-0 justify-center"}`}>
+          <Logo showText={expanded} />
+          <motion.button
+            type="button"
+            onClick={() => {
+              setDesktopCollapsed((current) => !current);
+              setHoveredGroup(null);
+            }}
+            aria-label={desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!desktopCollapsed}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className={`flex shrink-0 items-center justify-center rounded-lg border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 ${
+              expanded
+                ? `h-8 w-8 ${sidebarToggleClass}`
+                : `absolute -right-3 top-1/2 h-7 w-7 -translate-y-1/2 shadow-md ${collapsedSidebarToggleClass}`
+            }`}
+          >
+            <motion.span animate={{ rotate: desktopCollapsed ? 180 : 0 }} transition={CONTENT_FADE}>
+              <ChevronLeft size={18} />
+            </motion.span>
+          </motion.button>
         </div>
-        <NavContent collapsed={false} />
-      </div>
+        <NavContent collapsed={desktopCollapsed} />
+      </motion.aside>
 
       {/* ── Mobile drawer overlay ────────────────────────────────── */}
-      {mobileOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/50 dark:bg-black/70 z-200"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            className="lg:hidden fixed inset-0 bg-slate-950/35 backdrop-blur-sm dark:bg-black/65 z-200"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={CONTENT_FADE}
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Mobile drawer ────────────────────────────────────────── */}
-      <div
-        className={`md:hidden fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800 flex flex-col z-201 transition-transform duration-300 ease-in-out ${mobileOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        style={{ isolation: "isolate" }}
+      <motion.aside
+        className={`finsuite-sidebar-shell lg:hidden fixed top-0 left-0 h-full max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-950 border-r border-gray-200 dark:border-slate-800 flex flex-col z-201 shadow-2xl shadow-slate-900/20 dark:shadow-black/50 ${mobileOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+        style={{ width: SIDEBAR_EXPANDED_WIDTH, isolation: "isolate" }}
+        initial={{ x: -SIDEBAR_EXPANDED_WIDTH, opacity: 0.92 }}
+        animate={{ x: mobileOpen ? 0 : -SIDEBAR_EXPANDED_WIDTH, opacity: mobileOpen ? 1 : 0.92 }}
+        transition={SIDEBAR_SPRING}
+        aria-label="Navigation drawer"
+        aria-hidden={!mobileOpen}
+        inert={!mobileOpen}
       >
-        <div className="shrink-0 p-4 border-b border-gray-200 dark:border-slate-800 flex justify-between items-center">
+        <div className="finsuite-sidebar-header shrink-0 p-4 border-b border-gray-200 dark:border-slate-800 h-[72px] flex justify-between items-center">
           <Logo showText />
-          <button onClick={() => setMobileOpen(false)} className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-100 ml-2">
+          <motion.button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation drawer"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className="ml-2 flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 outline-none transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-indigo-400 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+          >
             <X size={20} />
-          </button>
+          </motion.button>
         </div>
         <NavContent collapsed={false} />
-      </div>
+      </motion.aside>
 
       {/* ── Main content ─────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -389,8 +640,9 @@ export default function SideBar({ component }) {
               <div className="flex items-center gap-3">
                 {/* Hamburger — mobile only */}
                 <button
-                  className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-300"
+                  className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-300 outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                   onClick={() => setMobileOpen(true)}
+                  aria-label="Open navigation drawer"
                 >
                   <Menu size={20} />
                 </button>
@@ -404,16 +656,18 @@ export default function SideBar({ component }) {
                 </div>
               </div>
 
-              {/* Bell + Profile */}
+              {/* Bell + Theme Toggle + Profile */}
               <div className="flex items-center gap-2 md:gap-3">
                 <button
                   ref={bellRef}
                   onClick={() => setShowNotifications((p) => !p)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg relative text-gray-600 dark:text-slate-300 transition-colors"
+                  className={`p-2 rounded-lg relative text-gray-600 dark:text-slate-400 transition-colors ${headerIconHoverClass}`}
                 >
                   <Bell size={20} strokeWidth={1} />
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
                 </button>
+
+                <ThemeToggle />
 
                 <div ref={userMenuTriggerRef} className="relative">
                   <div className="flex items-center gap-2 md:gap-3 cursor-pointer" onClick={() => setShowUserMenu((p) => !p)}>

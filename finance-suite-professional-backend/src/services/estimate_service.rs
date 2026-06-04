@@ -1,3 +1,4 @@
+use chrono::Datelike;
 use std::sync::Arc;
 
 use mongodb::bson::oid::ObjectId;
@@ -45,12 +46,23 @@ impl EstimateService {
             .ok_or_else(|| anyhow::anyhow!("User not found"))
     }
 
+    fn current_financial_quarter() -> &'static str {
+        let month = chrono::Utc::now().month();
+        match month {
+            4..=6 => "Q1",
+            7..=9 => "Q2",
+            10..=12 => "Q3",
+            _ => "Q4", // Jan-Mar
+        }
+    }
+
     fn format_estimate_number(prefix: &str, seq: i32) -> String {
         let normalized_prefix = prefix.trim().trim_end_matches('-');
+        let quarter = Self::current_financial_quarter();
         if normalized_prefix.is_empty() {
-            format!("EST-{:03}", seq)
+            format!("EST-{}-{:03}", quarter, seq)
         } else {
-            format!("EST-{}-{:03}", normalized_prefix, seq)
+            format!("EST-{}-{}-{:03}", normalized_prefix, quarter, seq)
         }
     }
 

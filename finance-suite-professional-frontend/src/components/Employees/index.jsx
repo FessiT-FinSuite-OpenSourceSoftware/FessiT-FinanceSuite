@@ -18,17 +18,17 @@ const EMPLOYEE_TYPES = ['permanent', 'contract', 'intern'];
 const EMPLOYEE_STATUSES = ['full-time', 'probation', 'relieved'];
 
 const statusColor = (s) => {
-  if (s === 'full-time') return 'bg-green-100 text-green-700';
-  if (s === 'probation') return 'bg-yellow-100 text-yellow-700';
-  if (s === 'relieved') return 'bg-red-100 text-red-700';
-  return 'bg-slate-100 text-slate-600';
+  if (s === 'full-time') return 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300';
+  if (s === 'probation') return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-300';
+  if (s === 'relieved') return 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300';
+  return 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
 };
 
 const typeColor = (t) => {
-  if (t === 'permanent') return ' text-indigo-700';
-  if (t === 'contract') return 'text-orange-700';
-  if (t === 'intern') return 'text-purple-700';
-  return 'text-slate-600';
+  if (t === 'permanent') return 'text-indigo-700 dark:text-indigo-300';
+  if (t === 'contract') return 'text-orange-700 dark:text-orange-300';
+  if (t === 'intern') return 'text-purple-700 dark:text-purple-300';
+  return 'text-slate-600 dark:text-slate-300';
 };
 
 export default function EmployeeList() {
@@ -121,13 +121,13 @@ export default function EmployeeList() {
 
   return (
     <div className="w-full">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-2">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm mb-2 dark:border-slate-700 dark:bg-slate-900">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:max-w-xl">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+            <input id="employee-search" name="employee-search" type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, emp ID, email, PAN, department..."
-              className="w-full rounded-xl border border-slate-300 pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
+              className="w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 py-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-indigo-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500" />
           </div>
           <div className="flex items-center gap-2">
             <FilterSelect value={typeFilter} onChange={(value) => { setTypeFilter(value); setLocalPage(1); }}>
@@ -139,7 +139,7 @@ export default function EmployeeList() {
               {EMPLOYEE_STATUSES.map((status) => <option key={status} value={status}>{cap(status)}</option>)}
             </FilterSelect>
             <button onClick={() => dispatch(fetchEmployees(paginationOpts()))} disabled={isFetching}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
               <RefreshCcw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
               {isFetching ? 'Loading...' : 'Refresh'}
             </button>
@@ -160,17 +160,17 @@ export default function EmployeeList() {
         <div className='flex items-end justify-end'>
           <p>
             <span className="text-md font-bold text-slate-500">Total Employees: </span>
-            <span className="text-md font-bold text-blue-900-900">{total}</span>
+            <span className="text-md font-bold text-blue-900 dark:text-blue-300">{total}</span>
           </p>
         </div>
       </div>
 
       <div className="relative">
-        {isFetching && !isLoading && <div className="absolute inset-0 z-10 rounded-2xl bg-white/60 pointer-events-none" />}
+        {isFetching && !isLoading && <div className="absolute inset-0 z-10 rounded-2xl bg-white/60 pointer-events-none dark:bg-slate-950/60" />}
         <DataTable
           isLoading={isLoading} data={rows} rowKey={(e) => e.id}
-          wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-          tbodyClass="divide-y divide-slate-200"
+          wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"
+          tbodyClass="divide-y divide-slate-200 dark:divide-slate-800"
           emptyMessage="No employees found." loadingMessage="Loading employees..."
           columns={[
             // {
@@ -191,13 +191,13 @@ export default function EmployeeList() {
                       className="h-9 w-9 rounded-full object-cover border border-slate-200 cursor-pointer hover:opacity-80 shrink-0"
                     />
                   ) : (
-                    <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                      <User className="w-4 h-4 text-indigo-400" />
+                    <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 dark:bg-indigo-500/15">
+                      <User className="w-4 h-4 text-indigo-400 dark:text-indigo-300" />
                     </div>
                   )}
 
                   <div className="flex flex-col min-w-0">
-                    <div className="text-sm font-semibold text-slate-900 truncate">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                       {`${e.first_name} ${e.last_name}`.trim() || '-'}
                     </div>
 
@@ -208,11 +208,11 @@ export default function EmployeeList() {
                 </div>
               ),
             },
-            { label: 'Department', render: (e) => <span className="text-xs text-slate-700">{e.department || '-'}</span> },
+            { label: 'Department', render: (e) => <span className="text-xs text-slate-700 dark:text-slate-300">{e.department || '-'}</span> },
             { label: 'Status', stopPropagation: true, render: (e) => <span onClick={(evt) => evt.stopPropagation()} className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusColor(e.status)}`}>{cap(e.status)}</span> },
-            { label: 'Phone', render: (e) => <span className="text-xs text-slate-700">{e.primary_contact || '-'}</span> },
-            { label: 'Email', render: (e) => <span className="text-xs text-slate-700">{e.email || '-'}</span> },
-            { label: 'Manager', render: (e) => <span className="text-xs text-slate-700">{e.reporting_manager_name || '-'}</span> },
+            { label: 'Phone', render: (e) => <span className="text-xs text-slate-700 dark:text-slate-300">{e.primary_contact || '-'}</span> },
+            { label: 'Email', render: (e) => <span className="text-xs text-slate-700 dark:text-slate-300">{e.email || '-'}</span> },
+            { label: 'Manager', render: (e) => <span className="text-xs text-slate-700 dark:text-slate-300">{e.reporting_manager_name || '-'}</span> },
             {
               label: 'Actions', right: true, stopPropagation: true,
               render: (e) => (
@@ -225,7 +225,7 @@ export default function EmployeeList() {
             },
           ]}
           renderExpanded={(e) => (
-            <div className="p-4 rounded-2xl bg-[#ECEEF2]">
+            <div className="p-4 rounded-2xl bg-[#ECEEF2] dark:bg-slate-950">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {[
                   ['Personal Email', e.personal_email],
@@ -238,9 +238,9 @@ export default function EmployeeList() {
                   ['Communication Address', e.communication_address],
                   ['Permanent Address', e.permanent_address],
                 ].map(([label, val]) => (
-                  <div key={label} className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div key={label} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{val || '-'}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-200">{val || '-'}</p>
                   </div>
                 ))}
               </div>
@@ -272,27 +272,29 @@ export default function EmployeeList() {
 
       {statusModal && ReactDOM.createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="mb-1 text-base font-semibold text-gray-800">Update Employee Status</h3>
-            <p className="mb-4 text-sm text-gray-500">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-slate-900">
+            <h3 className="mb-1 text-base font-semibold text-gray-800 dark:text-slate-100">Update Employee Status</h3>
+            <p className="mb-4 text-sm text-gray-500 dark:text-slate-400">
               {`${statusModal.employee.first_name} ${statusModal.employee.last_name}`.trim() || statusModal.employee.emp_id}
             </p>
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm text-gray-600">Employee Type</label>
+                <label htmlFor="employee-type" className="mb-1 block text-sm text-gray-600 dark:text-slate-300">Employee Type</label>
                 <select
+                  id="employee-type"
+                  name="employee-type"
                   value={statusModal.employee_type}
                   onChange={(e) => setStatusModal((prev) => ({ ...prev, employee_type: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                 >
                   {EMPLOYEE_TYPES.map((type) => <option key={type} value={type}>{cap(type)}</option>)}
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm text-gray-600">Status</label>
+                <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">Status</label>
                 <div className="flex flex-wrap gap-4">
                   {EMPLOYEE_STATUSES.map((status) => (
-                    <label key={status} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                    <label key={status} className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
                       <input
                         type="radio"
                         name="employee-status"
@@ -308,19 +310,21 @@ export default function EmployeeList() {
               </div>
               {statusModal.status === 'relieved' && (
                 <div>
-                  <label className="mb-1 block text-sm text-gray-600">Exit Date *</label>
+                  <label htmlFor="employee-exit-date" className="mb-1 block text-sm text-gray-600 dark:text-slate-300">Exit Date *</label>
                   <input
+                    id="employee-exit-date"
+                    name="employee-exit-date"
                     type="date"
                     value={statusModal.exit_date}
                     onChange={(e) => setStatusModal((prev) => ({ ...prev, exit_date: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                   />
                   {!statusModal.exit_date && <p className="mt-1 text-xs text-red-600">Exit date is required for relieved employees.</p>}
                 </div>
               )}
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={closeStatusModal} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={closeStatusModal} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
               <button
                 onClick={handleStatusUpdate}
                 disabled={statusModal.status === 'relieved' && !statusModal.exit_date}

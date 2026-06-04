@@ -68,7 +68,18 @@ const formatDate = (v) => {
   return isNaN(d.getTime()) ? v : d.toLocaleDateString("en-IN");
 };
 
-export default function PtChallansTab() {
+function inSelectedMonths(dateStr, monthSet) {
+  if (!dateStr) return false;
+  const raw = String(dateStr).trim();
+  if (/^\d{4}-\d{2}/.test(raw)) return monthSet.has(raw.slice(0, 7));
+  if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) return monthSet.has(`${raw.slice(6,10)}-${raw.slice(3,5)}`);
+  if (/^\d{4}-\d{2}$/.test(raw)) return monthSet.has(raw);
+  const d = new Date(raw);
+  if (!isNaN(d)) return monthSet.has(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+  return false;
+}
+
+export default function PtChallansTab({ selectedMonths }) {
   const dispatch = useDispatch();
   const { ptChallanData, isLoading } = useSelector(ptChallanSelector);
 
@@ -248,9 +259,15 @@ export default function PtChallansTab() {
     setDeleteModal(null);
   };
 
+  const monthSet = useMemo(() =>
+    new Set((selectedMonths || []).map(({ year, month }) => `${year}-${String(month).padStart(2, "0")}`)),
+    [selectedMonths]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (Array.isArray(ptChallanData) ? ptChallanData : []).filter((row) => {
+      if (monthSet.size > 0 && !inSelectedMonths(row.payment_date, monthSet)) return false;
       const matchesSearch = !q ||
         (row.challan_no || "").toLowerCase().includes(q) ||
         (row.section || "").toLowerCase().includes(q) ||
@@ -264,7 +281,7 @@ export default function PtChallansTab() {
           (!periodRange.to || row.period <= periodRange.to));
       return matchesSearch && matchesSection && matchesPeriod;
     });
-  }, [ptChallanData, search, sectionFilter, periodRange]);
+  }, [ptChallanData, search, sectionFilter, periodRange, monthSet]);
 
   const totalAmount = filtered.reduce((sum, row) => sum + (parseFloat(row.amount_paid) || 0), 0);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -284,11 +301,11 @@ export default function PtChallansTab() {
             <option key={sec} value={sec}>{sec}</option>
           ))}
         </FilterSelect> */}
-        <MonthRangeSelector
+        {/* <MonthRangeSelector
           from={periodRange.from}
           to={periodRange.to}
           onChange={(next) => { setPeriodRange(next); setCurrentPage(1); }}
-        />
+        /> */}
         <CreateButton onClick={openCreate} label="Add Challan" icon={Plus} />
       </TabActionBar>
 
@@ -426,7 +443,7 @@ export default function PtChallansTab() {
           <FormField label="Challan File *" colSpan>
             <div className="flex items-center gap-3">
               <input type="file" id="ptChallanFileUpload" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" onChange={handleFileChange} />
-              <label htmlFor="ptChallanFileUpload" className="px-4 py-2 bg-gray-100 border border-gray-300 rounded cursor-pointer hover:bg-gray-200 text-sm">
+              <label htmlFor="ptChallanFileUpload" className="px-4 py-2 bg-gray-100 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-600 text-sm text-gray-700 dark:text-slate-200">
                 {form.file || docFile ? "Change File" : "Choose File"}
               </label>
               <span className="text-sm text-gray-500 truncate max-w-[200px]">
@@ -447,15 +464,15 @@ export default function PtChallansTab() {
 
       {previewModal.open && ReactDOM.createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/75 p-4" onClick={closePreview}>
-          <div className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h3 className="text-lg font-semibold text-slate-900 truncate max-w-[80%]">{previewModal.title}</h3>
+          <div className="max-w-5xl w-full rounded-2xl bg-white dark:bg-slate-900 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[80%]">{previewModal.title}</h3>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={handlePreviewDownload} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" title="Download"><Download className="h-5 w-5" /></button>
-                <button type="button" onClick={closePreview} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+                <button type="button" onClick={handlePreviewDownload} className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" title="Download"><Download className="h-5 w-5" /></button>
+                <button type="button" onClick={closePreview} className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button>
               </div>
             </div>
-            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4">
+            <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 dark:bg-slate-800 p-4">
               {previewModal.isPdf
                 ? <iframe src={`${previewModal.src}#toolbar=0`} title={previewModal.title} className="w-full rounded-xl" style={{ height: "75vh" }} />
                 : <img src={previewModal.src} alt={previewModal.title} className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain" />

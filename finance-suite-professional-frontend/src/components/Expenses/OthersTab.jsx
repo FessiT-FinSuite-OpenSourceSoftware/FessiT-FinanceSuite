@@ -8,7 +8,8 @@ import { useDispatch, useSelector } from "react-redux";
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 import { fetchGeneralExpenses, createGeneralExpense, updateGeneralExpense, deleteGeneralExpense, uploadGeneralExpenseFile, generalExpenseSelector } from "../../ReduxApi/generalExpense";
 import { authSelector } from "../../ReduxApi/auth";
-import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal, FilterChips } from "../../shared/ui";
+import MonthRangeSelector from "../../shared/MonthRangeSelector";
 import axiosInstance from "../../utils/axiosInstance";
 import { KeyUri } from "../../shared/key";
 import { toast } from "react-toastify";
@@ -47,6 +48,9 @@ export default function OthersTab() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
@@ -158,12 +162,52 @@ export default function OthersTab() {
     } catch { toast.error("Unable to download document"); }
   };
 
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+  const chips = [
+    categoryFilter !== "All" && { key: "category", label: `Category: ${categoryFilter}` },
+    statusFilter !== "All" && { key: "status", label: `Status: ${statusFilter}` },
+    dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && customDateRange.from && customDateRange.to ? `${fmtYM(customDateRange.from)} → ${fmtYM(customDateRange.to)}` : dateFilterLabel[dateFilter] },
+  ].filter(Boolean);
+  const removeChip = (key) => {
+    if (key === "category") setCategoryFilter("All");
+    if (key === "status") setStatusFilter("All");
+    if (key === "date") { setDateFilter("all"); setCustomDateRange({ from: "", to: "" }); }
+    setCurrentPage(1);
+  };
+
+  const getDateRange = (period) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let from = new Date(today), to = new Date(today);
+    switch (period) {
+      case "this_month":    { from.setDate(1); break; }
+      case "last_month":    { from.setMonth(from.getMonth() - 1); from.setDate(1); to.setDate(0); break; }
+      case "last_3_months": { from.setMonth(from.getMonth() - 2); from.setDate(1); break; }
+      case "last_6_months": { from.setMonth(from.getMonth() - 5); from.setDate(1); break; }
+      default: return null;
+    }
+    return { from, to };
+  };
+  const parseMonthRange = (f, t) => {
+    if (!f || !t) return null;
+    const from = new Date(f + "-01");
+    const to = new Date(t + "-01"); to.setMonth(to.getMonth() + 1); to.setDate(0);
+    return { from, to };
+  };
+  const dateRangeObj = dateFilter === "custom" ? parseMonthRange(customDateRange.from, customDateRange.to) : getDateRange(dateFilter);
+
   const filtered = (generalExpenseData || []).filter((r) => {
     const q = search.toLowerCase();
     const matchSearch = !search || r.title?.toLowerCase().includes(q) || r.paid_by?.toLowerCase().includes(q);
     const matchCat = categoryFilter === "All" || r.category === categoryFilter;
     const matchStatus = statusFilter === "All" || r.status === statusFilter;
-    return matchSearch && matchCat && matchStatus;
+    let matchDate = true;
+    if (dateRangeObj && r.date) {
+      const d = new Date(r.date);
+      if (!isNaN(d.getTime())) { d.setHours(0,0,0,0); matchDate = d >= dateRangeObj.from && d <= dateRangeObj.to; }
+    }
+    return matchSearch && matchCat && matchStatus && matchDate;
   });
 
   const totalAmount = filtered.reduce((s, r) => s + (parseFloat(r.subTotal) || 0), 0);
@@ -227,8 +271,25 @@ export default function OthersTab() {
           <option value="Approved">Approved</option>
           <option value="Rejected">Rejected</option>
         </FilterSelect>
+        <div className="relative">
+          <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setCurrentPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
+            <option value="all">All Time</option>
+            <option value="this_month">Current Month</option>
+            <option value="last_month">Previous Month</option>
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="custom">Custom</option>
+          </FilterSelect>
+          {dateFilter === "custom" && dateDropdownOpen && (
+            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+              <MonthRangeSelector from={customDateRange.from} to={customDateRange.to} onChange={(r) => { setCustomDateRange(r); setCurrentPage(1); }} onComplete={() => setDateDropdownOpen(false)} />
+            </div>
+          )}
+        </div>
         <CreateButton onClick={openCreate} label="Create" icon={Plus} />
       </TabActionBar>
+
+      <FilterChips chips={chips} onRemove={removeChip} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <StatCard label="Total Records" value={filtered.length} />

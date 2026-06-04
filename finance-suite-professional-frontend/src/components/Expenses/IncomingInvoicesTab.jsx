@@ -7,7 +7,8 @@ import { toast } from "react-toastify";
 import { updateIncomingInvoice, deleteIncomingInvoice, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
-import { StatCard, TabActionBar, FilterSelect, DataTable, StatusBadge, RowActions, Pagination, ConfirmModal } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, DataTable, StatusBadge, RowActions, Pagination, ConfirmModal, FilterChips } from "../../shared/ui";
+import MonthRangeSelector from "../../shared/MonthRangeSelector";
 
 const getIncomingId = (inv) => {
   if (typeof inv.id === "string") return inv.id;
@@ -64,6 +65,9 @@ export default function IncomingInvoicesTab() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
@@ -94,12 +98,50 @@ export default function IncomingInvoicesTab() {
     setStatusPopup(null);
   };
 
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+  const chips = [
+    statusFilter !== "All" && { key: "status", label: `Status: ${statusFilter === "Unpaid" ? "Not Yet Paid" : statusFilter}` },
+    dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && customDateRange.from && customDateRange.to ? `${fmtYM(customDateRange.from)} → ${fmtYM(customDateRange.to)}` : dateFilterLabel[dateFilter] },
+  ].filter(Boolean);
+  const removeChip = (key) => {
+    if (key === "status") setStatusFilter("All");
+    if (key === "date") { setDateFilter("all"); setCustomDateRange({ from: "", to: "" }); }
+    setPage(1);
+  };
+
+  const getDateRange = (period) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let from = new Date(today), to = new Date(today);
+    switch (period) {
+      case "this_month":    { from.setDate(1); break; }
+      case "last_month":    { from.setMonth(from.getMonth() - 1); from.setDate(1); to.setDate(0); break; }
+      case "last_3_months": { from.setMonth(from.getMonth() - 2); from.setDate(1); break; }
+      case "last_6_months": { from.setMonth(from.getMonth() - 5); from.setDate(1); break; }
+      default: return null;
+    }
+    return { from, to };
+  };
+  const parseMonthRange = (f, t) => {
+    if (!f || !t) return null;
+    const from = new Date(f + "-01");
+    const to = new Date(t + "-01"); to.setMonth(to.getMonth() + 1); to.setDate(0);
+    return { from, to };
+  };
+  const dateRangeObj = dateFilter === "custom" ? parseMonthRange(customDateRange.from, customDateRange.to) : getDateRange(dateFilter);
+
   const filtered = invoices.filter((b) => {
     const matchSearch =
       (b.invoice_number || "").toLowerCase().includes(search.toLowerCase()) ||
       (b.vendor_name || "").toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "All" || b.status === statusFilter;
-    return matchSearch && matchStatus;
+    let matchDate = true;
+    if (dateRangeObj) {
+      const d = b.invoice_date ? new Date(b.invoice_date) : null;
+      if (d && !isNaN(d.getTime())) { d.setHours(0,0,0,0); matchDate = d >= dateRangeObj.from && d <= dateRangeObj.to; }
+    }
+    return matchSearch && matchStatus && matchDate;
   });
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
@@ -206,6 +248,21 @@ export default function IncomingInvoicesTab() {
           <option value="Unpaid">Not Yet Paid</option>
           <option value="Overdue">Overdue</option>
         </FilterSelect>
+        <div className="relative">
+          <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
+            <option value="all">All Time</option>
+            <option value="this_month">Current Month</option>
+            <option value="last_month">Previous Month</option>
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="custom">Custom</option>
+          </FilterSelect>
+          {dateFilter === "custom" && dateDropdownOpen && (
+            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+              <MonthRangeSelector from={customDateRange.from} to={customDateRange.to} onChange={(r) => { setCustomDateRange(r); setPage(1); }} onComplete={() => setDateDropdownOpen(false)} />
+            </div>
+          )}
+        </div>
         {hasWrite && (
           <div className="relative">
             <button onClick={() => setShowTypeMenu((v) => !v)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm">
@@ -220,6 +277,8 @@ export default function IncomingInvoicesTab() {
           </div>
         )}
       </TabActionBar>
+
+      <FilterChips chips={chips} onRemove={removeChip} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total Records" value={invoices.length} />

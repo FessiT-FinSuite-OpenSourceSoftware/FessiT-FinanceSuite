@@ -72,9 +72,9 @@ impl InvoiceService {
     pub async fn peek_next_invoice_number(&self, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<String> {
         let org = self.org_repo.get_organisation_by_id(&org_id.to_string()).await
             .map_err(|e| anyhow::anyhow!("Failed to get organisation: {}", e))?;
-        let next_sequence = self.org_repo.peek_next_invoice_sequence_by_id(org_id).await
+        let (next_sequence, year) = self.org_repo.peek_next_invoice_sequence_by_id(org_id).await
             .map_err(|e| anyhow::anyhow!("Failed to peek next sequence: {}", e))?;
-        Ok(format!("{}-{}-{:03}", org.invoice_prefix, org.starting_invoice_no, next_sequence))
+        Ok(format!("{}-{}-{:03}", org.invoice_prefix, year, next_sequence))
     }
 
     pub async fn create_invoice(&self, mut invoice: Invoice, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Invoice> {

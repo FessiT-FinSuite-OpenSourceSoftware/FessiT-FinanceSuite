@@ -12,6 +12,16 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Finance-suite-professional</title>
+    
+    <script>
+      // Prevent theme flash by applying saved preference immediately
+      const savedTheme = localStorage.getItem('theme-preference');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

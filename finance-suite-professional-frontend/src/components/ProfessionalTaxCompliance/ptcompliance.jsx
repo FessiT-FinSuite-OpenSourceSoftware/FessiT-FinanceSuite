@@ -7,7 +7,7 @@ import PtChallansTab from "./ptChallans";
 import PeriodSelector from "../../shared/PeriodSelector";
 
 const StatCardSkeleton = () => (
-  <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm">
     <div className="skeleton-shimmer h-2.5 w-24 mb-3" />
     <div className="skeleton-shimmer h-7 w-28 mb-2" />
     <div className="skeleton-shimmer h-2.5 w-36" />
@@ -101,9 +101,9 @@ export default function ProfessionalTaxCompliance() {
 
   return (
     <>
-      <div className="bg-white rounded-lg border border-gray-200 shadow-lg p-3 pb-6">
+      <div className="compliance-surface bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700 shadow-lg p-3 pb-6">
         {/* Tabs */}
-        <div className="flex items-center justify-between border-b border-gray-200 mb-3">
+        <div className="compliance-tabs flex items-center justify-between border-b border-gray-200 dark:border-slate-700 mb-3">
           <div className="flex">
             {[{ key: "deductions", label: "Deductions" }, { key: "challans", label: "Professional Tax Challans" }].map((t) => (
               <button
@@ -112,7 +112,7 @@ export default function ProfessionalTaxCompliance() {
                 className={`px-5 py-2 text-md font-medium transition-colors ${
                   activeTab === t.key
                     ? "border-b-2 border-blue-600 text-blue-600"
-                    : "text-gray-500 hover:text-gray-700"
+                    : "text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                 }`}
               >
                 {t.label}
@@ -137,28 +137,28 @@ export default function ProfessionalTaxCompliance() {
             </>
           ) : (
             <>
-              <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-blue-300 transition-all">
+              <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-blue-300 transition-all">
                 <div className="relative z-10">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Total PT Deducted</p>
-                  <h3 className="text-2xl font-black text-slate-900">{formatCurrency(totalPtDeducted)}</h3>
+                  <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Total PT Deducted</p>
+                  <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(totalPtDeducted)}</h3>
                 </div>
               </div>
-              <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
+              <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
                 <div className="relative z-10">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Total PT Deposited</p>
-                  <h3 className="text-2xl font-black text-slate-900">{formatCurrency(totalPtDeposited)}</h3>
+                  <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Total PT Deposited</p>
+                  <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(totalPtDeposited)}</h3>
                 </div>
               </div>
-              <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
+              <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
                 <div className="relative z-10">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Pending Deposit</p>
-                  <h3 className="text-2xl font-black text-slate-900">{formatCurrency(pendingDeposit)}</h3>
+                  <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Pending Deposit</p>
+                  <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(pendingDeposit)}</h3>
                 </div>
               </div>
-              <div className="relative overflow-hidden group bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:border-purple-300 transition-all">
+              <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-purple-300 transition-all">
                 <div className="relative z-10">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Employees Covered</p>
-                  <h3 className="text-2xl font-black text-slate-900">{employeeCount}</h3>
+                  <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Employees Covered</p>
+                  <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{employeeCount}</h3>
                 </div>
               </div>
             </>
@@ -168,7 +168,7 @@ export default function ProfessionalTaxCompliance() {
         {activeTab === "deductions" && (
           <PTDeductions deductions={dynamicDeductions} isLoading={isLoading} selectedMonths={selectedMonths} />
         )}
-        {activeTab === "challans" && <PtChallansTab />}
+        {activeTab === "challans" && <PtChallansTab selectedMonths={selectedMonths} />}
       </div>
     </>
   );

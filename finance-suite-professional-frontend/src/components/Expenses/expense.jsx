@@ -276,7 +276,7 @@ export default function Expense() {
     <>
       {/* Action Bar */}
       <div
-        className="sticky top-[88px]
+        className="sticky top-18
           w-full sm:w-[90%] md:w-full lg:w-full 
           z-100 rounded-lg bg-white border-g border-gray-300 py-4 -mt-15 shadow-sm"
       >

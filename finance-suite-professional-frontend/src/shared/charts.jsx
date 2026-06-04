@@ -12,6 +12,7 @@ const HBAR_COLORS   = ['#3b82f6', '#6366f1', '#14b8a6', '#f97316', '#a855f7']
 // Increased height to avoid compressed charts; donut width slightly larger.
 const CHART_HEIGHT_CLASS = 'h-64'
 const DONUT_SIZE_CLASS = 'w-52'
+const CHART_CARD_CLASS = 'rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-700/60 dark:bg-slate-900 dark:shadow-none'
 
 /**
  * DonutChart — pie/donut with inline side legend
@@ -30,19 +31,19 @@ export function DonutChart({
   tooltipLabel = 'Count',
 }) {
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${CHART_HEIGHT_CLASS} flex flex-col`}>
+    <div className={`${CHART_CARD_CLASS} p-4 ${CHART_HEIGHT_CLASS} flex min-w-0 flex-col`}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-slate-900">{title}</div>
-          {subtitle && <div className="text-xs text-slate-500">{subtitle}</div>}
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+          {subtitle && <div className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
         </div>
-        {badge && <div className="text-sm font-semibold text-slate-700">{badge}</div>}
+        {badge && <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">{badge}</div>}
       </div>
       <div className="flex items-center gap-3 flex-1">
         <div className={`${DONUT_SIZE_CLASS} h-full flex-none`}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" debounce={100}>
               <PieChart>
-                <Pie data={data} dataKey="value" nameKey="name" innerRadius={40} outerRadius={80} paddingAngle={4}>
+                <Pie data={data} dataKey="value" nameKey="name" innerRadius={40} outerRadius={80} paddingAngle={4} isAnimationActive={false}>
                 {data.map((_, i) => (
                   <Cell key={i} fill={colors[i % colors.length]} />
                 ))}
@@ -51,11 +52,11 @@ export function DonutChart({
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex-1 flex flex-col gap-2 text-xs text-slate-600 min-w-0 overflow-auto">
+        <div className="flex-1 flex flex-col gap-2 text-xs text-slate-600 dark:text-slate-400 min-w-0 overflow-auto">
           {data.map((item, i) => (
             <div key={item.name} className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
-              <span className="truncate">{item.name}: <span className="font-semibold text-slate-800">{item.value}</span></span>
+              <span className="truncate">{item.name}: <span className="font-semibold text-slate-800 dark:text-slate-200">{item.value}</span></span>
             </div>
           ))}
         </div>
@@ -82,19 +83,19 @@ export function BarChartCard({
   yTickFormatter = (v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v,
 }) {
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${CHART_HEIGHT_CLASS} flex flex-col`}>
+    <div className={`${CHART_CARD_CLASS} p-4 ${CHART_HEIGHT_CLASS} flex min-w-0 flex-col`}>
       <div className="mb-3">
-        <div className="text-sm font-semibold text-slate-900">{title}</div>
-        {subtitle && <div className="text-xs text-slate-500">{subtitle}</div>}
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        {subtitle && <div className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
       </div>
       <div className="flex-1">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" debounce={100}>
           <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" tick={false} height={0} />
             <YAxis tickFormatter={yTickFormatter} tick={{ fontSize: 10 }} width={36} />
             <Tooltip formatter={tooltipFormatter} />
-            <Bar dataKey="value" maxBarSize={56} radius={[6, 6, 0, 0]}>
+            <Bar dataKey="value" maxBarSize={56} radius={[6, 6, 0, 0]} isAnimationActive={false}>
               {data.map((_, i) => (
                 <Cell key={i} fill={colors[i % colors.length]} />
               ))}
@@ -102,7 +103,7 @@ export function BarChartCard({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
+      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
         {data.map((item, i) => (
           <div key={item.name} className="flex items-center gap-1.5" title={item.name} aria-label={item.name}>
             <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
@@ -185,13 +186,13 @@ export function HorizontalBarChart({
   };
 
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white p-2 shadow-sm ${CHART_HEIGHT_CLASS} flex flex-col`}>
+    <div className={`${CHART_CARD_CLASS} p-2 ${CHART_HEIGHT_CLASS} flex min-w-0 flex-col`}>
       <div className="mb-3">
-        <div className="text-sm font-semibold text-slate-900">{title}</div>
-        {subtitle && <div className="text-xs text-slate-500">{subtitle}</div>}
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        {subtitle && <div className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
       </div>
       <div className="flex-1">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" debounce={100}>
           <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
             <XAxis type="number" tickFormatter={xTickFormatter} tick={{ fontSize: 10 }} />
@@ -203,7 +204,7 @@ export function HorizontalBarChart({
               interval={0}
             />
             <Tooltip content={CustomTooltip} cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
-            <Bar dataKey="value" maxBarSize={22} radius={[0, 6, 6, 0]}>
+            <Bar dataKey="value" maxBarSize={22} radius={[0, 6, 6, 0]} isAnimationActive={false}>
               {data.map((_, i) => (
                 <Cell key={i} fill={colors[i % colors.length]} />
               ))}

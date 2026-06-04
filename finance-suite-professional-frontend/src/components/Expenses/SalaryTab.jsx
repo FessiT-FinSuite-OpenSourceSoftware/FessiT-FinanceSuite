@@ -6,7 +6,7 @@ import { fetchSalaries, createSalary, updateSalary, deleteSalary, salarySelector
 import { fetchEmployees, employeeSelector } from "../../ReduxApi/employee";
 import { authSelector } from "../../ReduxApi/auth";
 import { orgamisationSelector, fetchOrganisationByEmail } from "../../ReduxApi/organisation";
-import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, StatusBadge, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal, TdsSectionSelect, ComboField, InfoCard } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, StatusBadge, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal, TdsSectionSelect, ComboField, InfoCard, FilterChips } from "../../shared/ui";
 import MonthRangeSelector from "../../shared/MonthRangeSelector";
 import { TDS_FLAT_LIST } from "../../utils/tdsData";
 
@@ -157,11 +157,27 @@ export default function SalaryTab() {
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [dateFilter, setDateFilter] = useState("all");
   const [periodRange, setPeriodRange] = useState({ from: "", to: "" });
   const [statusPopup, setStatusPopup] = useState(null);
   const [deleteModal, setDeleteModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (dateFilter === "custom" || dateFilter === "all") return;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const toYM = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+    let from = new Date(now.getFullYear(), now.getMonth(), 1);
+    let to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    if (dateFilter === "last_month") { from = new Date(now.getFullYear(), now.getMonth() - 1, 1); to = new Date(now.getFullYear(), now.getMonth(), 0); }
+    else if (dateFilter === "last_3_months") { from = new Date(now.getFullYear(), now.getMonth() - 2, 1); }
+    else if (dateFilter === "last_6_months") { from = new Date(now.getFullYear(), now.getMonth() - 5, 1); }
+    setPeriodRange({ from: toYM(from), to: toYM(to) });
+  }, [dateFilter]);
 
   useEffect(() => {
     dispatch(fetchSalaries());
@@ -210,6 +226,21 @@ export default function SalaryTab() {
     if (!deleteModal?.id) return;
     dispatch(deleteSalary(deleteModal.id));
     setDeleteModal(null);
+  };
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+  const chips = [
+    deptFilter !== "All" && { key: "dept", label: `Dept: ${deptFilter}` },
+    statusFilter !== "All" && { key: "status", label: `Status: ${statusLabel(statusFilter)}` },
+    dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && periodRange.from && periodRange.to ? `${fmtYM(periodRange.from)} → ${fmtYM(periodRange.to)}` : dateFilterLabel[dateFilter] },
+  ].filter(Boolean);
+  const removeChip = (key) => {
+    if (key === "dept") setDeptFilter("All");
+    if (key === "status") setStatusFilter("All");
+    if (key === "date") { setDateFilter("all"); setPeriodRange({ from: "", to: "" }); }
+    setCurrentPage(1);
   };
 
   const departments = ["All", ...Array.from(new Set((salaryData || []).map((r) => r.department).filter(Boolean)))];
@@ -300,13 +331,25 @@ export default function SalaryTab() {
           <option value="OnHold">On Hold</option>
           <option value="Settlement">Settlement</option>
         </FilterSelect>
-        <MonthRangeSelector
-          from={periodRange.from}
-          to={periodRange.to}
-          onChange={setPeriodRange}
-        />
+        <div className="relative">
+          <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
+            <option value="all">All Time</option>
+            <option value="this_month">Current Month</option>
+            <option value="last_month">Previous Month</option>
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="custom">Custom</option>
+          </FilterSelect>
+          {dateFilter === "custom" && dateDropdownOpen && (
+            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+              <MonthRangeSelector from={periodRange.from} to={periodRange.to} onChange={setPeriodRange} onComplete={() => setDateDropdownOpen(false)} />
+            </div>
+          )}
+        </div>
         <CreateButton onClick={openCreate} label="Create" icon={Plus} />
       </TabActionBar>
+
+      <FilterChips chips={chips} onRemove={removeChip} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total Records" value={filtered.length} />

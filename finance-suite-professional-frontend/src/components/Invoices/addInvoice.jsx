@@ -722,7 +722,7 @@ export default function AddInvoice() {
   return (
     <div className="relative">
       {/* Top bar */}
-      <div className="sticky top-[30px] w-full sm:w-[90%] md:w-full lg:w-full z-100 rounded-lg bg-white border-g border-gray-300 py-4 shadow-sm">
+      <div className="sticky top-18 w-full sm:w-[90%] md:w-full lg:w-full z-100 rounded-lg bg-white border-g border-gray-300 py-4 shadow-sm">
         <div className="">
           <div className="flex justify-between">
             <div className="px-4 py-2 flex items-center gap-3">
@@ -747,23 +747,23 @@ export default function AddInvoice() {
             </div>
             <div className="flex flex-wrap justify-end mr-5 gap-2">
               <button
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600 dark:hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400"
                 onClick={invoiceDataSubmit}
               >
                 Save
               </button>
               <button 
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600 dark:hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400"
               >
                 Download
               </button>
               <button 
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600 dark:hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400"
               >
                 Print
               </button>
               <button 
-              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600"
+              className="px-6 py-2 cursor-pointer text-black rounded-full border border-gray-300 w-full sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600 dark:hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400"
               >
                 Email
               </button>

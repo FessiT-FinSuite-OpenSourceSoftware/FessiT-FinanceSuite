@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { CirclePlus, CircleMinus, ArrowLeft, Eye, X } from "lucide-react";
+import { CirclePlus, CircleMinus, ArrowLeft, Eye, X, ScanLine } from "lucide-react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 import { fetchIncomingInvoices } from "../../ReduxApi/incomingInvoice";
@@ -10,6 +10,7 @@ import { fetchCustomerData, customerSelector, updateCustomerData } from "../../R
 import PlaceOfSupplyField from "./PlaceOfSupplyField";
 import { TDS_FLAT_LIST } from "../../utils/tdsData";
 import { TdsSectionSelect } from "../../shared/ui";
+import { runInvoiceOCR } from "../../utils/invoiceOCR";
 
 const emptyItem = () => ({
   description: "",
@@ -59,9 +60,9 @@ export default function AddIncomingInvoice() {
   // All customers for search
   const allCustomers = Array.isArray(customersData) ? customersData : [];
 
-  const [vendorSearch, setVendorSearch]     = useState("");
+  const [vendorSearch, setVendorSearch] = useState("");
   const [showVendorDrop, setShowVendorDrop] = useState(false);
-  const [makingVendor, setMakingVendor]     = useState(null); // id being updated
+  const [makingVendor, setMakingVendor] = useState(null); // id being updated
 
   useEffect(() => { dispatch(fetchCustomerData()); }, [dispatch]);
 
@@ -82,8 +83,8 @@ export default function AddIncomingInvoice() {
 
   const handleVendorSelect = (c) => {
     const address = c.addresses?.find((a) => a.value)?.value || c.addresses?.[0]?.value || "";
-    setField("vendor_name",    c.companyName || c.customerName || "");
-    setField("vendor_gstin",   c.gstIN || "");
+    setField("vendor_name", c.companyName || c.customerName || "");
+    setField("vendor_gstin", c.gstIN || "");
     setField("vendor_address", address);
     setVendorSearch(c.companyName || c.customerName || "");
     setShowVendorDrop(false);
@@ -120,6 +121,62 @@ export default function AddIncomingInvoice() {
   const [previewModal, setPreviewModal] = useState({ open: false, src: "", title: "", isPdf: false });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [ocrScanning, setOcrScanning] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [ocrWarning, setOcrWarning] = useState(false);
+  const ocrInputRef = useRef(null);
+
+  const handleScanInvoice = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setOcrScanning(true);
+    setOcrProgress(0);
+    setOcrWarning(false);
+    try {
+      const extracted = await runInvoiceOCR(file, setOcrProgress);
+
+      if (extracted.invoiceNumber) setField("invoice_number", extracted.invoiceNumber);
+      if (extracted.invoiceDate) setField("invoice_date", extracted.invoiceDate);
+      if (extracted.dueDate) setField("due_date", extracted.dueDate);
+      if (extracted.placeOfSupply) setField("place_of_supply", extracted.placeOfSupply);
+
+      if (extracted.lineItems?.length) {
+        const mappedItems = extracted.lineItems.map((it) => ({
+          description: it.description || "",
+          hsn_code: it.hsn_code || "",
+          quantity: it.quantity || "",
+          rate: it.rate || "",
+          cgstPercent: it.cgstPercent || "",
+          sgstPercent: it.sgstPercent || "",
+          igstPercent: it.igstPercent || "",
+          itemTotal: it.amount || "",
+        }));
+        recalc(mappedItems);
+      }
+
+      const fieldsFound = [
+        extracted.invoiceNumber && "Invoice Number",
+        extracted.invoiceDate && "Invoice Date",
+        extracted.dueDate && "Due Date",
+        extracted.placeOfSupply && "Place of Supply",
+        extracted.lineItems?.length && `${extracted.lineItems.length} Line Item(s)`,
+      ].filter(Boolean);
+
+      if (fieldsFound.length > 0) {
+        setOcrWarning(true);
+        toast.success(`Extracted: ${fieldsFound.join(", ")}`);
+      } else {
+        toast.warning("Unable to extract invoice details.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || "OCR failed. Please try again.");
+    } finally {
+      setOcrScanning(false);
+      setOcrProgress(0);
+    }
+  };
 
   const setField = (field, value) => {
     setForm((f) => {
@@ -251,7 +308,7 @@ export default function AddIncomingInvoice() {
   return (
     <div className="relative">
       {/* Sticky Top Bar */}
-      <div className="sticky top-[88px] w-full z-100 rounded-lg bg-white border border-gray-300 py-4 shadow-sm">
+      <div className="sticky top-18 w-full z-100 rounded-lg bg-white border border-gray-300 py-4 shadow-sm">
         <div className="flex justify-between items-center">
           <div className="px-4 py-2 flex items-center gap-3">
             <ArrowLeft strokeWidth={1} onClick={() => nav(-1)} className="cursor-pointer" />
@@ -261,6 +318,27 @@ export default function AddIncomingInvoice() {
             </span>
           </div>
           <div className="flex flex-wrap justify-end mr-5 gap-2">
+            {/* Hidden OCR file input */}
+            <input
+              ref={ocrInputRef}
+              type="file"
+              accept="image/jpg,image/jpeg,image/png,image/webp,application/pdf,.pdf"
+              className="hidden"
+              onChange={handleScanInvoice}
+            />
+            <button
+              type="button"
+              onClick={() => ocrInputRef.current?.click()}
+              disabled={ocrScanning}
+              className="px-4 py-2 cursor-pointer text-indigo-700 rounded-full border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-sm flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            >
+              <ScanLine className="w-4 h-4" />
+              {ocrScanning ? (
+                <span>Scanning invoice{ocrProgress > 0 ? ` ${ocrProgress}%` : "..."}</span>
+              ) : (
+                <span>Scan Invoice</span>
+              )}
+            </button>
             <button
               onClick={handleSubmit}
               disabled={saving}
@@ -273,8 +351,17 @@ export default function AddIncomingInvoice() {
       </div>
 
       {/* Form Body */}
-      <div className="bg-white rounded-lg shadow-lg p-8 pb-6 mt-5 space-y-8">
+      <div className="bg-white rounded-lg shadow-lg p-8 pb-6 space-y-8">
 
+        {ocrWarning && (
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 text-sm text-amber-800">
+            <span className="text-amber-500 mt-0.5">⚠️</span>
+            <span>Invoice details were auto-filled from the scanned file. Please <strong>review all fields carefully</strong></span>
+            <button type="button" onClick={() => setOcrWarning(false)} className="ml-auto shrink-0 text-amber-500 hover:text-amber-700">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {/* Vendor Details */}
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">Vendor Details</h2>
@@ -631,7 +718,7 @@ export default function AddIncomingInvoice() {
       </div>
 
       {previewModal.open && ReactDOM.createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 p-4" onClick={() => setPreviewModal({ open: false, src: "", title: "", isPdf: false })}>
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/75 p-4" onClick={() => setPreviewModal({ open: false, src: "", title: "", isPdf: false })}>
           <div className="max-w-5xl w-full rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <h3 className="text-base font-semibold text-slate-900 truncate max-w-xs">{previewModal.title}</h3>

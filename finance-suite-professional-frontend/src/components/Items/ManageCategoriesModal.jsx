@@ -54,14 +54,14 @@ export default function ManageCategoriesModal({ onClose }) {
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md flex flex-col h-[60vh] rounded-2xl bg-white shadow-2xl">
+      <div className="w-full max-w-md flex flex-col h-[60vh] rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
           <div className="flex items-center gap-2">
-            <Tag className="w-4 h-4 text-slate-500" />
-            <h3 className="text-base font-semibold text-slate-900">Manage Categories</h3>
+            <Tag className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Manage Categories</h3>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -76,7 +76,7 @@ export default function ManageCategoriesModal({ onClose }) {
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                 placeholder="New category name..."
-                className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
               />
               <button
                 onClick={handleAdd}
@@ -102,7 +102,7 @@ export default function ManageCategoriesModal({ onClose }) {
             const isConfirmingDelete = deleteConfirmId === id
 
             return (
-              <div key={id} className="flex items-center gap-2 rounded-xl  py-1 px-0.5 hover:bg-slate-50 group">
+              <div key={id} className="flex items-center gap-2 rounded-xl  py-1 px-0.5 hover:bg-slate-50 dark:hover:bg-slate-800 group">
                 {isEditing ? (
                   <>
                     <input
@@ -115,7 +115,7 @@ export default function ManageCategoriesModal({ onClose }) {
                     <button onClick={() => handleUpdate(id)} className="text-green-600 hover:text-green-700 p-1">
                       <Check className="w-4 h-4" />
                     </button>
-                    <button onClick={cancelEdit} className="text-slate-400 hover:text-slate-600 p-1">
+                    <button onClick={cancelEdit} className="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 p-1">
                       <X className="w-4 h-4" />
                     </button>
                   </>
@@ -125,13 +125,13 @@ export default function ManageCategoriesModal({ onClose }) {
                     <button onClick={() => handleDelete(id)} className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg px-2 py-1">
                       Yes
                     </button>
-                    <button onClick={() => setDeleteConfirmId(null)} className="text-xs font-semibold text-slate-600 border border-slate-300 rounded-lg px-2 py-1 hover:bg-slate-50">
+                    <button onClick={() => setDeleteConfirmId(null)} className="text-xs font-semibold text-slate-600 dark:text-slate-400 border border-slate-300 rounded-lg px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800">
                       No
                     </button>
                   </>
                 ) : (
                   <>
-                    <span className="flex-1 text-sm text-slate-700">{name}</span>
+                    <span className="flex-1 text-sm text-slate-700 dark:text-slate-300">{name}</span>
                     {isAdmin && (
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => startEdit(cat)} className="p-1 text-slate-400 hover:text-blue-600 rounded">
@@ -149,8 +149,8 @@ export default function ManageCategoriesModal({ onClose }) {
           })}
         </div>
 
-        <div className="border-t border-slate-200 px-6 py-3 flex justify-end">
-          <button onClick={onClose} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-3 flex justify-end">
+          <button onClick={onClose} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
             Close
           </button>
         </div>

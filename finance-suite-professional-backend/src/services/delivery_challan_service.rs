@@ -1,3 +1,4 @@
+use chrono::Datelike;
 use std::sync::Arc;
 use mongodb::bson::oid::ObjectId;
 use crate::{
@@ -33,12 +34,23 @@ impl DeliveryChallanService {
         Ok(self.user_repo.get_user_by_id(user_id).await?)
     }
 
+    fn current_financial_quarter() -> &'static str {
+        let month = chrono::Utc::now().month();
+        match month {
+            4..=6 => "Q1",
+            7..=9 => "Q2",
+            10..=12 => "Q3",
+            _ => "Q4",
+        }
+    }
+
     fn format_challan_no(prefix: &str, seq: i32) -> String {
         let p = prefix.trim().trim_end_matches('-');
+        let quarter = Self::current_financial_quarter();
         if p.is_empty() {
-            format!("DC-{:03}", seq)
+            format!("DC-{}-{:03}", quarter, seq)
         } else {
-            format!("DC-{}-{:03}", p, seq)
+            format!("DC-{}-{}-{:03}", p, quarter, seq)
         }
     }
 

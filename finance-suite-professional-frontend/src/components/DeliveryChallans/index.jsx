@@ -6,7 +6,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchDeliveryChallans, deleteDeliveryChallan, updateDeliveryChallan, deliveryChallanSelector } from "../../ReduxApi/deliveryChallan";
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
-import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal } from "../../shared/ui";
+import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal, FilterChips } from "../../shared/ui";
+import MonthRangeSelector from "../../shared/MonthRangeSelector";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-toastify";
 
@@ -37,6 +38,9 @@ export default function DeliveryChallans() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatus] = useState("All");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [deleteModal, setDeleteModal] = useState(null);
@@ -85,13 +89,18 @@ export default function DeliveryChallans() {
   }, [search]);
 
   const load = useCallback(() => {
-    dispatch(fetchDeliveryChallans({ page, pageSize, search: debouncedSearch, status: statusFilter }));
-  }, [dispatch, page, pageSize, debouncedSearch, statusFilter]);
+    const params = { page, pageSize, search: debouncedSearch, status: statusFilter };
+    if (dateFilter === "custom" && customDateRange.from && customDateRange.to) {
+      params.from = customDateRange.from;
+      params.to = customDateRange.to;
+    }
+    dispatch(fetchDeliveryChallans(params));
+  }, [dispatch, page, pageSize, debouncedSearch, statusFilter, dateFilter, customDateRange]);
 
   useEffect(() => { load(); }, [load]);
 
   // reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, pageSize]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, dateFilter, customDateRange, pageSize]);
   useEffect(() => {
     if (!statusModal) return;
     document.body.setAttribute("data-modal-open", "1");
@@ -100,6 +109,21 @@ export default function DeliveryChallans() {
 
   const challans = Array.isArray(data) ? data : [];
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+
+  const chips = [
+    statusFilter !== "All" && { key: "status", label: `Status: ${statusFilter}` },
+    dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && customDateRange.from && customDateRange.to ? `${fmtYM(customDateRange.from)} → ${fmtYM(customDateRange.to)}` : dateFilterLabel[dateFilter] },
+  ].filter(Boolean);
+
+  const removeChip = (key) => {
+    if (key === "status") setStatus("All");
+    if (key === "date") { setDateFilter("all"); setCustomDateRange({ from: "", to: "" }); }
+    setPage(1);
+  };
 
   const columns = [
     {
@@ -168,12 +192,34 @@ export default function DeliveryChallans() {
           <option value="Partially Returned">Partially Returned</option>
           <option value="Cancelled">Cancelled</option>
         </FilterSelect>
+        <div className="relative">
+          <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
+            <option value="all">All Time</option>
+            <option value="this_month">Current Month</option>
+            <option value="last_month">Previous Month</option>
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="custom">Custom</option>
+          </FilterSelect>
+          {dateFilter === "custom" && dateDropdownOpen && (
+            <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+              <MonthRangeSelector
+                from={customDateRange.from}
+                to={customDateRange.to}
+                onChange={(range) => { setCustomDateRange(range); setPage(1); }}
+                onComplete={() => setDateDropdownOpen(false)}
+              />
+            </div>
+          )}
+        </div>
         {hasWrite && (
           <button onClick={() => nav("/delivery-challans/create")} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm">
             <Plus className="w-4 h-4" /><span className="hidden sm:inline">Create</span>
           </button>
         )}
       </TabActionBar>
+
+      <FilterChips chips={chips} onRemove={removeChip} />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 mt-3">
         {/* <StatCard label="Total (this page)" value={challans.length} /> */}
