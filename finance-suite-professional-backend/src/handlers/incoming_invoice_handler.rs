@@ -59,12 +59,19 @@ pub async fn list_incoming_invoices(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
     let mut invoices = service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
+    if user.is_accountant {
+        let (current, prev) = crate::utils::last_two_months();
+        invoices.retain(|inv| {
+            let ym = inv.invoice_date.trim();
+            ym.len() >= 7 && (&ym[..7] == current || &ym[..7] == prev)
+        });
+    }
     if query.year.is_some() || query.month.is_some() {
         let now = chrono::Utc::now();
         let year  = query.year.clone().unwrap_or_else(|| now.format("%Y").to_string());
@@ -88,14 +95,23 @@ pub async fn get_incoming_invoice(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
     match service.get_by_id(&id.into_inner()).await
         .map_err(actix_web::error::ErrorInternalServerError)?
     {
-        Some(inv) if inv.organisation_id == Some(org_id) => Ok(HttpResponse::Ok().json(inv)),
+        Some(inv) if inv.organisation_id == Some(org_id) => {
+            if user.is_accountant {
+                let (current, prev) = crate::utils::last_two_months();
+                let ym = inv.invoice_date.trim();
+                if ym.len() < 7 || (&ym[..7] != current && &ym[..7] != prev) {
+                    return Ok(HttpResponse::NotFound().json(json!({ "message": "Not found" })));
+                }
+            }
+            Ok(HttpResponse::Ok().json(inv))
+        }
         _ => Ok(HttpResponse::NotFound().json(json!({ "message": "Not found" }))),
     }
 }
@@ -415,7 +431,7 @@ pub async fn get_tds_summary(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;

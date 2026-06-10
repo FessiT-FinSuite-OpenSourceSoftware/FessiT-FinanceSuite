@@ -66,24 +66,35 @@ function useDark() {
   return dark;
 }
 
-export default function PeriodSelector({ onChange }) {
+export default function PeriodSelector({ onChange, isAccountant = false }) {
   const dark = useDark();
   const now = new Date();
   const currentFYStart = getFYStart(now);
 
+  // All hooks must be declared before any conditional return
+  const [accountantPreset, setAccountantPreset] = useState("this_month");
   const [fyStart, setFYStart]       = useState(currentFYStart);
   const [preset, setPreset]         = useState("this_month");
   const [customFrom, setCustomFrom] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
   const [customTo,   setCustomTo]   = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
 
-  // FY options: last 5 FYs including current
+  // Accountant mode: emit on mount and when preset changes
+  useEffect(() => {
+    if (!isAccountant) return;
+    const current = { year: now.getFullYear(), month: now.getMonth() + 1 };
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prev = { year: prevDate.getFullYear(), month: prevDate.getMonth() + 1 };
+    if (accountantPreset === "this_month") onChange([current]);
+    else if (accountantPreset === "last_month") onChange([prev]);
+    else onChange([prev, current]);
+  }, [isAccountant, accountantPreset]); // eslint-disable-line
+
   const fyOptions = [];
   for (let y = currentFYStart - 4; y <= currentFYStart; y++) fyOptions.push(y);
 
   const isPastFY = fyStart < currentFYStart;
   const PRESETS = isPastFY ? PRESETS_PAST : PRESETS_CURRENT;
 
-  // How many months of the selected FY have elapsed up to today
   const nowIdx = now.getFullYear() * 12 + now.getMonth() + 1;
   const elapsedInFY = fyMonths(fyStart).filter(({ year, month }) => year * 12 + month <= nowIdx).length;
 
@@ -94,7 +105,6 @@ export default function PeriodSelector({ onChange }) {
     elapsedInFY < 12 ? ["last_12"] : []
   );
 
-  // Fall back to this_month if current preset becomes disabled
   useEffect(() => {
     if (disabledPresets.has(preset)) setPreset("this_month");
   }, [fyStart]); // eslint-disable-line
@@ -105,7 +115,6 @@ export default function PeriodSelector({ onChange }) {
     const available = all.filter(({ year, month }) => year * 12 + month <= nowIdx);
     if (available.length === 0) return [all[0]];
     const last = available[available.length - 1];
-
     if (p === "this_month") return [clampToFY(now.getFullYear(), now.getMonth() + 1, fy)];
     if (p === "last_month") {
       const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -114,13 +123,10 @@ export default function PeriodSelector({ onChange }) {
     if (p === "last_3")  return available.slice(-3).length  ? available.slice(-3)  : [last];
     if (p === "last_6")  return available.slice(-6).length  ? available.slice(-6)  : [last];
     if (p === "last_12") return available;
-
-    // past FY presets — quarters relative to FY start (Apr)
-    if (p === "past_q1") return monthRange(fy, 4, fy, 6);       // Apr–Jun
-    if (p === "past_q2") return monthRange(fy, 7, fy, 9);       // Jul–Sep
-    if (p === "past_q3") return monthRange(fy, 10, fy, 12);     // Oct–Dec
-    if (p === "past_q4") return monthRange(fy + 1, 1, fy + 1, 3); // Jan–Mar
-
+    if (p === "past_q1") return monthRange(fy, 4, fy, 6);
+    if (p === "past_q2") return monthRange(fy, 7, fy, 9);
+    if (p === "past_q3") return monthRange(fy, 10, fy, 12);
+    if (p === "past_q4") return monthRange(fy + 1, 1, fy + 1, 3);
     return null;
   }
 
@@ -128,23 +134,46 @@ export default function PeriodSelector({ onChange }) {
     if (p === "custom") {
       const cFrom = clampToFY(from.year, from.month, fy);
       const cTo   = clampToFY(to.year,   to.month,   fy);
-      // ensure from <= to
       const fromIdx = cFrom.year * 12 + cFrom.month;
       const toIdx   = cTo.year   * 12 + cTo.month;
-      const range = fromIdx <= toIdx
-        ? monthRange(cFrom.year, cFrom.month, cTo.year, cTo.month)
-        : [cFrom];
-      onChange(range);
+      onChange(fromIdx <= toIdx ? monthRange(cFrom.year, cFrom.month, cTo.year, cTo.month) : [cFrom]);
     } else {
       const months = resolvePreset(p, fy);
       if (months) onChange(months);
     }
   }
 
-  // Emit on mount and whenever selection changes
   useEffect(() => {
+    if (isAccountant) return;
     emit(preset, fyStart, customFrom, customTo);
-  }, [preset, fyStart, customFrom, customTo]); // eslint-disable-line
+  }, [preset, fyStart, customFrom, customTo, isAccountant]); // eslint-disable-line
+
+  // Accountant UI — rendered after all hooks
+  if (isAccountant) {
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevLabel = `${MONTHS[prevDate.getMonth()]} ${prevDate.getFullYear()}`;
+    const curLabel  = `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+    const labelMap  = { this_month: curLabel, last_month: prevLabel, both: `${prevLabel} – ${curLabel}` };
+    return (
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5">
+          <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">Period</span>
+          <select
+            value={accountantPreset}
+            onChange={(e) => setAccountantPreset(e.target.value)}
+            className="text-xs font-semibold text-gray-700 dark:text-slate-200 bg-transparent dark:bg-slate-700 border-none outline-none cursor-pointer"
+          >
+            <option value="this_month">Current Month</option>
+            <option value="last_month">Previous Month</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <span className="text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-900/50 rounded px-2 py-1 whitespace-nowrap">
+          {labelMap[accountantPreset]}
+        </span>
+      </div>
+    );
+  }
 
   function handleFYChange(newFY) {
     setFYStart(newFY);
@@ -158,19 +187,13 @@ export default function PeriodSelector({ onChange }) {
   function handleCustomFrom(year, month) {
     const clamped = clampToFY(year, month, fyStart);
     setCustomFrom(clamped);
-    // if from > to, push to forward
-    if (clamped.year * 12 + clamped.month > customTo.year * 12 + customTo.month) {
-      setCustomTo(clamped);
-    }
+    if (clamped.year * 12 + clamped.month > customTo.year * 12 + customTo.month) setCustomTo(clamped);
   }
 
   function handleCustomTo(year, month) {
     const clamped = clampToFY(year, month, fyStart);
     setCustomTo(clamped);
-    // if to < from, pull from back
-    if (clamped.year * 12 + clamped.month < customFrom.year * 12 + customFrom.month) {
-      setCustomFrom(clamped);
-    }
+    if (clamped.year * 12 + clamped.month < customFrom.year * 12 + customFrom.month) setCustomFrom(clamped);
   }
 
   function handleReset() {

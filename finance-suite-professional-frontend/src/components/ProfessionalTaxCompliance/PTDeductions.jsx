@@ -1,5 +1,57 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import { Download } from "lucide-react";
+import { isTauri, saveBytesToDownloads, showDownloadNotification } from "../../utils/pdfUtils";
 import { TabActionBar, FilterSelect, DataTable, InfoCard, Pagination } from "../../shared/ui";
+
+async function exportXLSX(rows, filename) {
+  let XLSX;
+  try { XLSX = (await import("xlsx")).default ?? (await import("xlsx")); } catch { XLSX = window.XLSX; }
+  if (!XLSX) { alert("XLSX library not available."); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = Object.keys(rows[0]).map(() => ({ wch: 18 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "PT Deductions");
+  const fullName = `${filename}.xlsx`;
+  let filePath = null;
+  if (isTauri()) {
+    const bytes = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const result = await saveBytesToDownloads(new Uint8Array(bytes), fullName);
+    filePath = result.filePath;
+  } else {
+    XLSX.writeFile(wb, fullName);
+  }
+  await showDownloadNotification(fullName, filePath);
+}
+
+async function exportCSV(rows, filename) {
+  const headers = Object.keys(rows[0]);
+  const escape = (v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const csv = [headers.map(escape).join(","), ...rows.map((r) => headers.map((h) => escape(r[h])).join(","))].join("\n");
+  const fullName = `${filename}.csv`;
+  let filePath = null;
+  if (isTauri()) {
+    const result = await saveBytesToDownloads(new TextEncoder().encode("\uFEFF" + csv), fullName);
+    filePath = result.filePath;
+  } else {
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = fullName; a.click();
+    URL.revokeObjectURL(url);
+  }
+  await showDownloadNotification(fullName, filePath);
+}
+
+function toPTRows(data) {
+  return data.map((d) => ({
+    "Name": d.emp_name || "-",
+    "Employee ID": d.emp_id || "-",
+    "Invoice Date": d.period || fmtDate(d.date),
+    "TDS Amount": d.tds || 0,
+    "PT Amount": d.ptAmount || 0,
+    "Gross Salary": d.gross_salary || 0,
+    "Net Salary": d.net_salary || 0,
+    "Status": d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : "-",
+  }));
+}
 
 const fmt = (value) =>
   new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0));
@@ -36,8 +88,16 @@ export default function PTDeductions({ deductions = [], isLoading = false, selec
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const downloadMenuRef = useRef(null);
 
   useEffect(() => { setCurrentPage(1); }, [search, statusFilter, pageSize, selectedMonths]);
+  useEffect(() => {
+    if (!showDownloadMenu) return;
+    const handler = (e) => { if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target)) setShowDownloadMenu(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showDownloadMenu]);
 
   const filtered = useMemo(() => {
     const monthSet = buildMonthSet(selectedMonths);
@@ -113,6 +173,40 @@ export default function PTDeductions({ deductions = [], isLoading = false, selec
           <option value="paid">Paid</option>
           <option value="pending">Pending</option>
         </FilterSelect>
+
+        <div className="relative" ref={downloadMenuRef}>
+          <button
+            onClick={() => setShowDownloadMenu((p) => !p)}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+            {filtered.length > 0 && (
+              <span className="bg-indigo-100 text-indigo-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">{filtered.length}</span>
+            )}
+          </button>
+          {showDownloadMenu && (
+            <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg z-50 overflow-hidden">
+              <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500 border-b border-gray-100 dark:border-slate-700">Export as</p>
+              {[{ fmt: "csv", label: "CSV", desc: "Spreadsheet compatible" }, { fmt: "xlsx", label: "XLSX", desc: "Excel workbook" }].map(({ fmt: format, label, desc }) => (
+                <button
+                  key={format}
+                  onClick={() => {
+                    setShowDownloadMenu(false);
+                    const rows = toPTRows(filtered);
+                    const filename = `PT_Deductions${statusFilter !== "All" ? `_${statusFilter}` : ""}`;
+                    format === "xlsx" ? exportXLSX(rows, filename) : exportCSV(rows, filename);
+                  }}
+                  className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-b border-gray-50 dark:border-slate-700 last:border-0"
+                >
+                  <p className="text-sm font-medium text-gray-800 dark:text-slate-200">{label}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500">{desc}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </TabActionBar>
 
       {filtered.length > 0 && (

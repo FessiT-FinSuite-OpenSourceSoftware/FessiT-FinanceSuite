@@ -75,6 +75,9 @@ export const createInvoice = (invoiceData) => async (dispatch) => {
     delete payload.service;
     delete payload.serviceId;
 
+    // Ensure template_id defaults to classic if not set
+    if (!payload.template_id) payload.template_id = "classic";
+
     const { data } = await axiosInstance.post('/invoices', payload)
     toast.success('Invoice created successfully')
     dispatch(fetchInvoiceData())
@@ -153,6 +156,7 @@ export const fetchOneInvoice = (invoiceID) => async (dispatch) => {
     const normalized = normalizeMongoValue(data || {});
     normalized.serviceId = normalized.serviceId || normalized.service || normalized.service_type_id || normalized.service_type_id;
     normalized.service = normalized.service || normalized.serviceId || normalized.service_type_id || normalized.service_type_id;
+    normalized.template_id = normalized.template_id || "classic";
     dispatch(getOneInvoice(normalized))
     return normalized
   } catch (error) {
@@ -191,6 +195,9 @@ const buildInvoiceUpdatePayload = (invoiceData) => {
   // The edit form keeps `service` as UI display state; the API uses serviceId/service_type_id.
   delete payload.service
   delete payload.serviceId
+
+  // Preserve template_id as a plain string
+  if (!payload.template_id) payload.template_id = "classic"
 
   return payload
 }

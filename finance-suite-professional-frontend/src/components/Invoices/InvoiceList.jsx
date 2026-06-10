@@ -1,13 +1,13 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, lazy, Suspense } from "react";
 import ReactDOM from "react-dom";
-import { Plus, Download } from "lucide-react";
+import { Plus, Download, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchInvoiceData, deleteInvoice, updateInvoice, invoiceSelector } from "../../ReduxApi/invoice";
 import { getCurrencySymbol, formatNumber } from "../../utils/formatNumber";
 import { authSelector } from "../../ReduxApi/auth";
 import { canWrite, canDelete, Module } from "../../utils/permissions";
-import { orgamisationSelector } from "../../ReduxApi/organisation";
+import { orgamisationSelector, fetchOrganisationByEmail } from "../../ReduxApi/organisation";
 import {
   TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, TruncatedCell, ConfirmModal, FilterChips,
 } from "../../shared/ui";
@@ -15,6 +15,7 @@ import MonthRangeSelector from "../../shared/MonthRangeSelector";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 import { isTauri, saveBytesToDownloads, showDownloadNotification } from "../../utils/pdfUtils";
+import InvoiceReportWrapper from "./InvoiceReportWrapper";
 
 const getInvoiceId = (invoice) => {
   if (!invoice) return "";
@@ -28,7 +29,7 @@ const getInvoiceId = (invoice) => {
 const getDateRange = (period) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   let fromDate = new Date(today);
   let toDate = new Date(today);
 
@@ -73,17 +74,17 @@ const parseMonthRange = (from, to) => {
 // Check if invoice date is within range
 const isInDateRange = (invoiceDate, fromDate, toDate) => {
   if (!invoiceDate || !fromDate || !toDate) return true;
-  
+
   let date;
   if (typeof invoiceDate === "object" && invoiceDate.$date) {
     date = new Date(invoiceDate.$date);
   } else {
     date = new Date(invoiceDate);
   }
-  
+
   if (Number.isNaN(date.getTime())) return true;
   date.setHours(0, 0, 0, 0);
-  
+
   return date >= fromDate && date <= toDate;
 };
 
@@ -100,18 +101,23 @@ const formatDate = (value) => {
 
 const getStatusColor = (status) => {
   switch ((status || "New").toUpperCase()) {
-    case "PAID":    return "bg-green-100 text-green-800";
-    case "ISSUED":  return "bg-blue-100 text-blue-800";
+    case "PAID": return "bg-green-100 text-green-800";
+    case "ISSUED": return "bg-blue-100 text-blue-800";
     case "ON HOLD": return "bg-yellow-100 text-yellow-800";
     case "RE ISSUED": return "bg-purple-100 text-purple-800";
     case "NEW": return "bg-red-100 text-yellow-800";
-    default:        return "bg-gray-100 text-gray-800";
+    default: return "bg-gray-100 text-gray-800";
   }
 };
 
-const getTypeBadgeClass = (type) =>
-  type === "international" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700";
-const getTypeLabel = (type) => (type === "international" ? "International" : "Domestic");
+const toNumber = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+const positiveRate = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
 
 export default function InvoiceList() {
   const nav = useNavigate();
@@ -124,6 +130,8 @@ export default function InvoiceList() {
   const isAdmin = user?.is_admin === true;
   const hasWrite = canWrite(user, Module.Invoice);
   const hasDelete = canDelete(user, Module.Invoice);
+  const isAccountant = user?.is_accountant === true;
+  console.log("The logged in user is accountant:", isAccountant);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -143,6 +151,8 @@ export default function InvoiceList() {
   const [approxConversionRate, setApproxConversionRate] = useState("");
   const [paymentType, setPaymentType] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("classic");
+  const [previewInvoice, setPreviewInvoice] = useState(null);
   const [deleteModal, setDeleteModal] = useState(null);
 
   useEffect(() => { dispatch(fetchInvoiceData()); }, [dispatch]);
@@ -163,24 +173,65 @@ export default function InvoiceList() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const buildExportRows = () => filtered.map((inv) => ({
-    "Invoice No": inv.invoice_number || "-",
-    "Customer": inv.billcustomer_name || inv.customer_name || "-",
-    "Invoice Date": formatDate(inv.invoice_date || inv.date || ""),
-    "Due Date": formatDate(inv.invoice_dueDate || inv.due_date || ""),
-    "Type": inv.invoice_type === "international" ? "International" : "Domestic",
-    "Currency": inv.currency_type || "INR",
-    "Sub Total": inv.subTotal || "0",
-    "Total CGST": inv.totalcgst || "0",
-    "Total SGST": inv.totalsgst || "0",
-    "Total IGST": inv.totaligst || "0",
-    "Total": inv.total || "0",
-    "Status": inv.status || "New",
-    "Payment Type": inv.payment_type || "-",
-    "Payment Reference": inv.payment_reference || "-",
-    "Place of Supply": inv.place_of_supply || "-",
-    "GSTIN": inv.billcustomer_gstin || "-",
-  }));
+  const getExportConversion = (inv) => {
+    const invoiceCurrency = inv.currency_type || orgCurrency || "INR";
+    const isInternational = inv.invoice_type === "international";
+    if (!isInternational || invoiceCurrency === orgCurrency) {
+      return { rate: 1, source: invoiceCurrency === orgCurrency ? "Same currency" : "Domestic", missing: false };
+    }
+
+    const paidRate = positiveRate(inv.conversionRate || inv.conversion_rate);
+    const issuedRate = positiveRate(inv.approxconversionRate || inv.approx_conversion_rate);
+    const tempRate = positiveRate(inv.tempconversionRate || inv.temp_conversion_rate);
+    if (paidRate) return { rate: paidRate, source: "Conversion Rate", missing: false };
+    if (issuedRate) return { rate: issuedRate, source: "Approx Conversion Rate", missing: false };
+    if (tempRate) return { rate: tempRate, source: "Temp Conversion Rate", missing: false };
+
+    return { rate: "", source: "Missing", missing: true };
+  };
+
+  const convertedAmount = (amount, conversion) =>
+    conversion.missing ? "" : Number((toNumber(amount) * conversion.rate).toFixed(2));
+
+  const buildExportRows = () => filtered.map((inv) => {
+    const invoiceCurrency = inv.currency_type || "INR";
+    const subTotal = toNumber(inv.subTotal ?? inv.sub_total);
+    const totalCgst = toNumber(inv.totalcgst ?? inv.total_cgst);
+    const totalSgst = toNumber(inv.totalsgst ?? inv.total_sgst);
+    const totalIgst = toNumber(inv.totaligst ?? inv.total_igst);
+    const total = toNumber(inv.total);
+    const conversion = getExportConversion(inv);
+
+    return {
+      "Invoice No": inv.invoice_number || "-",
+      "Customer": inv.billcustomer_name || inv.customer_name || "-",
+      "GSTIN": inv.billcustomer_gstin || "-",
+
+      "Invoice Date": formatDate(inv.invoice_date || inv.date || ""),
+      // "Due Date": formatDate(inv.invoice_dueDate || inv.due_date || ""),
+      // "Type": inv.invoice_type === "international" ? "International" : "Domestic",
+      // "Currency": invoiceCurrency,
+      "Sub Total": convertedAmount(subTotal, conversion) || subTotal,
+      // "Total CGST": totalCgst,
+      // "Total SGST": totalSgst,
+      "Total GST": convertedAmount(totalSgst, conversion) + convertedAmount(totalCgst, conversion),
+      "Total IGST": convertedAmount(totalIgst, conversion),
+      "Total": convertedAmount(total, conversion),
+      // "Organisation Currency": orgCurrency,
+      // "Conversion Rate Used": conversion.rate,
+      // "Conversion Rate Source": conversion.source,
+      // [`Converted Sub Total (${orgCurrency})`]: convertedAmount(subTotal, conversion),
+      // [`Converted Total CGST (${orgCurrency})`]: convertedAmount(totalCgst, conversion),
+      // [`Converted Total SGST (${orgCurrency})`]: convertedAmount(totalSgst, conversion),
+      // [`Converted Total IGST (${orgCurrency})`]: convertedAmount(totalIgst, conversion),
+      // [`Converted Total (${orgCurrency})`]: convertedAmount(total, conversion),
+      // "Status": inv.status || "New",
+      // "Payment Type": inv.payment_type || "-",
+      // "Payment Reference": inv.payment_reference || "-",
+      // "Place of Supply": inv.place_of_supply || "-",
+      // "GSTIN": inv.billcustomer_gstin || "-",
+    };
+  });
 
   const handleDownload = async (format) => {
     setShowDownloadMenu(false);
@@ -241,8 +292,8 @@ export default function InvoiceList() {
 
   const invoices = Array.isArray(invoiceData) ? invoiceData : [];
 
-  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m - 1]} ${y}`; };
   const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
   const chips = [
     statusFilter !== "All" && { key: "status", label: `Status: ${statusFilter}` },
@@ -280,7 +331,7 @@ export default function InvoiceList() {
     const matchType =
       typeFilter === "All" ||
       (typeFilter === "international" ? invoice.invoice_type === "international" : invoice.invoice_type !== "international");
-    const matchDate = dateRangeObj 
+    const matchDate = dateRangeObj
       ? isInDateRange(invoice.invoice_date || invoice.date, dateRangeObj.from, dateRangeObj.to)
       : true;
     return matchSearch && matchStatus && matchCurrency && matchType && matchDate;
@@ -302,6 +353,13 @@ export default function InvoiceList() {
     return (!due || new Date(due) >= today) ? (i.status || "New") === "Issued" : false;
   }).length;
 
+  const openPreview = async (invoice) => {
+    await dispatch(fetchOrganisationByEmail(localStorage.getItem("email"), true));
+    setPreviewInvoice(invoice);
+  };
+
+  const closePreview = () => setPreviewInvoice(null);
+
   const handleDelete = (id, invoiceNumber) => {
     setDeleteModal({ id, invoiceNumber });
   };
@@ -315,12 +373,14 @@ export default function InvoiceList() {
     setApproxConversionRate(invoice.approxconversionRate ? String(invoice.approxconversionRate) : "");
     setPaymentType(invoice.payment_type || "");
     setPaymentReference(invoice.payment_reference || "");
+    setSelectedTemplate(invoice.template_id || "classic");
     setStatusModal({ id: getInvoiceId(invoice), currentStatus, currency: invoice.currency_type || "INR" });
   };
 
   const closeStatusModal = () => {
     setStatusModal(null); setSelectedStatus(""); setConversionRate("");
     setApproxConversionRate(""); setPaymentType(""); setPaymentReference("");
+    setSelectedTemplate("classic");
   };
 
   const handleStatusUpdate = async () => {
@@ -337,17 +397,19 @@ export default function InvoiceList() {
       approxconversionRate: selectedStatus === "Issued" ? (isSameCurrency ? "1" : String(approxConversionRate)) : fullInvoice.approxconversionRate || "",
       payment_type: selectedStatus === "Paid" ? paymentType : fullInvoice.payment_type || "",
       payment_reference: selectedStatus === "Paid" ? paymentReference : fullInvoice.payment_reference || "",
+      template_id: ["Issued", "Re Issued"].includes(selectedStatus) ? selectedTemplate : fullInvoice.template_id || "classic",
     };
+    console.log("Updating invoice with payload:", payload);
     const result = await dispatch(updateInvoice(statusModal.id, payload));
     if (result) closeStatusModal();
   };
 
   const statusOptions = statusModal
-    ? (isAdmin ? ["Issued", "Paid", "On Hold","Re Issued"]
+    ? (isAdmin ? ["Issued", "Paid", "On Hold", "Re Issued"]
       : statusModal.currentStatus === "New" ? ["Issued"]
-      : statusModal.currentStatus === "Issued" ? ["Issued", "Paid", "On Hold","Re Issued"]
-      : statusModal.currentStatus === "On Hold" ? ["On Hold", "Issued", "Paid","Re Issued"]
-      : [statusModal.currentStatus])
+        : statusModal.currentStatus === "Issued" ? ["Issued", "Paid", "On Hold", "Re Issued"]
+          : statusModal.currentStatus === "On Hold" ? ["On Hold", "Issued", "Paid", "Re Issued"]
+            : [statusModal.currentStatus])
     : [];
 
   const columns = [
@@ -369,7 +431,7 @@ export default function InvoiceList() {
     //     return <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeBadgeClass(t)}`}>{getTypeLabel(t)}</span>;
     //   },
     // },
-    { label: "Invoice Date",     hidden: true, render: (invoice) => formatDate(invoice.invoice_date || invoice.date || "") },
+    { label: "Invoice Date", hidden: true, render: (invoice) => formatDate(invoice.invoice_date || invoice.date || "") },
     { label: "Due Date", hidden: true, render: (invoice) => formatDate(invoice.invoice_dueDate || invoice.due_date || "") },
     {
       label: "Amount",
@@ -379,13 +441,17 @@ export default function InvoiceList() {
       label: "Status",
       render: (invoice) => {
         const locked = (invoice.status || "New") === "Paid" && !isAdmin;
+        const isIssued = ["Issued", "Re Issued"].includes(invoice.status);
         return (
-          <span
-  onClick={() => !locked && openStatusModal(invoice)}
-  className={`inline-flex items-center justify-center w-20 px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status || "New")} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
->
-  {invoice.status || "New"}
-</span>
+          <div className="flex items-center gap-1.5">
+            <span
+              onClick={() => !locked && openStatusModal(invoice)}
+              className={`inline-flex items-center justify-center w-20 px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status || "New")} ${!locked && hasWrite ? "cursor-pointer hover:opacity-75" : "cursor-default"}`}
+            >
+              {invoice.status || "New"}
+            </span>
+
+          </div>
         );
       },
     },
@@ -405,12 +471,28 @@ export default function InvoiceList() {
       stopPropagation: true,
       render: (invoice) => {
         const id = getInvoiceId(invoice);
+        const isIssued = ["Issued", "Re Issued","Paid"].includes(invoice.status);
+
         return (
-          <RowActions
-            onEdit={() => hasWrite && nav(`/invoices/editInvoice/${id}`)}
-            onDelete={() => hasDelete && handleDelete(id, invoice.invoice_number)}
-            canEdit={hasWrite} canDelete={hasDelete}
-          />
+          <div className="flex items-center justify-end gap-2">
+            {isIssued && (
+              <button
+                type="button"
+                title={`Preview ${invoice.template_id || "classic"} template`}
+                onClick={() => openPreview(invoice)}
+                className="transition-colors text-gray-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
+                <FileText className="w-4 h-4" />
+              </button>
+            )}
+
+            <RowActions
+              onEdit={() => hasWrite && nav(`/invoices/editInvoice/${id}`)}
+              onDelete={() => hasDelete && handleDelete(id, invoice.invoice_number)}
+              canEdit={hasWrite}
+              canDelete={hasDelete}
+            />
+          </div>
         );
       },
     },
@@ -447,9 +529,9 @@ export default function InvoiceList() {
             <option value="all">All Time</option>
             <option value="this_month">Current Month</option>
             <option value="last_month">Previous Month</option>
-            <option value="last_3_months">Last 3 Months</option>
-            <option value="last_6_months">Last 6 Months</option>
-            <option value="custom">Custom</option>
+            {!isAccountant ? <option value="last_3_months">Last 3 Months</option> : "" }
+            {!isAccountant ? <option value="last_6_months">Last 6 Months</option> : "" }
+            {!isAccountant ? <option value="custom">Custom</option> : "" }
           </FilterSelect>
           {dateFilter === "custom" && dateDropdownOpen && (
             <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
@@ -463,7 +545,7 @@ export default function InvoiceList() {
           )}
         </div>
         <div className="relative" ref={downloadMenuRef}>
-          {/* <button
+          <button
             onClick={() => setShowDownloadMenu((p) => !p)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
           >
@@ -472,15 +554,15 @@ export default function InvoiceList() {
             {filtered.length > 0 && (
               <span className="bg-indigo-100 text-indigo-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">{filtered.length}</span>
             )}
-          </button> */}
+          </button>
           {showDownloadMenu && (
             <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
               <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">Export as</p>
               {[
-                { fmt: "csv",  label: "CSV",  desc: "Spreadsheet compatible" },
+                { fmt: "csv", label: "CSV", desc: "Spreadsheet compatible" },
                 { fmt: "xlsx", label: "XLSX", desc: "Excel workbook" },
-                { fmt: "json", label: "JSON", desc: "Raw data" },
-                { fmt: "tsv",  label: "TSV",  desc: "Tab-separated" },
+                // { fmt: "json", label: "JSON", desc: "Raw data" },
+                // { fmt: "tsv",  label: "TSV",  desc: "Tab-separated" },
               ].map(({ fmt, label, desc }) => (
                 <button
                   key={fmt}
@@ -515,9 +597,9 @@ export default function InvoiceList() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total Invoices" value={invoices.length} />
-        <StatCard label="Paid"    value={countByStatus("Paid")}  valueClass="text-green-600" />
-        <StatCard label="Issued"  value={countRaised}            valueClass="text-blue-600" />
-        <StatCard label="Overdue" value={countOverdue}           valueClass="text-red-600" />
+        <StatCard label="Paid" value={countByStatus("Paid")} valueClass="text-green-600" />
+        <StatCard label="Issued" value={countRaised} valueClass="text-blue-600" />
+        <StatCard label="Overdue" value={countOverdue} valueClass="text-red-600" />
       </div>
 
       <DataTable
@@ -558,6 +640,41 @@ export default function InvoiceList() {
                 </label>
               ))}
             </div>
+            {["Issued", "Re Issued"].includes(selectedStatus) && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Template</label>
+                <div className="flex gap-2 mb-2">
+                  {[
+                    { id: "classic", label: "Classic" },
+                    { id: "modern", label: "Modern" },
+                    { id: "minimal", label: "Minimal" },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setSelectedTemplate(t.id)}
+                      className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all ${selectedTemplate === t.id
+                          ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                          : "border-gray-200 text-gray-600 hover:border-indigo-300"
+                        }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inv = invoices.find((i) => getInvoiceId(i) === statusModal.id);
+                    if (inv) openPreview({ ...inv, template_id: selectedTemplate });
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Preview template
+                </button>
+              </div>
+            )}
             {selectedStatus === "Issued" && (
               <div className="mt-4">
                 <label className="block text-sm text-gray-600 mb-1">Approx Conversion Rate</label>
@@ -598,6 +715,29 @@ export default function InvoiceList() {
             <div className="flex justify-end gap-2 mt-5">
               <button onClick={closeStatusModal} className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
               <button onClick={handleStatusUpdate} className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Update</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {previewInvoice && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-10000 flex items-center justify-center bg-black/60">
+          <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl bg-gray-100 shadow-2xl overflow-hidden">
+            <button
+              type="button"
+              onClick={closePreview}
+              className="absolute top-3 right-4 z-10 rounded-full p-1.5 bg-white/80 hover:bg-white text-gray-600 hover:text-gray-900 shadow transition-colors"
+              title="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+            <div className="overflow-y-auto flex-1">
+              <InvoiceReportWrapper
+                invoiceData={previewInvoice}
+                orgData={currentOrganisation}
+                onBack={closePreview}
+                initialTemplate={previewInvoice.template_id || "classic"}
+              />
             </div>
           </div>
         </div>,

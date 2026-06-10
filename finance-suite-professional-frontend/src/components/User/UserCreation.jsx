@@ -10,6 +10,7 @@ const initialUser = {
   password: "",
   role: "",
   is_admin: false,
+  is_accountant: false,
   is_active: true,
   permissions: {
     organisation: { read: false, write: false, delete: false },
@@ -87,14 +88,14 @@ export default function UserCreation() {
       is_admin: isAdmin,
       permissions: isAdmin
         ? {
-            organisation: { read: true, write: true, delete: true },
-            invoice: { read: true, write: true, delete: true },
-            expenses: { read: true, write: true, delete: true },
-            users: { read: true, write: true, delete: true },
-            purchaseOrders: { read: true, write: true, delete: true },
-            customers: { read: true, write: true, delete: true },
-            products: { read: true, write: true, delete: true },
-          }
+          organisation: { read: true, write: true, delete: true },
+          invoice: { read: true, write: true, delete: true },
+          expenses: { read: true, write: true, delete: true },
+          users: { read: true, write: true, delete: true },
+          purchaseOrders: { read: true, write: true, delete: true },
+          customers: { read: true, write: true, delete: true },
+          products: { read: true, write: true, delete: true },
+        }
         : initialUser.permissions,
     });
   };
@@ -230,6 +231,15 @@ export default function UserCreation() {
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
+                checked={user.is_accountant}
+                onChange={(e) => setUser({ ...user, is_accountant: e.target.checked })}
+                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+              />
+              <span className="text-gray-700 font-medium">Accountant (Access only for compliances )</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
                 checked={user.is_active}
                 onChange={(e) => setUser({ ...user, is_active: e.target.checked })}
                 className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
@@ -247,9 +257,9 @@ export default function UserCreation() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.keys(user.permissions).map((module) => {
                 // Format module names for display
-                const displayName = module === 'purchaseOrders' ? 'Purchase Orders' : 
-                                  module.charAt(0).toUpperCase() + module.slice(1);
-                
+                const displayName = module === 'purchaseOrders' ? 'Purchase Orders' :
+                  module.charAt(0).toUpperCase() + module.slice(1);
+
                 return (
                   <div key={module} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                     <h4 className="text-sm font-semibold text-gray-700 mb-3">{displayName}</h4>

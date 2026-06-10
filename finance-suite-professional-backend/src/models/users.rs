@@ -72,6 +72,9 @@ pub struct User {
     pub is_admin: bool,
 
     #[serde(default)]
+    pub is_accountant: bool,
+
+    #[serde(default)]
     pub is_active: bool,
 
     #[serde(default)]
@@ -114,6 +117,8 @@ pub struct UserResponse {
     pub organisation_id: Option<ObjectId>,
     pub permissions: UserPermissions,
     pub is_admin: bool,
+    pub is_accountant: bool,
+
     pub is_active: bool,
 }
 

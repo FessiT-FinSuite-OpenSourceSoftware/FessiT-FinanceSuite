@@ -256,6 +256,10 @@ pub struct Invoice {
     #[serde(default)]
     pub payment_reference: String,
 
+    #[serde(default)]
+    pub template_id: String,
+
+
     // Customer reference
     #[serde(
         rename = "customerId",

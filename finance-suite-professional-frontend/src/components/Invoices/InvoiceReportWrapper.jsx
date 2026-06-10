@@ -78,8 +78,14 @@ const TEMPLATES = [
   },
 ];
 
-export default function InvoiceReportWrapper({ invoiceData, orgData, onBack }) {
-  const [selectedTemplate, setSelectedTemplate] = useState("classic");
+export default function InvoiceReportWrapper({ invoiceData, orgData, onBack, initialTemplate, onTemplateChange }) {
+  const [selectedTemplate, setSelectedTemplate] = useState(initialTemplate || invoiceData?.template_id || "classic");
+  const isReadOnly = !onTemplateChange;
+
+  const handleTemplateSelect = (id) => {
+    setSelectedTemplate(id);
+    onTemplateChange?.(id);
+  };
 
   const PreviewComponent =
     selectedTemplate === "modern" ? InvoiceReportGenerationV2 :
@@ -89,7 +95,8 @@ export default function InvoiceReportWrapper({ invoiceData, orgData, onBack }) {
   return (
     <div className="flex min-h-screen bg-gray-100 print:block">
 
-      {/* ── Template sidebar ── */}
+      {/* ── Template sidebar — hidden in read-only / print mode ── */}
+      {!isReadOnly && (
       <aside className="print:hidden w-52 shrink-0 bg-white border-r border-gray-200 flex flex-col sticky top-0 h-screen overflow-y-auto">
         <div className="px-4 pt-5 pb-3 border-b border-gray-100">
           <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Templates</p>
@@ -100,7 +107,7 @@ export default function InvoiceReportWrapper({ invoiceData, orgData, onBack }) {
             return (
               <button
                 key={t.id}
-                onClick={() => setSelectedTemplate(t.id)}
+                onClick={() => handleTemplateSelect(t.id)}
                 className={`w-full text-left rounded-xl border-2 p-2 transition-all focus:outline-none ${
                   active
                     ? "border-indigo-500 bg-indigo-50 shadow-sm"
@@ -120,6 +127,7 @@ export default function InvoiceReportWrapper({ invoiceData, orgData, onBack }) {
           })}
         </div>
       </aside>
+      )}
 
       {/* ── Invoice preview ── */}
       <div className="flex-1 min-w-0">

@@ -122,6 +122,8 @@ export default function GSTCompliance() {
   const { data, isLoading } = useSelector(gstSummarySelector);
   const { invoiceData } = useSelector(invoiceSelector);
   const { data: incomingInvoices } = useSelector(incomingInvoiceSelector);
+  const { user } = useSelector((state) => state.auth);
+  const isAccountant = user?.is_accountant === true;
   const [activeTab, setActiveTab] = useState("transactions");
   const [filterStatus, setFilterStatus] = useState("all");
 
@@ -279,7 +281,7 @@ export default function GSTCompliance() {
           </div> */}
         </div>
         <div className="mb-2">
-          <PeriodSelector onChange={handlePeriodChange} />
+          <PeriodSelector onChange={handlePeriodChange} isAccountant={isAccountant} />
         </div>
         
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2 transition-opacity duration-300 ${isLoading && data ? "opacity-50 pointer-events-none" : "opacity-100"}`}>

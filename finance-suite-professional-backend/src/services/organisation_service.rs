@@ -177,6 +177,7 @@ impl OrganisationService {
                 permissions: UserPermissions::default(),
                 is_admin: true,
                 is_active: true,
+                is_accountant: false,
                 created_at: chrono::Utc::now().to_rfc3339(),
                 updated_at: chrono::Utc::now().to_rfc3339(),
             };

@@ -13,6 +13,7 @@ export default function EditUser() {
     password: "",
     role: "",
     is_admin: false,
+    is_accountant: false,
     is_active: true,
     permissions: {
       organisation: { read: false, write: false, delete: false },
@@ -41,6 +42,7 @@ export default function EditUser() {
         password: "",
         role: currentUser.role || "",
         is_admin: currentUser.is_admin || false,
+        is_accountant: currentUser.is_accountant || false,
         is_active: currentUser.is_active !== undefined ? currentUser.is_active : true,
         permissions: currentUser.permissions || {
           organisation: { read: false, write: false, delete: false },
@@ -255,6 +257,15 @@ export default function EditUser() {
                 className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
               />
               <span className="text-gray-700 font-medium">Super Admin (Full Access)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={user.is_accountant}
+                onChange={(e) => setUser({ ...user, is_accountant: e.target.checked })}
+                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+              />
+              <span className="text-gray-700 font-medium">Accountant (Access only for compliances)</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input

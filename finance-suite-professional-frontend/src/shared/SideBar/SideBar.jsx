@@ -298,7 +298,10 @@ export default function SideBar({ component }) {
     return { ...p, [key]: !p[key] };
   });
 
+  const ACCOUNTANT_IDS = new Set(["invoices", "gstcompliance", "tdscompliance", "ptcompliance"]);
+
   const getVisibleItems = (group) => group.items.filter((item) => {
+    if (user?.is_accountant) return ACCOUNTANT_IDS.has(item.id);
     if (item.adminOnly) return user?.is_admin;
     return item.module === null || canRead(user, item.module);
   });

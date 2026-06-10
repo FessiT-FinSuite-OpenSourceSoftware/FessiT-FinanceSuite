@@ -158,6 +158,7 @@ fn merge_invoice_update(existing: &Invoice, mut incoming: Invoice) -> Invoice {
     if incoming.notes.trim().is_empty() { incoming.notes = existing.notes.clone(); }
     if incoming.payment_type.trim().is_empty() { incoming.payment_type = existing.payment_type.clone(); }
     if incoming.payment_reference.trim().is_empty() { incoming.payment_reference = existing.payment_reference.clone(); }
+    if incoming.template_id.trim().is_empty() { incoming.template_id = existing.template_id.clone(); }
     if incoming.customer_id.is_none() { incoming.customer_id = existing.customer_id; }
     if incoming.organisation_id.is_none() { incoming.organisation_id = existing.organisation_id; }
     if incoming.service_type_id.is_none() { incoming.service_type_id = existing.service_type_id; }
@@ -253,7 +254,7 @@ pub async fn list_invoices(
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
 
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
     let mut invoices = if let Some(org_id) = user.organisation_id {
@@ -264,6 +265,14 @@ pub async fn list_invoices(
     } else {
         Vec::new()
     };
+
+    if user.is_accountant {
+        let (current, prev) = crate::utils::last_two_months();
+        invoices.retain(|inv| {
+            let ym = inv.invoice_date.trim();
+            ym.len() >= 7 && (&ym[..7] == current || &ym[..7] == prev)
+        });
+    }
 
     if query.start_date.is_some() || query.end_date.is_some() {
         let start = query.start_date.clone().unwrap_or_default();
@@ -299,7 +308,7 @@ pub async fn get_invoice(
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
 
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
     let org_id = user.organisation_id
@@ -310,6 +319,13 @@ pub async fn get_invoice(
 
     if let Some(invoice) = maybe_invoice {
         if invoice_belongs_to_user_org(&service, &invoice, org_id).await? {
+            if user.is_accountant {
+                let (current, prev) = crate::utils::last_two_months();
+                let ym = invoice.invoice_date.trim();
+                if ym.len() < 7 || (&ym[..7] != current && &ym[..7] != prev) {
+                    return Ok(HttpResponse::NotFound().json(json!({ "message": "Invoice not found" })));
+                }
+            }
             return Ok(HttpResponse::Ok().json(invoice));
         }
     }
@@ -439,7 +455,7 @@ pub async fn list_invoices_by_customer(
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
 
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
 
     let cid = mongodb::bson::oid::ObjectId::parse_str(&customer_id.into_inner())
@@ -466,92 +482,97 @@ pub async fn get_gst_summary(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
 
     let (year, month) = resolve_period(&query);
+    let months_to_query: Vec<(String, String)> = vec![(year, month)];
 
-    let summary = service.get_monthly_gst_summary(&org_id, &year, &month).await
-        .map_err(actix_web::error::ErrorInternalServerError)?;
-    let incoming_summary = incoming_service.get_monthly_summary(&org_id, &year, &month).await
-        .map_err(actix_web::error::ErrorInternalServerError)?;
-    let expense_summary = expense_service.get_monthly_gst_summary(&org_id, &year, &month).await
-        .map_err(actix_web::error::ErrorInternalServerError)?;
-    let general_expense_summary = general_expense_service.get_monthly_gst_summary(&org_id, &year, &month).await
-        .map_err(actix_web::error::ErrorInternalServerError)?;
+    let mut invoice_count = 0i64; let mut out_cgst = 0f64; let mut out_sgst = 0f64;
+    let mut out_igst = 0f64; let mut out_gst = 0f64;
+    let mut out_paid = 0f64; let mut out_paid_count = 0i64;
+    let mut breakdown = vec![];
+    let mut inc_count = 0i64; let mut inc_amount = 0f64; let mut inc_cgst = 0f64;
+    let mut inc_sgst = 0f64; let mut inc_igst = 0f64; let mut inc_gst = 0f64;
+    let mut inc_paid = 0f64; let mut inc_paid_count = 0i64;
+    let mut exp_count = 0i64; let mut exp_amount = 0f64; let mut exp_cgst = 0f64;
+    let mut exp_sgst = 0f64; let mut exp_igst = 0f64; let mut exp_gst = 0f64;
+    let mut gen_count = 0i64; let mut gen_amount = 0f64; let mut gen_cgst = 0f64;
+    let mut gen_sgst = 0f64; let mut gen_igst = 0f64; let mut gen_gst = 0f64;
+    let mut last_month_label = String::new();
 
-    let expense_count = expense_summary.expense_count + general_expense_summary.expense_count + incoming_summary.invoice_count;
-    let total_amount = expense_summary.total_amount + general_expense_summary.total_amount + incoming_summary.total_amount;
-    let total_tax = expense_summary.total_tax + general_expense_summary.total_tax + incoming_summary.total_gst_collected;
-    let total_cgst = expense_summary.total_cgst + general_expense_summary.total_cgst + incoming_summary.total_cgst;
-    let total_sgst = expense_summary.total_sgst + general_expense_summary.total_sgst + incoming_summary.total_sgst;
-    let total_igst = expense_summary.total_igst + general_expense_summary.total_igst + incoming_summary.total_igst;
-    let total_gst_collected = expense_summary.total_gst_collected + general_expense_summary.total_gst_collected + incoming_summary.total_gst_collected;
-    let net_gst_payable = summary.total_gst_collected - total_gst_collected;
+    for (year, month) in &months_to_query {
+        let s = service.get_monthly_gst_summary(&org_id, year, month).await
+            .map_err(actix_web::error::ErrorInternalServerError)?;
+        let inc = incoming_service.get_monthly_summary(&org_id, year, month).await
+            .map_err(actix_web::error::ErrorInternalServerError)?;
+        let exp = expense_service.get_monthly_gst_summary(&org_id, year, month).await
+            .map_err(actix_web::error::ErrorInternalServerError)?;
+        let gen = general_expense_service.get_monthly_gst_summary(&org_id, year, month).await
+            .map_err(actix_web::error::ErrorInternalServerError)?;
+
+        last_month_label = s.month.clone();
+        invoice_count += s.invoice_count as i64;
+        out_cgst += s.total_cgst; out_sgst += s.total_sgst; out_igst += s.total_igst;
+        out_gst += s.total_gst_collected; out_paid += s.paid_amount;
+        out_paid_count += s.paid_invoice_count as i64;
+        breakdown.extend(s.breakdown);
+        inc_count += inc.invoice_count as i64; inc_amount += inc.total_amount;
+        inc_cgst += inc.total_cgst; inc_sgst += inc.total_sgst; inc_igst += inc.total_igst;
+        inc_gst += inc.total_gst_collected; inc_paid += inc.paid_amount;
+        inc_paid_count += inc.paid_invoice_count as i64;
+        exp_count += exp.expense_count as i64; exp_amount += exp.total_amount;
+        exp_cgst += exp.total_cgst; exp_sgst += exp.total_sgst; exp_igst += exp.total_igst;
+        exp_gst += exp.total_gst_collected;
+        gen_count += gen.expense_count as i64; gen_amount += gen.total_amount;
+        gen_cgst += gen.total_cgst; gen_sgst += gen.total_sgst; gen_igst += gen.total_igst;
+        gen_gst += gen.total_gst_collected;
+    }
+
+    let total_gst_in = exp_gst + gen_gst + inc_gst;
+    let net_payable = out_gst - total_gst_in;
 
     Ok(HttpResponse::Ok().json(json!({
-        "month": summary.month,
+        "month": last_month_label,
         "outgoing_invoice_details": {
-            "invoice_count": summary.invoice_count,
-            "total_cgst": summary.total_cgst,
-            "total_sgst": summary.total_sgst,
-            "total_igst": summary.total_igst,
-            "total_gst_collected": summary.total_gst_collected,
-            "paid_amount": summary.paid_amount,
-            "paid_invoice_count": summary.paid_invoice_count,
-            "breakdown": summary.breakdown
+            "invoice_count": invoice_count, "total_cgst": out_cgst, "total_sgst": out_sgst,
+            "total_igst": out_igst, "total_gst_collected": out_gst,
+            "paid_amount": out_paid, "paid_invoice_count": out_paid_count, "breakdown": breakdown
         },
         "outgoing_invoices": {
-            "invoice_count": summary.invoice_count,
-            "total_cgst": summary.total_cgst,
-            "total_sgst": summary.total_sgst,
-            "total_igst": summary.total_igst,
-            "total_gst_collected": summary.total_gst_collected,
-            "paid_amount": summary.paid_amount,
-            "paid_invoice_count": summary.paid_invoice_count
+            "invoice_count": invoice_count, "total_cgst": out_cgst, "total_sgst": out_sgst,
+            "total_igst": out_igst, "total_gst_collected": out_gst,
+            "paid_amount": out_paid, "paid_invoice_count": out_paid_count
         },
         "incoming_invoices": {
-            "invoice_count": incoming_summary.invoice_count,
-            "total_amount": incoming_summary.total_amount,
-            "total_cgst": incoming_summary.total_cgst,
-            "total_sgst": incoming_summary.total_sgst,
-            "total_igst": incoming_summary.total_igst,
-            "total_gst_collected": incoming_summary.total_gst_collected,
-            "paid_amount": incoming_summary.paid_amount,
-            "paid_invoice_count": incoming_summary.paid_invoice_count
+            "invoice_count": inc_count, "total_amount": inc_amount, "total_cgst": inc_cgst,
+            "total_sgst": inc_sgst, "total_igst": inc_igst, "total_gst_collected": inc_gst,
+            "paid_amount": inc_paid, "paid_invoice_count": inc_paid_count
         },
         "expenses": {
-            "expense_count": expense_summary.expense_count,
-            "total_amount": expense_summary.total_amount,
-            "total_cgst": expense_summary.total_cgst,
-            "total_sgst": expense_summary.total_sgst,
-            "total_igst": expense_summary.total_igst,
-            "total_gst_collected": expense_summary.total_gst_collected
+            "expense_count": exp_count, "total_amount": exp_amount, "total_cgst": exp_cgst,
+            "total_sgst": exp_sgst, "total_igst": exp_igst, "total_gst_collected": exp_gst
         },
         "general_expenses": {
-            "expense_count": general_expense_summary.expense_count,
-            "total_amount": general_expense_summary.total_amount,
-            "total_cgst": general_expense_summary.total_cgst,
-            "total_sgst": general_expense_summary.total_sgst,
-            "total_igst": general_expense_summary.total_igst,
-            "total_gst_collected": general_expense_summary.total_gst_collected
+            "expense_count": gen_count, "total_amount": gen_amount, "total_cgst": gen_cgst,
+            "total_sgst": gen_sgst, "total_igst": gen_igst, "total_gst_collected": gen_gst
         },
         "combined_expense_gst": {
-            "expense_count": expense_count,
-            "total_amount": total_amount,
-            "total_tax": total_tax,
-            "total_cgst": total_cgst,
-            "total_sgst": total_sgst,
-            "total_igst": total_igst,
-            "total_gst_collected": total_gst_collected
+            "expense_count": exp_count + gen_count + inc_count,
+            "total_amount": exp_amount + gen_amount + inc_amount,
+            "total_tax": total_gst_in,
+            "total_cgst": exp_cgst + gen_cgst + inc_cgst,
+            "total_sgst": exp_sgst + gen_sgst + inc_sgst,
+            "total_igst": exp_igst + gen_igst + inc_igst,
+            "total_gst_collected": total_gst_in
         },
         "net_gst_payable": {
-            "outgoing_gst_collected": summary.total_gst_collected,
-            "incoming_gst_collected": incoming_summary.total_gst_collected,
-            "expense_gst_collected": total_gst_collected,
-            "net_payable": net_gst_payable
+            "outgoing_gst_collected": out_gst,
+            "incoming_gst_collected": inc_gst,
+            "expense_gst_collected": total_gst_in,
+            "net_payable": net_payable
         }
     })))
 }

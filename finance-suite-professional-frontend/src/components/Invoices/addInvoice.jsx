@@ -61,6 +61,7 @@ const getInitialInvoiceData = (invoiceType = "domestic") => ({
   total: "",
   status: "New",
   serviceId:"",
+  template_id: "classic",
 });
 
 export default function AddInvoice() {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -39,7 +39,7 @@ export default function EmployeeList() {
   const isAdmin = user?.is_admin;
 
   const [search, setSearch] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('All');
+  const [departmentFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [localPage, setLocalPage] = useState(1);
@@ -48,23 +48,21 @@ export default function EmployeeList() {
   const [statusModal, setStatusModal] = useState(null);
   const [photoCache, setPhotoCache] = useState({});
   const [previewPhoto, setPreviewPhoto] = useState(null);
-  const debounceRef = useRef(null);
-  const isSearching = useRef(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
-    if (isSearching.current) { isSearching.current = false; return; }
-    dispatch(fetchEmployees({ page: localPage, pageSize: localSize, search, department: departmentFilter, employeeType: typeFilter, status: statusFilter }));
-  }, [localPage, localSize, departmentFilter, typeFilter, statusFilter]); // eslint-disable-line
+    dispatch(fetchEmployees({ page: localPage, pageSize: localSize, search: debouncedSearch, department: departmentFilter, employeeType: typeFilter, status: statusFilter }));
+  }, [dispatch, localPage, localSize, debouncedSearch, departmentFilter, typeFilter, statusFilter]);
 
   useEffect(() => {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      isSearching.current = true;
+    if (search === debouncedSearch) return;
+
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(search);
       setLocalPage(1);
-      dispatch(fetchEmployees({ page: 1, pageSize: localSize, search, department: departmentFilter, employeeType: typeFilter, status: statusFilter }));
     }, 350);
-    return () => clearTimeout(debounceRef.current);
-  }, [search]); // eslint-disable-line
+    return () => clearTimeout(timeout);
+  }, [search, debouncedSearch]);
 
   useEffect(() => {
     (Array.isArray(employees) ? employees : []).forEach((e) => {
@@ -75,7 +73,7 @@ export default function EmployeeList() {
     });
   }, [employees]); // eslint-disable-line
 
-  const paginationOpts = () => ({ page: localPage, pageSize: localSize, search, department: departmentFilter, employeeType: typeFilter, status: statusFilter });
+  const paginationOpts = () => ({ page: localPage, pageSize: localSize, search: debouncedSearch, department: departmentFilter, employeeType: typeFilter, status: statusFilter });
   const totalPages = Math.max(1, Math.ceil(total / localSize));
 
   const rows = (Array.isArray(employees) ? employees : []).map((e) => ({

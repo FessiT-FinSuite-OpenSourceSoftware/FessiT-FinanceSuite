@@ -25,6 +25,8 @@ export default function ProfessionalTaxCompliance() {
   const dispatch = useDispatch();
   const { data, isLoading } = useSelector(ptSummarySelector);
   const { salaryData } = useSelector(salarySelector);
+  const { user } = useSelector((state) => state.auth);
+  const isAccountant = user?.is_accountant === true;
 
   const now = new Date();
   const [selectedMonths, setSelectedMonths] = useState([{ year: now.getFullYear(), month: now.getMonth() + 1 }]);
@@ -123,7 +125,7 @@ export default function ProfessionalTaxCompliance() {
 
         {/* Period Selector */}
         <div className="mb-2">
-          <PeriodSelector onChange={handlePeriodChange} />
+          <PeriodSelector onChange={handlePeriodChange} isAccountant={isAccountant} />
         </div>
 
         {/* Stat Cards */}

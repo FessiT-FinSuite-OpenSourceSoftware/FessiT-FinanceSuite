@@ -58,8 +58,12 @@ const Employees = lazy(() => import('./components/Employees'))
 const AddEmployee = lazy(() => import('./components/Employees/AddEmployee'))
 
 
+const ACCOUNTANT_MODULES = new Set([Module.Invoice]);
+
 function ProtectedRoute({ user, module, children }) {
-  if (!canRead(user, module)) return <Forbidden />;
+  const allowed = user?.is_admin || user?.is_accountant || canRead(user, module);
+  if (!allowed) return <Forbidden />;
+  if (user?.is_accountant && !ACCOUNTANT_MODULES.has(module)) return <Forbidden />;
   return children;
 }
 
@@ -149,8 +153,8 @@ export default function App() {
         <SideBar
           component={
             <Routes>
-              <Route path="/" element={<StatsGrid />} />
-              <Route path="/dashboard" element={<StatsGrid />} />
+              <Route path="/" element={user?.is_accountant ? <Navigate to="/invoices" replace /> : <StatsGrid />} />
+              <Route path="/dashboard" element={user?.is_accountant ? <Navigate to="/invoices" replace /> : <StatsGrid />} />
 
               {/* Invoice Routes */}
               <Route path="/invoices" element={<ProtectedRoute user={user} module={Module.Invoice}><Invoices /></ProtectedRoute>} />
@@ -193,9 +197,7 @@ export default function App() {
 
               {/* Projects */}
               <Route path="/projects" element={<ProtectedRoute user={user} module={Module.Customers}><Projects /></ProtectedRoute>} />
-
-              {/* Settings */}
-              <Route path="/settings" element={user?.is_admin ? <Settings /> : <Forbidden />} />
+              <Route path="/settings" element={user?.is_admin && !user?.is_accountant ? <Settings /> : <Forbidden />} />
 
               {/* User Management */}
               <Route path="/items" element={<ProtectedRoute user={user} module={Module.Products}><Items /></ProtectedRoute>} />

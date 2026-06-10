@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { Download, Search } from "lucide-react";
+import { isTauri, saveBytesToDownloads, showDownloadNotification } from "../../utils/pdfUtils";
 import { TabActionBar, FilterSelect, DataTable, InfoCard, Pagination } from "../../shared/ui";
 
 const fmt = (value) =>
@@ -32,6 +33,65 @@ function inMonthSet(value, monthSet) {
   return false;
 }
 
+const EXPORT_COLUMNS = [
+  { label: "Date", key: (d) => fmtDate(d.date) },
+  { label: "Deductee", key: (d) => d.deductee || "" },
+  { label: "Employee ID", key: (d) => d.emp_id || "" },
+  { label: "Invoice No", key: (d) => d.invoice_number || "" },
+  { label: "PAN", key: (d) => d.pan || "" },
+  { label: "Section", key: (d) => d.tds_section_key || "" },
+  { label: "Source", key: (d) => d.source || "" },
+  { label: "Amount", key: (d) => d.amount || 0 },
+  { label: "TDS Rate (%)", key: (d) => d.tdsRate || 0 },
+  { label: "TDS Amount", key: (d) => d.tdsAmount || 0 },
+  { label: "Status", key: (d) => d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : "" },
+];
+
+function toRows(data) {
+  return data.map((d) => Object.fromEntries(EXPORT_COLUMNS.map((c) => [c.label, c.key(d)])));
+}
+
+async function exportXLSX(data, filename) {
+  let XLSX;
+  try { XLSX = (await import("xlsx")).default ?? (await import("xlsx")); } catch { XLSX = window.XLSX; }
+  if (!XLSX) { alert("XLSX library not available. Please use CSV export."); return; }
+  const rows = toRows(data);
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = EXPORT_COLUMNS.map((col) => ({ wch: Math.max(col.label.length + 2, 14) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "TDS Deductions");
+  const fullName = `${filename}.xlsx`;
+  let filePath = null;
+  if (isTauri()) {
+    const bytes = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const result = await saveBytesToDownloads(new Uint8Array(bytes), fullName);
+    filePath = result.filePath;
+  } else {
+    XLSX.writeFile(wb, fullName);
+  }
+  await showDownloadNotification(fullName, filePath);
+}
+
+async function exportCSV(data, filename) {
+  const rows = toRows(data);
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const escape = (v) => { const s = String(v ?? ""); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const csv = [headers.map(escape).join(","), ...rows.map((r) => headers.map((h) => escape(r[h])).join(","))].join("\n");
+  const fullName = `${filename}.csv`;
+  let filePath = null;
+  if (isTauri()) {
+    const result = await saveBytesToDownloads(new TextEncoder().encode("\uFEFF" + csv), fullName);
+    filePath = result.filePath;
+  } else {
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = fullName; a.click();
+    URL.revokeObjectURL(url);
+  }
+  await showDownloadNotification(fullName, filePath);
+}
+
 export default function TDSDeductions({ deductions = [], isLoading = false, selectedMonths = [] }) {
   const [search, setSearch] = useState("");
   const [sectionSearch, setSectionSearch] = useState("");
@@ -39,9 +99,18 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const downloadMenuRef = useRef(null);
   useEffect(() => { setCurrentPage(1); }, [search, sectionSearch, sourceFilter, statusFilter, pageSize, selectedMonths]);
-
+  useEffect(() => {
+    if (!showDownloadMenu) return;
+    const handler = (e) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target))
+        setShowDownloadMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showDownloadMenu]);
   const filtered = useMemo(() => {
     const monthSet = buildMonthSet(selectedMonths);
     const q = search.trim().toLowerCase();
@@ -135,6 +204,31 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
       ),
     },
   ];
+  const filename = useMemo(() => {
+    const parts = ["TDS_Deductions"];
+    if (sourceFilter !== "All") parts.push(sourceFilter);
+    if (statusFilter !== "All") parts.push(statusFilter);
+    if (selectedMonths.length === 1)
+      parts.push(`${selectedMonths[0].year}-${String(selectedMonths[0].month).padStart(2, "0")}`);
+    else if (selectedMonths.length > 1) parts.push(`${selectedMonths.length}months`);
+    return parts.join("_");
+  }, [sourceFilter, statusFilter, selectedMonths]);
+
+  const handleDownload = useCallback(async (format) => {
+    setShowDownloadMenu(false);
+    if (!filtered.length) return;
+    try {
+      if (format === "xlsx") await exportXLSX(filtered, filename);
+      else await exportCSV(filtered, filename);
+    } catch (err) {
+      console.error("Export failed:", err);
+      try {
+        toast.error(`Export failed: ${err.message}`);
+      } catch {
+        alert(`Export failed: ${err.message}`);  // Tauri fallback
+      }
+    }
+  }, [filtered, filename]);
 
   return (
     <div>
@@ -144,7 +238,7 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
         onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }}
         searchPlaceholder="Search by deductee, PAN, invoice no, or date..."
       >
-       
+
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
           <input
@@ -152,7 +246,7 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
             value={sectionSearch}
             onChange={(e) => { setSectionSearch(e.target.value); setCurrentPage(1); }}
             placeholder="Search section code..."
-          className="pl-8 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 w-44 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder:text-slate-500"
+            className="pl-8 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 w-44 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder:text-slate-500"
           />
         </div>
         <FilterSelect value={sourceFilter} onChange={(v) => { setSourceFilter(v); setCurrentPage(1); }}>
@@ -165,6 +259,44 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
           <option value="deposited">Deposited</option>
           <option value="pending">Pending</option>
         </FilterSelect>
+
+        {/* ── Export button ── */}
+        <div className="relative" ref={downloadMenuRef}>
+          <button
+            onClick={() => setShowDownloadMenu((p) => !p)}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+            {filtered.length > 0 && (
+              <span className="bg-indigo-100 text-indigo-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                {filtered.length}
+              </span>
+            )}
+          </button>
+
+          {showDownloadMenu && (
+            <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg z-50 overflow-hidden">
+              <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500 border-b border-gray-100 dark:border-slate-700">
+                Export as
+              </p>
+              {[
+                { fmt: "csv", label: "CSV", desc: "Spreadsheet compatible" },
+                { fmt: "xlsx", label: "XLSX", desc: "Excel workbook" },
+              ].map(({ fmt, label, desc }) => (
+                <button
+                  key={fmt}
+                  onClick={() => handleDownload(fmt)}
+                  className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-b border-gray-50 dark:border-slate-700 last:border-0"
+                >
+                  <p className="text-sm font-medium text-gray-800 dark:text-slate-200">{label}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500">{desc}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </TabActionBar>
 
       {filtered.length > 0 && (
@@ -173,63 +305,63 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
           <span className="font-semibold text-gray-800 dark:text-slate-200">Total TDS: ₹ {fmt(totalTds)}</span>
         </div>
       )}
-       {(
-          search ||
-          sectionSearch ||
-          sourceFilter !== "All" ||
-          statusFilter !== "All" ||
-          selectedMonths.length > 0
-        ) && (
-            <div className="flex flex-wrap items-center gap-2 mb-3 px-1">
+      {(
+        search ||
+        sectionSearch ||
+        sourceFilter !== "All" ||
+        statusFilter !== "All" ||
+        selectedMonths.length > 0
+      ) && (
+          <div className="flex flex-wrap items-center gap-2 mb-3 px-1">
 
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium hover:bg-indigo-200 transition"
-                >
-                  Search: {search}
-                  <span className="text-sm">×</span>
-                </button>
-              )}
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium hover:bg-indigo-200 transition"
+              >
+                Search: {search}
+                <span className="text-sm">×</span>
+              </button>
+            )}
 
-              {sectionSearch && (
-                <button
-                  onClick={() => setSectionSearch("")}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium hover:bg-purple-200 transition"
-                >
-                  Section: {sectionSearch}
-                  <span className="text-sm">×</span>
-                </button>
-              )}
+            {sectionSearch && (
+              <button
+                onClick={() => setSectionSearch("")}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium hover:bg-purple-200 transition"
+              >
+                Section: {sectionSearch}
+                <span className="text-sm">×</span>
+              </button>
+            )}
 
-              {sourceFilter !== "All" && (
-                <button
-                  onClick={() => setSourceFilter("All")}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200 transition"
-                >
-                  Source: {sourceFilter}
-                  <span className="text-sm">×</span>
-                </button>
-              )}
+            {sourceFilter !== "All" && (
+              <button
+                onClick={() => setSourceFilter("All")}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium hover:bg-blue-200 transition"
+              >
+                Source: {sourceFilter}
+                <span className="text-sm">×</span>
+              </button>
+            )}
 
-              {statusFilter !== "All" && (
-                <button
-                  onClick={() => setStatusFilter("All")}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-medium hover:bg-orange-200 transition"
-                >
-                  Status: {statusFilter}
-                  <span className="text-sm">×</span>
-                </button>
-              )}
+            {statusFilter !== "All" && (
+              <button
+                onClick={() => setStatusFilter("All")}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-medium hover:bg-orange-200 transition"
+              >
+                Status: {statusFilter}
+                <span className="text-sm">×</span>
+              </button>
+            )}
 
-              {selectedMonths.length > 0 && (
-                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
-                  Months: {selectedMonths.length} selected
-                </div>
-              )}
+            {selectedMonths.length > 0 && (
+              <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                Months: {selectedMonths.length} selected
+              </div>
+            )}
 
-            </div>
-          )}
+          </div>
+        )}
 
       <DataTable
         isLoading={isLoading}

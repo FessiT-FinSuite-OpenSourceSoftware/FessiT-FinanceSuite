@@ -37,6 +37,7 @@ const initialInvoiceData = {
   subject: "",
   service: "",
   serviceId: "",
+  template_id: "classic",
   items: [
     {
       description: "",
@@ -1454,6 +1455,8 @@ export default function EditInvoice() {
           invoiceData={invoiceData}
           orgData={currentOrganisation}
           onBack={() => setShowInvoicePreview(false)}
+          initialTemplate={invoiceData.template_id || "classic"}
+          onTemplateChange={(tpl) => setInvoiceData((prev) => ({ ...prev, template_id: tpl }))}
         />
       )}
     </div>

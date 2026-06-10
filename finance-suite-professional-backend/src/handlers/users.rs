@@ -236,6 +236,7 @@ pub async fn get_profile(
         permissions: user.permissions,
         is_admin: user.is_admin,
         is_active: user.is_active,
+        is_accountant: user.is_accountant,
     };
 
     Ok(HttpResponse::Ok().json(profile))
@@ -325,6 +326,7 @@ pub async fn verify_token_handler(
         permissions: user.permissions,
         is_admin: user.is_admin,
         is_active: user.is_active,
+        is_accountant: user.is_accountant,
     };
 
     Ok(HttpResponse::Ok().json(json!({ "user": profile })))

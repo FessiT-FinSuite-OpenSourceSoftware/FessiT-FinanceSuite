@@ -121,6 +121,7 @@ impl UserService {
             permissions: user.permissions,
             is_admin: user.is_admin,
             is_active: user.is_active,
+            is_accountant: user.is_accountant,
         };
 
         Ok((token, refresh_token, user_response))

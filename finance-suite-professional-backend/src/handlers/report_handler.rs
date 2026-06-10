@@ -61,7 +61,7 @@ pub async fn get_profit_loss(
     let user = invoice_service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Invoice, PermissionAction::Read, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
