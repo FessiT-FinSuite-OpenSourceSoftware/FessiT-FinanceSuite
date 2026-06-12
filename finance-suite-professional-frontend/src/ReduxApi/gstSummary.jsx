@@ -63,15 +63,27 @@ export const fetchGstSummary = (selectedMonths) => async (dispatch) => {
       month: r.month,
       outgoing_invoice_details: sumSection(acc, r, 'outgoing_invoice_details'),
       outgoing_invoices:        sumSection(acc, r, 'outgoing_invoices'),
-      incoming_invoices:        sumSection(acc, r, 'incoming_invoices'),
+      incoming_invoices: {
+        ...sumSection(acc, r, 'incoming_invoices'),
+        billable_gst:     (acc.incoming_invoices?.billable_gst     || 0) + (r.incoming_invoices?.billable_gst     || 0),
+        non_billable_gst: (acc.incoming_invoices?.non_billable_gst || 0) + (r.incoming_invoices?.non_billable_gst || 0),
+      },
       expenses:                 sumSection(acc, r, 'expenses'),
       general_expenses:         sumSection(acc, r, 'general_expenses'),
       combined_expense_gst:     sumSection(acc, r, 'combined_expense_gst'),
       net_gst_payable: {
         outgoing_gst_collected: (acc.net_gst_payable?.outgoing_gst_collected || 0) + (r.net_gst_payable?.outgoing_gst_collected || 0),
-        incoming_gst_collected: (acc.net_gst_payable?.incoming_gst_collected || 0) + (r.net_gst_payable?.incoming_gst_collected || 0),
-        expense_gst_collected:  (acc.net_gst_payable?.expense_gst_collected  || 0) + (r.net_gst_payable?.expense_gst_collected  || 0),
+        gst_paid_billable:      (acc.net_gst_payable?.gst_paid_billable      || 0) + (r.net_gst_payable?.gst_paid_billable      || 0),
+        gst_paid_non_billable:  (acc.net_gst_payable?.gst_paid_non_billable  || 0) + (r.net_gst_payable?.gst_paid_non_billable  || 0),
+        gst_paid_total:         (acc.net_gst_payable?.gst_paid_total         || 0) + (r.net_gst_payable?.gst_paid_total         || 0),
         net_payable:            (acc.net_gst_payable?.net_payable            || 0) + (r.net_gst_payable?.net_payable            || 0),
+      },
+      gst_summary: {
+        gst_collected:        (acc.gst_summary?.gst_collected        || 0) + (r.gst_summary?.gst_collected        || 0),
+        gst_paid_billable:    (acc.gst_summary?.gst_paid_billable    || 0) + (r.gst_summary?.gst_paid_billable    || 0),
+        gst_paid_non_billable:(acc.gst_summary?.gst_paid_non_billable|| 0) + (r.gst_summary?.gst_paid_non_billable|| 0),
+        gst_paid_total:       (acc.gst_summary?.gst_paid_total       || 0) + (r.gst_summary?.gst_paid_total       || 0),
+        net_payable:          (acc.gst_summary?.net_payable          || 0) + (r.gst_summary?.net_payable          || 0),
       },
     }), {});
     dispatch(gstSummarySuccess(combined));

@@ -96,6 +96,8 @@ impl IncomingInvoiceRepository {
         let mut total_igst         = 0.0f64;
         let mut paid_amount        = 0.0f64;
         let mut paid_invoice_count = 0u32;
+        let mut billable_gst       = 0.0f64;
+        let mut non_billable_gst   = 0.0f64;
 
         for inv in &invoices {
             let date = inv.invoice_date.trim();
@@ -109,12 +111,19 @@ impl IncomingInvoiceRepository {
             invoice_count += 1;
             total_amount  += raw_total;
 
+            let inv_cgst = inv.total_cgst.parse::<f64>().unwrap_or(0.0);
+            let inv_sgst = inv.total_sgst.parse::<f64>().unwrap_or(0.0);
+            let inv_igst = inv.total_igst.parse::<f64>().unwrap_or(0.0);
+
             if !is_international {
-                total_cgst += inv.total_cgst.parse::<f64>().unwrap_or(0.0);
-                total_sgst += inv.total_sgst.parse::<f64>().unwrap_or(0.0);
+                total_cgst += inv_cgst;
+                total_sgst += inv_sgst;
             } else {
-                total_igst += inv.total_igst.parse::<f64>().unwrap_or(0.0);
+                total_igst += inv_igst;
             }
+
+            let inv_gst = if !is_international { inv_cgst + inv_sgst } else { inv_igst };
+            if inv.is_billable { billable_gst += inv_gst; } else { non_billable_gst += inv_gst; }
 
             if is_paid {
                 paid_amount        += raw_total;
@@ -132,6 +141,8 @@ impl IncomingInvoiceRepository {
             total_gst_collected: total_cgst + total_sgst + total_igst,
             paid_amount,
             paid_invoice_count,
+            billable_gst,
+            non_billable_gst,
         })
     }
 
@@ -175,6 +186,8 @@ pub struct IncomingInvoiceMonthlySummary {
     pub total_gst_collected: f64,
     pub paid_amount: f64,
     pub paid_invoice_count: u32,
+    pub billable_gst: f64,
+    pub non_billable_gst: f64,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

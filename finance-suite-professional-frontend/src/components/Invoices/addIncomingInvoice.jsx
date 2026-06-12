@@ -39,6 +39,7 @@ const initialForm = {
   tds_percent: "",
   notes: "",
   status: "Unpaid",
+  is_billable: true,
 };
 
 function calcItem(item, isDomestic) {
@@ -487,6 +488,27 @@ export default function AddIncomingInvoice() {
                 <option value="no">No</option>
                 <option value="yes">Yes</option>
               </select>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-blue-300 transition-colors">
+              <div className="min-w-0">
+                <label
+                  htmlFor="is_billable"
+                  className="block text-sm font-semibold text-gray-800 cursor-pointer"
+                >
+                  GST Incliusive 
+                </label>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Mark this invoice to include in  GST.
+                </p>
+              </div>
+
+              <input
+                id="is_billable"
+                type="checkbox"
+                checked={!!form.is_billable}
+                onChange={(e) => setField("is_billable", e.target.checked)}
+                className="h-5 w-5 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+              />
             </div>
             {form.tds_available === "yes" && (
               <div className="relative col-span-2">

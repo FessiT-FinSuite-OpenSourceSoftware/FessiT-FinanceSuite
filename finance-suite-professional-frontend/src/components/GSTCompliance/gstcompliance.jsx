@@ -153,12 +153,14 @@ export default function GSTCompliance() {
       dispatch(fetchIncomingInvoices());
     }
   }, [dispatch, selectedMonths]);
-
+  console.log("GST Summary Data:", data);
   const outgoing = data?.outgoing_invoice_details || data?.outgoing_invoices || {};
-  const incoming = data?.combined_expense_gst || data?.incoming_invoices || {};
-  const net = data?.net_gst_payable || {};
-  const netPayable = toNumber(net.net_payable);
-  const pendingReturnCount = typeof data?.pending_returns === "number" ? data.pending_returns : gstReturns.filter((r) => r.status === "pending").length;
+  const gstSummary = data?.gst_summary || data?.net_gst_payable || {};
+  const netPayable = toNumber(gstSummary.net_payable);
+  const gstCollected = toNumber(gstSummary.gst_collected ?? outgoing.total_gst_collected);
+  const itcBillable = toNumber(gstSummary.gst_paid_billable);
+  const itcNonBillable = toNumber(gstSummary.gst_paid_non_billable);
+  const itcTotal = toNumber(gstSummary.gst_paid_total);
 
   const recentTransactions = useMemo(() => {
     // Build a Set of "YYYY-MM" strings for the selected months
@@ -178,7 +180,7 @@ export default function GSTCompliance() {
       return false;
     }
     const outgoingTxns = (Array.isArray(invoiceData) ? invoiceData : [])
-      .filter((invoice) => (invoice.status || "").toLowerCase() === "paid" && inSelectedMonths(invoice.invoice_date || invoice.date))
+      .filter((invoice) => inSelectedMonths(invoice.invoice_date || invoice.date))
       .map((invoice) => {
         const itemTaxes = sumInvoiceTaxes(Array.isArray(invoice.items) ? invoice.items : []);
         // outgoing invoice stores totals as totalcgst/totalsgst/totaligst (no underscore)
@@ -205,7 +207,7 @@ export default function GSTCompliance() {
       });
 
     const incomingTxns = (Array.isArray(incomingInvoices) ? incomingInvoices : [])
-      .filter((invoice) => (invoice.status || "").toLowerCase() === "paid" && inSelectedMonths(invoice.invoice_date || invoice.date))
+      .filter((invoice) => inSelectedMonths(invoice.invoice_date || invoice.date))
       .map((invoice) => {
         const cgst = toNumber(invoice.total_cgst);
         const sgst = toNumber(invoice.total_sgst);
@@ -284,54 +286,43 @@ export default function GSTCompliance() {
           <PeriodSelector onChange={handlePeriodChange} isAccountant={isAccountant} />
         </div>
         
-        <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2 transition-opacity duration-300 ${isLoading && data ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
-  {!data ? (
-    <StatCardSkeleton count={4} /> 
-  ) : (
-    <>
-      {/* Total GST Collected */}
-      <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-blue-300 transition-all">
-        
-        <div className="relative z-10">
-          <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Total GST Collected</p>
-          <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(outgoing.total_gst_collected || 0)}</h3>
-         
-        </div>
-      </div>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-2 transition-opacity duration-300 ${isLoading && data ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+          {!data ? (
+            Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)
+          ) : (
+            <>
+              <div className="compliance-stat-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-blue-300 transition-all">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">GST Collected</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(gstCollected)}</h3>
+                <p className="text-[11px] text-slate-400 mt-1">From outgoing invoices</p>
+              </div>
 
-      {/* Input Tax Credit */}
-      <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
-       
-        <div className="relative z-10">
-          <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Input Tax Credit</p>
-          <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(incoming.total_gst_collected || 0)}</h3>
-          
-        </div>
-      </div>
+              <div className="compliance-stat-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Input Tax Credit</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(itcBillable)}</h3>
+                <p className="text-[11px] text-slate-400 mt-1">GST incoming invoices</p>
+              </div>
 
-      {/* Net GST Payable */}
-      <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-purple-300 transition-all">
-        
-        <div className="relative z-10">
-          <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Net GST Payable</p>
-          <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(netPayable)}</h3>
-         
-        </div>
-      </div>
+              <div className="compliance-stat-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Input Tax Credit Excluded</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(itcNonBillable)}</h3>
+                <p className="text-[11px] text-slate-400 mt-1">GST Excluded incoming invoices</p>
+              </div>
 
-      {/* Returns Pending */}
-      <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
-        
-        <div className="relative z-10">
-          <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Returns Pending</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{pendingReturnCount}</h3>
-          </div>
+              <div className="compliance-stat-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-red-300 transition-all">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Total Input Tax Credit</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(itcTotal)}</h3>
+                <p className="text-[11px] text-slate-400 mt-1">Input Tax Credit + Input Tax Credit Excluded</p>
+              </div>
+
+              <div className="compliance-stat-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-purple-300 transition-all">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Net GST Payable</p>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(netPayable)}</h3>
+                <p className="text-[11px] text-slate-400 mt-1">GST Collected − Input Tax Credit Total</p>
+              </div>
+            </>
+          )}
         </div>
-      </div>
-    </>
-  )}
-</div>
 
         {activeTab === "returns" && (
           <>

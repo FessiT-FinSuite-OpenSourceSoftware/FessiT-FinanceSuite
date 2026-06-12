@@ -497,6 +497,7 @@ pub async fn get_gst_summary(
     let mut inc_count = 0i64; let mut inc_amount = 0f64; let mut inc_cgst = 0f64;
     let mut inc_sgst = 0f64; let mut inc_igst = 0f64; let mut inc_gst = 0f64;
     let mut inc_paid = 0f64; let mut inc_paid_count = 0i64;
+    let mut inc_billable_gst = 0f64; let mut inc_non_billable_gst = 0f64;
     let mut exp_count = 0i64; let mut exp_amount = 0f64; let mut exp_cgst = 0f64;
     let mut exp_sgst = 0f64; let mut exp_igst = 0f64; let mut exp_gst = 0f64;
     let mut gen_count = 0i64; let mut gen_amount = 0f64; let mut gen_cgst = 0f64;
@@ -523,6 +524,7 @@ pub async fn get_gst_summary(
         inc_cgst += inc.total_cgst; inc_sgst += inc.total_sgst; inc_igst += inc.total_igst;
         inc_gst += inc.total_gst_collected; inc_paid += inc.paid_amount;
         inc_paid_count += inc.paid_invoice_count as i64;
+        inc_billable_gst += inc.billable_gst; inc_non_billable_gst += inc.non_billable_gst;
         exp_count += exp.expense_count as i64; exp_amount += exp.total_amount;
         exp_cgst += exp.total_cgst; exp_sgst += exp.total_sgst; exp_igst += exp.total_igst;
         exp_gst += exp.total_gst_collected;
@@ -531,8 +533,11 @@ pub async fn get_gst_summary(
         gen_gst += gen.total_gst_collected;
     }
 
-    let total_gst_in = exp_gst + gen_gst + inc_gst;
-    let net_payable = out_gst - total_gst_in;
+    let exp_non_billable_gst = exp_gst + gen_gst;
+    let total_gst_paid_billable = inc_billable_gst;
+    let total_gst_paid_non_billable = inc_non_billable_gst + exp_non_billable_gst;
+    let total_gst_paid = total_gst_paid_billable + total_gst_paid_non_billable;
+    let net_payable = (out_gst - total_gst_paid).max(0.0);
 
     Ok(HttpResponse::Ok().json(json!({
         "month": last_month_label,
@@ -549,7 +554,8 @@ pub async fn get_gst_summary(
         "incoming_invoices": {
             "invoice_count": inc_count, "total_amount": inc_amount, "total_cgst": inc_cgst,
             "total_sgst": inc_sgst, "total_igst": inc_igst, "total_gst_collected": inc_gst,
-            "paid_amount": inc_paid, "paid_invoice_count": inc_paid_count
+            "paid_amount": inc_paid, "paid_invoice_count": inc_paid_count,
+            "billable_gst": inc_billable_gst, "non_billable_gst": inc_non_billable_gst
         },
         "expenses": {
             "expense_count": exp_count, "total_amount": exp_amount, "total_cgst": exp_cgst,
@@ -562,16 +568,23 @@ pub async fn get_gst_summary(
         "combined_expense_gst": {
             "expense_count": exp_count + gen_count + inc_count,
             "total_amount": exp_amount + gen_amount + inc_amount,
-            "total_tax": total_gst_in,
             "total_cgst": exp_cgst + gen_cgst + inc_cgst,
             "total_sgst": exp_sgst + gen_sgst + inc_sgst,
             "total_igst": exp_igst + gen_igst + inc_igst,
-            "total_gst_collected": total_gst_in
+            "total_gst_collected": total_gst_paid
+        },
+        "gst_summary": {
+            "gst_collected": out_gst,
+            "gst_paid_billable": total_gst_paid_billable,
+            "gst_paid_non_billable": total_gst_paid_non_billable,
+            "gst_paid_total": total_gst_paid,
+            "net_payable": net_payable
         },
         "net_gst_payable": {
             "outgoing_gst_collected": out_gst,
-            "incoming_gst_collected": inc_gst,
-            "expense_gst_collected": total_gst_in,
+            "gst_paid_billable": total_gst_paid_billable,
+            "gst_paid_non_billable": total_gst_paid_non_billable,
+            "gst_paid_total": total_gst_paid,
             "net_payable": net_payable
         }
     })))

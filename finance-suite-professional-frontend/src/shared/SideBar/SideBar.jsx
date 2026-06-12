@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo } from "react";
+import React, { useState, useEffect, useRef, memo, useMemo } from "react";
 import ReactDOM from "react-dom";
 import { useLocation, useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
@@ -49,6 +49,62 @@ function UserMenuPortal({ triggerRef, menuRef, onLogout }) {
 const PageContent = memo(({ component }) => (
   <div className="p-1">{component}</div>
 ));
+
+const NavItem = memo(({ item, collapsed = false, inPopover = false, handlers }) => {
+  const { handleNavigate, theme, isItemActive } = handlers;
+  const Icon = item.icon;
+  const active = isItemActive(item.id);
+  const stateClass = theme === "dark"
+    ? active
+      ? "bg-slate-800 text-indigo-200 ring-1 ring-indigo-400/25 shadow-none"
+      : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
+    : active
+      ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-900/5"
+      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900";
+
+  return (
+    <motion.button
+      type="button"
+      onClick={() => handleNavigate(item.id)}
+      aria-current={active ? "page" : undefined}
+      aria-label={collapsed && !inPopover ? item.label : undefined}
+      title={collapsed && !inPopover ? item.label : undefined}
+      whileHover={{ x: collapsed || inPopover ? 0 : 2 }}
+      whileTap={{ scale: 0.98 }}
+      className={`group relative flex w-full items-center rounded-lg text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 ${
+        collapsed && !inPopover ? "h-11 justify-center px-0" : "min-h-8 gap-2 px-2 py-1"
+      } ${stateClass}`}
+    >
+      {active && (
+        <motion.span
+          layoutId="sidebar-active-indicator"
+          className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-indigo-500 dark:bg-indigo-300"
+          transition={SIDEBAR_SPRING}
+        />
+      )}
+      <motion.span
+        className="flex h-5 w-5 shrink-0 items-center justify-center"
+        animate={{ scale: active ? 1.04 : 1 }}
+        transition={SIDEBAR_SPRING}
+      >
+        <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+      </motion.span>
+      <AnimatePresence initial={false}>
+        {(!collapsed || inPopover) && (
+          <motion.span
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -6 }}
+            transition={CONTENT_FADE}
+            className="truncate font-medium"
+          >
+            {item.label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.button>
+  );
+});
 
 const NAV_GROUPS = [
   {
@@ -335,61 +391,11 @@ export default function SideBar({ component }) {
     setHoveredGroup(key);
   };
 
-  const NavItem = ({ item, collapsed = false, inPopover = false }) => {
-    const Icon = item.icon;
-    const active = isItemActive(item.id);
-    const stateClass = theme === "dark"
-      ? active
-        ? "bg-slate-800 text-indigo-200 ring-1 ring-indigo-400/25 shadow-none"
-        : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
-      : active
-        ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-900/5"
-        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900";
-
-    return (
-      <motion.button
-        type="button"
-        key={item.id}
-        onClick={() => handleNavigate(item.id)}
-        aria-current={active ? "page" : undefined}
-        aria-label={collapsed && !inPopover ? item.label : undefined}
-        title={collapsed && !inPopover ? item.label : undefined}
-        whileHover={{ x: collapsed || inPopover ? 0 : 2 }}
-        whileTap={{ scale: 0.98 }}
-        className={`group relative flex w-full items-center rounded-lg text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950 ${
-          collapsed && !inPopover ? "h-11 justify-center px-0" : "min-h-8 gap-2 px-2 py-1"
-        } ${stateClass}`}
-      >
-        {active && (
-          <motion.span
-            layoutId="sidebar-active-indicator"
-            className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-indigo-500 dark:bg-indigo-300"
-            transition={SIDEBAR_SPRING}
-          />
-        )}
-        <motion.span
-          className="flex h-5 w-5 shrink-0 items-center justify-center"
-          animate={{ scale: active ? 1.04 : 1 }}
-          transition={SIDEBAR_SPRING}
-        >
-          <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
-        </motion.span>
-        <AnimatePresence initial={false}>
-          {(!collapsed || inPopover) && (
-            <motion.span
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -6 }}
-              transition={CONTENT_FADE}
-              className="truncate font-medium"
-            >
-              {item.label}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </motion.button>
-    );
-  };
+  const navItemHandlers = useMemo(
+    () => ({ handleNavigate, theme, isItemActive }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme, location.pathname]
+  );
 
   // Shared nav content used in desktop sidebar and responsive drawer
   const NavContent = ({ collapsed = false }) => (
@@ -474,7 +480,7 @@ export default function SideBar({ component }) {
                   className="overflow-hidden"
                 >
                   <div className="mt-0.5 space-y-px">
-                    {visibleItems.map((item) => <NavItem key={item.id} item={item} />)}
+                    {visibleItems.map((item) => <NavItem key={item.id} item={item} handlers={navItemHandlers} />)}
                   </div>
                 </motion.div>
               )}
@@ -499,7 +505,7 @@ export default function SideBar({ component }) {
                     {group.label}
                   </p>
                   <div className="space-y-1">
-                    {visibleItems.map((item) => <NavItem key={item.id} item={item} inPopover />)}
+                    {visibleItems.map((item) => <NavItem key={item.id} item={item} inPopover handlers={navItemHandlers} />)}
                   </div>
                 </motion.div>
               )}

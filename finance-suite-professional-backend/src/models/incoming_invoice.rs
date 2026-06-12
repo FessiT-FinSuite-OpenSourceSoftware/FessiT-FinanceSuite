@@ -39,6 +39,10 @@ pub struct IncomingInvoiceItem {
     pub item_total: String,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IncomingInvoice {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none", skip_deserializing)]
@@ -112,6 +116,9 @@ pub struct IncomingInvoice {
 
     #[serde(default)]
     pub tds_applicable: bool,
+
+    #[serde(default = "default_true")]
+    pub is_billable: bool,
 
     #[serde(default)]
     pub tds_total: String,

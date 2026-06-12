@@ -417,7 +417,8 @@ export default function InvoiceList() {
       label: "Invoice No",
       render: (invoice) => {
         const id = getInvoiceId(invoice);
-        return <span className="text-blue-600 font-medium cursor-pointer" onClick={() => nav(`/invoices/editInvoice/${id}`)}>{invoice.invoice_number || "-"}</span>;
+        return <span className="text-blue-600 font-medium cursor-pointer" onClick={() => {
+           !isAccountant ? nav(`/invoices/editInvoice/${id}`) : null}}>{invoice.invoice_number || "-"}</span>;
       },
     },
     {

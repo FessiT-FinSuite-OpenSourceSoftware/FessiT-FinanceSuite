@@ -23,6 +23,7 @@ createRoot(document.getElementById('root')).render(
     <ToastContainer 
     hideProgressBar
     autoClose={1200}
+    style={{ zIndex: 99999 }}
     />
     </ThemeProvider>
     </Provider>

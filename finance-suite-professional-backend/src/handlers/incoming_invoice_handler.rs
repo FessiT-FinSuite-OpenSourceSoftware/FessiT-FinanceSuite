@@ -303,6 +303,7 @@ pub async fn update_incoming_invoice_with_file(
         total_cgst: fields.remove("total_cgst").unwrap_or_default(),
         total_sgst: fields.remove("total_sgst").unwrap_or_default(),
         total_igst: fields.remove("total_igst").unwrap_or_default(),
+        is_billable: fields.remove("is_billable").map(|v| v == "true" || v == "1").unwrap_or_default(),
         total_before_tds: fields
             .remove("totalBeforeTds")
             .or_else(|| fields.remove("total_before_tds"))
