@@ -257,6 +257,10 @@ pub struct Expense {
 
     #[serde(default)]
     pub cost_type: CostType,
+
+    /// Associated employee (references the employees collection)
+    #[serde(rename = "associatedEmployee", skip_serializing_if = "Option::is_none")]
+    pub associated_employee: Option<ObjectId>,
 }
 
 impl Expense {
@@ -285,6 +289,7 @@ impl Expense {
             updated_at: Some(now),
             organisation_id: None,
             cost_type: CostType::Indirect,
+            associated_employee: None,
         }
     }
     
@@ -477,6 +482,7 @@ impl From<CreateExpenseRequest> for Expense {
             updated_at: Some(now),
             organisation_id: None,
             cost_type: CostType::Indirect,
+            associated_employee: None,
         };
         expense.calculate_total();
         expense

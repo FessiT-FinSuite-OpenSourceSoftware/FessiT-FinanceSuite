@@ -6,6 +6,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { useDispatch, useSelector } from "react-redux";
 import { expenseSelector, fetchOneExpense, updateExpense } from "../../ReduxApi/expense";
+import { fetchAllEmployees } from "../../ReduxApi/employee";
 import axiosInstance from "../../utils/axiosInstance";
 import { KeyUri } from "../../shared/key";
 
@@ -93,11 +94,13 @@ export default function EditExpense() {
     currency: "INR",
     comment: "",
     costType: "indirect",
+    associatedEmployeeId: "",
   });
   const [items, setItems] = useState([emptyExpenseItem()]);
   const [inputErrors, setInputErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState([]);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewMime, setPreviewMime] = useState("");
   const [showPreview, setShowPreview] = useState(false);
@@ -113,11 +116,19 @@ export default function EditExpense() {
         currency: "INR",
         comment: "",
         costType: "indirect",
+        associatedEmployeeId: "",
       });
       setItems([emptyExpenseItem()]);
       dispatch(fetchOneExpense(id));
     }
   }, [id, dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchAllEmployees()).then((data) => {
+      const list = Array.isArray(data) ? data : [];
+      setEmployees(list);
+    });
+  }, [dispatch]);
 
   useEffect(() => {
     if (isError) {
@@ -129,6 +140,7 @@ export default function EditExpense() {
         currency: "INR",
         comment: "",
         costType: "indirect",
+        associatedEmployeeId: "",
       });
       setItems([emptyExpenseItem()]);
       toast.error("Unable to load expense details");
@@ -146,6 +158,13 @@ export default function EditExpense() {
       currency: currentExpense.items?.[0]?.currency || "INR",
       comment: currentExpense.notes || "",
       costType: currentExpense.cost_type || "indirect",
+      associatedEmployeeId: (() => {
+        const ae = currentExpense.associatedEmployee ?? currentExpense.associated_employee;
+        if (!ae) return "";
+        if (typeof ae === "string") return ae;
+        if (ae.$oid) return ae.$oid;  // MongoDB extended JSON ObjectId
+        return "";
+      })(),
     });
 
     const mappedItems = Array.isArray(currentExpense.items) && currentExpense.items.length > 0
@@ -326,6 +345,7 @@ export default function EditExpense() {
       formData.append("currency", header.currency);
       formData.append("notes", header.comment || "");
       formData.append("costType", header.costType || "indirect");
+      if (header.associatedEmployeeId) formData.append("associatedEmployee", header.associatedEmployeeId);
 
       const itemsPayload = items.map((item) => {
         const amount = parseFloat(item.amount) || 0;
@@ -374,7 +394,7 @@ export default function EditExpense() {
 
   return (
     <>
-      <div className="sticky top-[88px] w-full z-100 rounded-lg bg-white border-gray-300 py-4 -mt-15 shadow-sm">
+      <div className="sticky top-[72px] w-full z-100 rounded-lg bg-white border-gray-300 py-4 shadow-sm">
         <div className="flex justify-between">
           <div className="px-4 py-2 flex items-center gap-2">
             <ArrowLeft strokeWidth={1} onClick={() => nav("/expenses")} className="cursor-pointer" />
@@ -393,7 +413,7 @@ export default function EditExpense() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg p-4 pb-6 mt-10">
+      <div className="bg-white rounded-lg shadow-lg p-4 pb-6 mt-2">
         <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2">Expense Details</h2>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -469,8 +489,31 @@ export default function EditExpense() {
               <option value="direct">Direct</option>
             </select>
           </div>
-        </div>
 
+          <div className="relative">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Associated Employee</label>
+            <select
+              name="associatedEmployeeId"
+              data-header="true"
+              value={header.associatedEmployeeId}
+              onChange={handleHeaderChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+            >
+              <option value="">Select an employee</option>
+              {employees.map((emp) => {
+                const empId = emp._id?.$oid || emp._id || emp.id?.$oid || emp.id || "";
+                const name = emp.name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || empId;
+                const code = emp.emp_id || emp.employee_id || "";
+                return (
+                  <option key={empId} value={empId}>
+                    {name}{code ? ` (${code})` : ""}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </div>
+{console.log("first", header)}
         <div className="mb-6">
           <label className="block text-sm font-semibold text-gray-700 mb-1">Overall Comment (optional)</label>
           <textarea

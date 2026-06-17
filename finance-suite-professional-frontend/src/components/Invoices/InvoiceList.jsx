@@ -340,18 +340,20 @@ export default function InvoiceList() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const countByStatus = (status) => invoices.filter((i) => (i.status || "New") === status).length;
+  const countByStatus = (status) => filtered.filter((i) => (i.status || "New") === status).length;
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const countOverdue = invoices.filter((i) => {
+  const countOverdue = filtered.filter((i) => {
     if ((i.status || "New") === "Paid") return false;
     const due = i.invoice_dueDate || i.due_date || "";
     return due && new Date(due) < today;
   }).length;
-  const countRaised = invoices.filter((i) => {
+  const countRaised = filtered.filter((i) => {
     if ((i.status || "New") === "Paid") return false;
     const due = i.invoice_dueDate || i.due_date || "";
     return (!due || new Date(due) >= today) ? (i.status || "New") === "Issued" : false;
   }).length;
+  const totalInvoiceValue = filtered.reduce((s, i) => s + toNumber(i.total), 0);
+  const paidInvoiceValue  = filtered.filter((i) => (i.status || "New") === "Paid").reduce((s, i) => s + toNumber(i.total), 0);
 
   const openPreview = async (invoice) => {
     await dispatch(fetchOrganisationByEmail(localStorage.getItem("email"), true));
@@ -596,9 +598,10 @@ export default function InvoiceList() {
 
       <FilterChips chips={chips} onRemove={removeChip} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <StatCard label="Total Invoices" value={invoices.length} />
-        <StatCard label="Paid" value={countByStatus("Paid")} valueClass="text-green-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+        <StatCard label="Total Invoices" value={filtered.length} />
+        <StatCard label="Invoice Value" value={`₹ ${totalInvoiceValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} valueClass="text-indigo-700" />
+        <StatCard label="Paid" value={`${countByStatus("Paid")}`} valueClass="text-green-600" />
         <StatCard label="Issued" value={countRaised} valueClass="text-blue-600" />
         <StatCard label="Overdue" value={countOverdue} valueClass="text-red-600" />
       </div>
@@ -608,6 +611,11 @@ export default function InvoiceList() {
         data={paginated}
         rowKey={getInvoiceId}
         columns={columns}
+        rowClass={(invoice) => {
+          if ((invoice.status || "New") === "Paid") return "";
+          const due = invoice.invoice_dueDate || invoice.due_date || "";
+          return due && new Date(due) < today ? "bg-red-50 dark:bg-red-950/30 border-l-2 border-red-400" : "";
+        }}
       />
 
       {filtered.length > 0 && (

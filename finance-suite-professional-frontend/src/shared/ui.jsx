@@ -49,7 +49,7 @@ export function StatCard({ label, value, valueClass = "text-gray-900 dark:text-s
 export function TabActionBar({ searchValue, onSearchChange, searchPlaceholder = "Search...", sticky = true, children }) {
   const searchId = React.useId();
   return (
-    <div className={`${sticky ? "sticky top-[88px] z-10 " : ""}rounded-lg bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 py-4 shadow-sm mb-4`}>
+    <div className={`${sticky ? "sticky top-[88px] z-10 " : ""}rounded-lg bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 py-4 shadow-sm mb-2`}>
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 w-5 h-5" />
@@ -303,7 +303,7 @@ function ExpandedRow({ colSpan, children, onDone, closing }) {
 }
 
 // ── Data Table ───────────────────────────────────────────────────────────────
-export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wrapperClass, tbodyClass = "divide-y divide-gray-200 dark:divide-y-0", emptyMessage }) {
+export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, rowClass, wrapperClass, tbodyClass = "divide-y divide-gray-200 dark:divide-y-0", emptyMessage }) {
   const [openId, setOpenId] = React.useState(null);
   const [closingId, setClosingId] = React.useState(null);
   const expandable = typeof renderExpanded === "function";
@@ -357,7 +357,7 @@ export function DataTable({ columns, data, isLoading, rowKey, renderExpanded, wr
           return (
             <React.Fragment key={key}>
               <tr
-                className={`hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors${expandable ? " cursor-pointer" : ""}`}
+                className={`hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors${expandable ? " cursor-pointer" : ""}${rowClass ? " " + rowClass(row) : ""}`}
                 onClick={expandable ? () => handleRowClick(key) : undefined}
               >
                 {columns.map((col) => (

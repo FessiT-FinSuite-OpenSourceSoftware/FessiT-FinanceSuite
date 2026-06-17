@@ -4,14 +4,14 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts'
 
-const DONUT_COLORS  = ['#34d399', '#fbbf24', '#cbd5e1', '#60a5fa', '#f97316']
-const BAR_COLORS    = ['#3b82f6', '#6366f1', '#14b8a6', '#f97316', '#a855f7']
-const HBAR_COLORS   = ['#3b82f6', '#6366f1', '#14b8a6', '#f97316', '#a855f7']
+const DONUT_COLORS = ['#34d399', '#fbbf24', '#cbd5e1', '#60a5fa', '#f97316']
+const BAR_COLORS = ['#3b82f6', '#6366f1', '#14b8a6', '#f97316', '#a855f7']
+const HBAR_COLORS = ['#3b82f6', '#6366f1', '#14b8a6', '#f97316', '#a855f7']
+const PIE_COLORS = ["#34d399", "#fbbf24", "#cbd5e1", "#60a5fa", "#f97316"];
 
 // Unified chart sizing to keep all small dashboard cards consistent
 // Increased height to avoid compressed charts; donut width slightly larger.
 const CHART_HEIGHT_CLASS = 'h-64'
-const DONUT_SIZE_CLASS = 'w-52'
 const CHART_CARD_CLASS = 'rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-700/60 dark:bg-slate-900 dark:shadow-none'
 
 /**
@@ -29,21 +29,23 @@ export function DonutChart({
   data = [],
   colors = DONUT_COLORS,
   tooltipLabel = 'Count',
+  valueFormatter = (v) => v,   // add this
 }) {
+  const total = data.reduce((s, d) => s + (d.value || 0), 0);
   return (
     <div className={`${CHART_CARD_CLASS} p-4 ${CHART_HEIGHT_CLASS} flex min-w-0 flex-col`}>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-          {subtitle && <div className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{title}</div>
+          {subtitle && <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{subtitle}</div>}
         </div>
-        {badge && <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">{badge}</div>}
+        {badge && <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">{badge}</div>}
       </div>
-      <div className="flex items-center gap-3 flex-1">
-        <div className={`${DONUT_SIZE_CLASS} h-full flex-none`}>
+      <div className="flex flex-1 min-h-0 gap-2">
+        <div className="w-46 shrink-0 h-full">
           <ResponsiveContainer width="100%" height="100%" debounce={100}>
-              <PieChart>
-                <Pie data={data} dataKey="value" nameKey="name" innerRadius={40} outerRadius={80} paddingAngle={4} isAnimationActive={false}>
+            <PieChart>
+              <Pie data={data} dataKey="value" nameKey="name" innerRadius={28} outerRadius={52} paddingAngle={3} isAnimationActive={false}>
                 {data.map((_, i) => (
                   <Cell key={i} fill={colors[i % colors.length]} />
                 ))}
@@ -52,19 +54,130 @@ export function DonutChart({
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex-1 flex flex-col gap-2 text-xs text-slate-600 dark:text-slate-400 min-w-0 overflow-auto">
+        {/* Legend — grid layout, no justify-between gap */}
+        <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0 overflow-y-auto">
           {data.map((item, i) => (
-            <div key={item.name} className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
-              <span className="truncate">{item.name}: <span className="font-semibold text-slate-800 dark:text-slate-200">{item.value}</span></span>
+            <div
+              key={item.name}
+              className="flex items-center gap-2 min-w-0"
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: colors[i % colors.length] }}
+              />
+
+              <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                {item.name}
+              </span>
+
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                {valueFormatter(item.value)}
+              </span>
+
+              {total > 0 && (
+                <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                  ({Math.round((item.value / total) * 100)}%)
+                </span>
+              )}
             </div>
           ))}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
+
+
+export function PieChartCard({
+  title,
+  subtitle,
+  badge,
+  data = [],
+  colors = PIE_COLORS,
+  tooltipLabel = "Count",
+  valueFormatter = (v) => v,
+}) {
+  const total = data.reduce((sum, item) => sum + (item.value || 0), 0);
+
+  return (
+    <div className={`${CHART_CARD_CLASS} p-4 ${CHART_HEIGHT_CLASS} flex min-w-0 flex-col`}>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+            {title}
+          </div>
+          {subtitle && (
+            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              {subtitle}
+            </div>
+          )}
+        </div>
+        {badge && (
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">
+            {badge}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-1 min-h-0 gap-2">
+        {/* Pie */}
+        <div className="w-28 shrink-0 h-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                innerRadius={0}
+                outerRadius={52}
+                paddingAngle={2}
+                isAnimationActive={false}
+              >
+                {data.map((_, i) => (
+                  <Cell key={i} fill={colors[i % colors.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v) => [v, tooltipLabel]} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Legend */}
+        {/* Legend */}
+        <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0 overflow-y-auto">
+          {data.map((item, i) => (
+            <div
+              key={item.name}
+              className="flex items-center gap-2 min-w-0"
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: colors[i % colors.length] }}
+              />
+
+              <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                {item.name}
+              </span>
+
+              <div className="flex items-center gap-1 ml-auto shrink-0">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  {valueFormatter(item.value)}
+                </span>
+
+                {total > 0 && (
+                  <span className="text-[10px] text-slate-400">
+                    ({Math.round((item.value / total) * 100)}%)
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 /**
  * BarChartCard — vertical bar chart with colored bars and inline legend
  *
@@ -82,20 +195,44 @@ export function BarChartCard({
   tooltipFormatter = (v) => [v, 'Value'],
   yTickFormatter = (v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v,
 }) {
+  const CustomTick = ({ x, y, payload }) => (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={0}
+        dy={8}
+        textAnchor="end"
+        transform="rotate(-45)"
+        fontSize={10}
+        fill="currentColor"
+      >
+        <title>{payload.value}</title>
+        {payload.value.length > 10 ? `${payload.value.slice(0, 10)}…` : payload.value}
+      </text>
+    </g>
+  );
+
   return (
-    <div className={`${CHART_CARD_CLASS} p-4 ${CHART_HEIGHT_CLASS} flex min-w-0 flex-col`}>
+    <div className={`${CHART_CARD_CLASS} p-2 ${CHART_HEIGHT_CLASS} flex min-w-0 flex-col`}>
       <div className="mb-3">
         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
         {subtitle && <div className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
       </div>
       <div className="flex-1">
-          <ResponsiveContainer width="100%" height="100%" debounce={100}>
+        <ResponsiveContainer width="100%" height="100%" debounce={100}>
           <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" tick={false} height={0} />
+            <XAxis
+              dataKey="name"
+              tick={<CustomTick />}
+              height={42}
+              interval={0}
+              tickLine={false}
+              axisLine={false}
+            />
             <YAxis tickFormatter={yTickFormatter} tick={{ fontSize: 10 }} width={36} />
             <Tooltip formatter={tooltipFormatter} />
-            <Bar dataKey="value" maxBarSize={56} radius={[6, 6, 0, 0]} isAnimationActive={false}>
+            <Bar dataKey="value" maxBarSize={24} radius={[6, 6, 0, 0]} isAnimationActive={false}>
               {data.map((_, i) => (
                 <Cell key={i} fill={colors[i % colors.length]} />
               ))}
@@ -103,16 +240,8 @@ export function BarChartCard({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
-        {data.map((item, i) => (
-          <div key={item.name} className="flex items-center gap-1.5" title={item.name} aria-label={item.name}>
-            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
-            <span className="truncate">{item.name}</span>
-          </div>
-        ))}
-      </div>
     </div>
-  )
+  );
 }
 
 /**

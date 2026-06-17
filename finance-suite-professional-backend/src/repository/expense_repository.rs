@@ -171,6 +171,8 @@ impl ExpenseRepository {
                 "notes": &expense.notes,
                 "department": &expense.department,
                 "submission_date": &expense.submission_date,
+                "cost_type": mongodb::bson::to_bson(&expense.cost_type).unwrap_or_default(),
+                "associatedEmployee": mongodb::bson::to_bson(&expense.associated_employee).unwrap_or_default(),
                 "updated_at": DateTime::now(),
             }
         };

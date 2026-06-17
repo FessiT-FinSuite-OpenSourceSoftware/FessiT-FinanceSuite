@@ -222,10 +222,10 @@ export default function DeliveryChallans() {
       <FilterChips chips={chips} onRemove={removeChip} />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 mt-3">
-        {/* <StatCard label="Total (this page)" value={challans.length} /> */}
         <StatCard label="Total Records" value={total} />
-        {/* <StatCard label="Page"              value={`${page} / ${totalPages}`} valueClass="text-blue-600" /> */}
-        {/* <StatCard label="Page Size"         value={pageSize} valueClass="text-gray-500" /> */}
+        <StatCard label="Delivered" value={challans.filter((c) => c.status === "Delivered").length} valueClass="text-green-600" />
+        <StatCard label="Dispatched" value={challans.filter((c) => c.status === "Dispatched").length} valueClass="text-blue-600" />
+        <StatCard label="Returned" value={challans.filter((c) => c.status === "Returned" || c.status === "Partially Returned").length} valueClass="text-orange-600" />
       </div>
 
       <DataTable isLoading={isLoading} data={challans} rowKey={getId} columns={columns}

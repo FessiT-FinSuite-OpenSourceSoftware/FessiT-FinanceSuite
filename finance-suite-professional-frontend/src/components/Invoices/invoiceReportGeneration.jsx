@@ -593,7 +593,7 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
             {(() => {
               const requiredFields = [orgData?.accountHolder, orgData?.accountNumber, orgData?.bankName, orgData?.ifscCode];
               const internationalFields = isInternational ? [orgData?.accountType, orgData?.bankBranch, orgData?.swiftCode] : [];
-              const domesticFields = isDomestic ? [orgData?.upiId] : [];
+              const domesticFields = isDomestic ? [] : [];
 
               const allRequiredFields = [...requiredFields, ...internationalFields, ...domesticFields];
               const hasAllRequiredFields = allRequiredFields.every(field => field && field.trim() !== '');
@@ -616,8 +616,12 @@ const InvoiceReportGeneration = ({ invoiceData, orgData, onBack }) => {
                     <BankFieldRow label="Bank Name" value={orgData?.bankName} />
                     <BankFieldRow label="Branch" value={orgData?.bankBranch} />
                     {isInternational && <BankFieldRow label="Swift Code" value={orgData?.swiftCode} />}
-                    {isDomestic && <BankFieldRow label="UPI ID" value={orgData?.upiId} />}
-                  </div>
+                    {isDomestic && orgData?.upiId?.trim() && (
+                      <BankFieldRow
+                        label="UPI ID"
+                        value={orgData.upiId.trim()}
+                      />
+                    )}                  </div>
                 </div>
               ) : null;
             })()}

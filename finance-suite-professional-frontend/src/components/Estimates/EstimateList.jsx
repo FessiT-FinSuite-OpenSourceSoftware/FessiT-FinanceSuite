@@ -107,11 +107,10 @@ export default function EstimateList() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const allData = Array.isArray(estimateData) ? estimateData : [];
-  const stats = {
-    total,
-    totalValue: allData.filter(r => r.status !== "converted").reduce((s, r) => s + (Number(r.total) || 0), 0),
-    accepted:   allData.filter((r) => (r.status || "").toLowerCase() === "accepted").length,
-  };
+  const totalValue   = allData.reduce((s, r) => s + (Number(r.total) || 0), 0);
+  const acceptedAmt  = allData.filter((r) => (r.status || "").toLowerCase() === "accepted").reduce((s, r) => s + (Number(r.total) || 0), 0);
+  const acceptedCount = allData.filter((r) => (r.status || "").toLowerCase() === "accepted").length;
+  const convertedCount = allData.filter((r) => (r.status || "").toLowerCase() === "converted").length;
 
   const handleDelete = () => {
     if (!deleteModal?.id) return;
@@ -223,10 +222,11 @@ export default function EstimateList() {
 
       <FilterChips chips={chips} onRemove={removeChip} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 mt-3">
-        <StatCard label="Total Estimates" value={stats.total} />
-        <StatCard label="Total Value" value={fmt(stats.totalValue)} valueClass="text-indigo-700" />
-        <StatCard label="Accepted" value={stats.accepted} valueClass="text-green-700" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 mt-3">
+        <StatCard label="Total Estimates" value={total} />
+        <StatCard label="Total Value" value={fmt(totalValue)} valueClass="text-indigo-700" />
+        <StatCard label="Accepted" value={`${acceptedCount} · ${fmt(acceptedAmt)}`} valueClass="text-green-700" />
+        <StatCard label="Converted" value={convertedCount} valueClass="text-purple-700" />
       </div>
 
       <DataTable

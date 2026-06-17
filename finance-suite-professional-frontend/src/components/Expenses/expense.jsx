@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { expenseSelector, fetchExpenseData, createExpense } from "../../ReduxApi/expense";
 import { fetchCostCenters, costCenterSelector } from "../../ReduxApi/costCenter";
 import { fetchCustomerData } from "../../ReduxApi/customer";
+import { fetchAllEmployees } from "../../ReduxApi/employee";
 import axiosInstance from "../../utils/axiosInstance";
 
 const calcTax = (amount, pct) => (parseFloat(amount) || 0) * (parseFloat(pct) || 0) / 100;
@@ -44,7 +45,10 @@ export default function Expense() {
     currency: "",
     comment: "",
     costType: "indirect",
+    associatedEmployeeId: "",
   });
+
+  const [employees, setEmployees] = useState([]);
 
   // 🔹 Multiple line items under one Expense Title
   const [items, setItems] = useState([emptyExpenseItem()]);
@@ -82,7 +86,7 @@ export default function Expense() {
   };
 
   useEffect(() => {
-    setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "", costType: "indirect" });
+    setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "", costType: "indirect", associatedEmployeeId: "" });
     setItems([emptyExpenseItem()]);
     setInputErrors({});
     setCcSearch("");
@@ -92,6 +96,7 @@ export default function Expense() {
     dispatch(fetchExpenseData())
     dispatch(fetchCostCenters())
     dispatch(fetchCustomerData())
+    dispatch(fetchAllEmployees()).then(setEmployees);
   }, [dispatch])
 
   // Close CC dropdown on outside click
@@ -219,6 +224,7 @@ export default function Expense() {
       formData.append("currency", header.currency);
       formData.append("notes", header.comment || "");
       formData.append("costType", header.costType || "indirect");
+      if (header.associatedEmployeeId) formData.append("associatedEmployee", header.associatedEmployeeId);
 
       // Prepare items array as JSON (without files)
       const itemsData = items.map((item) => {
@@ -260,7 +266,7 @@ export default function Expense() {
       toast.success(response.data.message || 'Expense created successfully!');
       dispatch(fetchExpenseData());
 
-      setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "", costType: "indirect" });
+      setHeader({ expenseTitle: "", customerId: "", projectCostCenter: "", expenseDate: "", currency: "", comment: "", costType: "indirect", associatedEmployeeId: "" });
       setItems([emptyExpenseItem()]);
       nav("/expenses");
     } catch (err) {
@@ -480,6 +486,29 @@ export default function Expense() {
             >
               <option value="indirect">Indirect</option>
               <option value="direct">Direct</option>
+            </select>
+          </div>
+
+          <div className="relative">
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Associated Employee
+            </label>
+            <select
+              name="associatedEmployeeId"
+              data-header="true"
+              value={header.associatedEmployeeId}
+              onChange={handleHeaderChange}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-sm"
+            >
+              <option value="">Select an employee</option>
+              {employees.map((emp) => {
+                const id = emp._id?.$oid || emp._id || emp.id || "";
+                return (
+                  <option key={id} value={id}>
+                    {emp.first_name} {emp.last_name} {emp.emp_id ? `(${emp.emp_id})` : ""}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>

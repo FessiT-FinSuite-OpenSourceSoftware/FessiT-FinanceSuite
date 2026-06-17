@@ -13,6 +13,8 @@ use uuid::Uuid;
 
 use mongodb::bson::DateTime;
 
+use mongodb::bson::oid::ObjectId;
+
 use crate::{
     models::expense::{CostType, Expense, ExpenseItem, ExpenseStatus},
     services::expense_service::ExpenseService,
@@ -235,6 +237,8 @@ pub async fn create_expense(
             "direct" => Some(CostType::Direct),
             _ => Some(CostType::Indirect),
         }).unwrap_or_default(),
+        associated_employee: fields.get("associatedEmployee")
+            .and_then(|s| if s.is_empty() { None } else { ObjectId::parse_str(s).ok() }),
     };
 
     let saved = service
@@ -575,6 +579,9 @@ pub async fn update_expense(
             "direct" => Some(CostType::Direct),
             _ => Some(CostType::Indirect),
         }).unwrap_or(existing_expense.cost_type),
+        associated_employee: fields.get("associatedEmployee")
+            .and_then(|s| if s.is_empty() { None } else { ObjectId::parse_str(s).ok() })
+            .or(existing_expense.associated_employee),
     };
 
     let updated = service

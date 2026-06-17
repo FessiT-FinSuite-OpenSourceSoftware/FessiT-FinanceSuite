@@ -210,7 +210,8 @@ export default function OthersTab() {
     return matchSearch && matchCat && matchStatus && matchDate;
   });
 
-  const totalAmount = filtered.reduce((s, r) => s + (parseFloat(r.subTotal) || 0), 0);
+  const totalAmount   = filtered.reduce((s, r) => s + (parseFloat(r.subTotal) || parseFloat(r.amount) || 0), 0);
+  const approvedAmt   = filtered.filter((r) => r.status === "Approved").reduce((s, r) => s + (parseFloat(r.subTotal) || parseFloat(r.amount) || 0), 0);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
@@ -291,9 +292,10 @@ export default function OthersTab() {
 
       <FilterChips chips={chips} onRemove={removeChip} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total Records" value={filtered.length} />
         <StatCard label="Total Amount"  value={`₹ ${totalAmount.toLocaleString("en-IN")}`} valueClass="text-indigo-700" />
+        <StatCard label="Approved"      value={`${filtered.filter((r) => r.status === "Approved").length} `} valueClass="text-green-600" />
         <StatCard label="Pending"       value={filtered.filter((r) => r.status === "Pending").length} valueClass="text-yellow-600" />
       </div>
 

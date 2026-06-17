@@ -276,7 +276,9 @@ export default function SalaryTab() {
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const totalNet = filtered.reduce((s, r) => s + calcSalaryTotal(r), 0);
   const totalTds = filtered.reduce((s, r) => s + calcTdsAmount(r), 0);
-  const totalGross = filtered.reduce((s, r) => s + (parseFloat(r.gross_salary) + parseFloat(r.reimbursement) || 0), 0);
+  const totalGross = filtered.reduce((s, r) => s + (parseFloat(r.gross_salary) || 0), 0);
+  const totalrememb = filtered.reduce((s, r) => s + (parseFloat(r.reimbursement) || 0), 0);
+
   const tdsAmount = calcTdsAmount(form);
   const netAuto = (parseFloat(form.gross_salary) || 0) + (parseFloat(form.reimbursement) || 0) - tdsAmount - professionalTax;
 
@@ -333,6 +335,22 @@ export default function SalaryTab() {
     },
   ];
 
+const formatCompactINR = (value) => {
+  const num = Number(value || 0);
+
+  if (num < 100000) {
+    return `₹ ${num.toLocaleString("en-IN")}`;
+  }
+
+  if (num < 10000000) {
+    const lakhs = num / 100000;
+    return `₹ ${lakhs.toFixed(5).replace(/\.?0+$/, "")}L`;
+  }
+
+  const crores = num / 10000000;
+  return `₹ ${crores.toFixed(5).replace(/\.?0+$/, "")}Cr`;
+};
+
   return (
     <div className="w-full lg:w-full md:w-full">
       <TabActionBar searchValue={search} onSearchChange={setSearch} searchPlaceholder="Search by employee, ID or department...">
@@ -366,12 +384,21 @@ export default function SalaryTab() {
 
       <FilterChips chips={chips} onRemove={removeChip} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
         <StatCard label="Total Records" value={filtered.length} />
         <StatCard label="Total Gross" value={`₹ ${totalGross.toLocaleString("en-IN")}`} valueClass="text-gray-700" />
         <StatCard label="Total TDS" value={`₹ ${totalTds.toLocaleString("en-IN")}`} valueClass="text-red-600" />
-        <StatCard label="Total Net Salary" value={`₹ ${totalNet.toLocaleString("en-IN")}`} valueClass="text-indigo-700" />
+        <StatCard label="Total Reimbursement Pay" value={`₹ ${totalrememb.toLocaleString("en-IN")}`} valueClass="text-green-600" />
+        <StatCard label="Total Net Pay" value={`₹ ${totalNet.toLocaleString("en-IN")}`} valueClass="text-indigo-700" />
       </div>
+       {/* <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+        <StatCard label="Total Records" value={filtered.length} />
+        <StatCard label="Total Gross" value={` ${formatCompactINR(totalGross)}`} valueClass="text-gray-700" />
+        <StatCard label="Total TDS" value={`${formatCompactINR(totalTds)}`} valueClass="text-red-600" />
+        <StatCard label="Total Reimbursement" value={`${formatCompactINR(totalrememb)}`} valueClass="text-green-600" />
+        <StatCard label="Total Net Pay" value={`${formatCompactINR(totalNet)}`} valueClass="text-indigo-700" />
+        <StatCard label="Paid" value={filtered.filter((r) => r.status === "Paid").length} valueClass="text-green-600" />
+      </div> */}
 
       <DataTable isLoading={isLoading} data={paginated} rowKey={getId} columns={columns}
         renderExpanded={(r) => (

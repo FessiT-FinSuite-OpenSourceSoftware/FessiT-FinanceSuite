@@ -145,18 +145,18 @@ export default function ProfessionalTaxCompliance() {
                   <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(totalPtDeducted)}</h3>
                 </div>
               </div>
-              <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
+              {/* <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-green-300 transition-all">
                 <div className="relative z-10">
                   <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Total PT Deposited</p>
                   <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(totalPtDeposited)}</h3>
                 </div>
-              </div>
-              <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
+              </div> */}
+              {/* <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-orange-300 transition-all">
                 <div className="relative z-10">
                   <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Pending Deposit</p>
                   <h3 className="compliance-stat-value text-2xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(pendingDeposit)}</h3>
                 </div>
-              </div>
+              </div> */}
               <div className="compliance-stat-card relative overflow-hidden group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl shadow-sm hover:border-purple-300 transition-all">
                 <div className="relative z-10">
                   <p className="compliance-stat-label text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Employees Covered</p>

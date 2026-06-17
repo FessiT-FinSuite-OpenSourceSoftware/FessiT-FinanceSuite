@@ -7,7 +7,7 @@ import { assetSelector, fetchAssetData, createAsset, updateAsset, deleteAsset, u
 import { assetCategorySelector, createAssetCategory, fetchAssetCategories } from '../../ReduxApi/assetCategory'
 import { authSelector } from '../../ReduxApi/auth'
 import { RowActions, Pagination, StatCard, InfoCard, Field, ConfirmModal, DataTable } from '../../shared/ui'
-import { DonutChart, BarChartCard } from '../../shared/charts'
+import { DonutChart, BarChartCard, PieChartCard } from '../../shared/charts'
 import { toast } from 'react-toastify'
 import ManageAssetCategoriesModal from './ManageAssetCategoriesModal'
 import { isTauri, sanitizeDownloadFileName, saveBytesToDownloads, showDownloadNotification } from '../../utils/pdfUtils'
@@ -71,7 +71,7 @@ const formatDate = (value) => {
   } catch { return '-' }
 }
 
-  const emptyForm = () => ({
+const emptyForm = () => ({
   name: '', description: '', hsn: '', item_code: '', category: '',
   manufacturer: '', vendor: '', payment_mode: 'bank_transfer',
   stocks: '0', warranty_period: '', asset_status: 'active',
@@ -169,27 +169,27 @@ export default function AssetList() {
       const invoiceFilenames = [...new Set(assets.map((asset) => asset.invoice_image).filter(Boolean))]
 
       const loadFile = async (filename, urlKey) => {
-          if (/^https?:\/\//i.test(filename) || /^data:/i.test(filename)) {
-            setImageCache((prev) => (prev[filename] ? prev : { ...prev, [filename]: filename }))
-            return
-          }
-          try {
-            const endpoint = urlKey === 'invoice' ? `/asset-invoice-images/${filename}` : `/asset-images/${filename}`
-            const response = await axiosInstance.get(endpoint, { responseType: 'blob' })
-            const objectUrl = URL.createObjectURL(response.data)
-            createdImageUrls.current.add(objectUrl)
-            if (!cancelled) {
-              setImageCache((prev) => {
-                if (prev[filename]) { URL.revokeObjectURL(objectUrl); createdImageUrls.current.delete(objectUrl); return prev }
-                return { ...prev, [filename]: objectUrl }
-              })
-            } else {
-              URL.revokeObjectURL(objectUrl); createdImageUrls.current.delete(objectUrl)
-            }
-          } catch (error) {
-            console.error('Failed to load image:', filename, error)
-          }
+        if (/^https?:\/\//i.test(filename) || /^data:/i.test(filename)) {
+          setImageCache((prev) => (prev[filename] ? prev : { ...prev, [filename]: filename }))
+          return
         }
+        try {
+          const endpoint = urlKey === 'invoice' ? `/asset-invoice-images/${filename}` : `/asset-images/${filename}`
+          const response = await axiosInstance.get(endpoint, { responseType: 'blob' })
+          const objectUrl = URL.createObjectURL(response.data)
+          createdImageUrls.current.add(objectUrl)
+          if (!cancelled) {
+            setImageCache((prev) => {
+              if (prev[filename]) { URL.revokeObjectURL(objectUrl); createdImageUrls.current.delete(objectUrl); return prev }
+              return { ...prev, [filename]: objectUrl }
+            })
+          } else {
+            URL.revokeObjectURL(objectUrl); createdImageUrls.current.delete(objectUrl)
+          }
+        } catch (error) {
+          console.error('Failed to load image:', filename, error)
+        }
+      }
 
       await Promise.all([
         ...filenames.map((f) => loadFile(f, 'asset')),
@@ -263,7 +263,7 @@ export default function AssetList() {
     const total = filtered.length
     const active = filtered.filter((a) => a.asset_status === 'active').length
     const repair = filtered.filter((a) => a.asset_status === 'repair').length
-    const inventoryValue = filtered.reduce((sum, a) => sum + a.sale_price * a.stocks, 0)
+    const inventoryValue = filtered.reduce((sum, a) => sum + a.purchased_price, 0)
     return { total, active, repair, inventoryValue }
   }, [filtered])
 
@@ -283,6 +283,25 @@ export default function AssetList() {
     filtered.forEach((asset) => {
       const label = textValue(asset.categoryLabel, 'Unassigned') || 'Unassigned'
       counts.set(label, (counts.get(label) || 0) + 1)
+    })
+    const sorted = [...counts.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+    if (sorted.length <= 5) return sorted
+    const top = sorted.slice(0, 4)
+    const otherValue = sorted.slice(4).reduce((sum, item) => sum + item.value, 0)
+    if (otherValue > 0) top.push({ name: 'Other', value: otherValue })
+    return top
+  }, [filtered])
+
+
+  const AssettypeDistribution = useMemo(() => {
+    const counts = new Map()
+    filtered.forEach((asset) => {
+      const label = (() => {
+        const value = textValue(asset.asset_type, "rental") || "owned";
+        return value.charAt(0).toUpperCase() + value.slice(1);
+      })(); counts.set(label, (counts.get(label) || 0) + 1)
     })
     const sorted = [...counts.entries()]
       .map(([name, value]) => ({ name, value }))
@@ -403,8 +422,8 @@ export default function AssetList() {
     setForm((prev) => ({
       ...prev,
       [name]: name === 'description' ? limitWords(value, DESCRIPTION_WORD_LIMIT)
-             : name === 'notes'       ? limitWords(value, NOTES_WORD_LIMIT)
-             : value,
+        : name === 'notes' ? limitWords(value, NOTES_WORD_LIMIT)
+          : value,
     }))
   }
 
@@ -632,7 +651,7 @@ export default function AssetList() {
             <button onClick={() => dispatch(fetchAssetData())}
               disabled={isLoading}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
-              <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> 
+              <RefreshCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               {isLoading ? 'Refreshing...' : 'Refresh'}
             </button>
             {isAdmin && (
@@ -658,36 +677,10 @@ export default function AssetList() {
         <StatCard label="Inventory Value" value={`Rs. ${fmt(summary.inventoryValue)}`} valueClass="text-blue-700" />
       </div>
 
-            {summary.total > 0 && (
-        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-3 mb-2 h-full">
-          <DonutChart
-            title="Asset status distribution"
-            subtitle="See how the current asset population is split by status."
-            badge={`${summary.total} items`}
-            data={statusData}
-            colors={['#34d399', '#fbbf24', '#cbd5e1']}
-            tooltipLabel="Assets"
-          />
-          <DonutChart
-            title="Asset categories"
-            subtitle="Top categories by asset count in the current view."
-            data={categoryDistribution}
-            colors={['#60a5fa', '#818cf8', '#38bdf8', '#f97316', '#a855f7']}
-            tooltipLabel="Assets"
-          />
-          <BarChartCard
-            title="Purchase value by category"
-            subtitle="Total procurement spend per category."
-            data={purchaseValueData}
-            colors={['#34d399', '#818cf8', '#f97316', '#f59e0b']}
-            tooltipFormatter={(v) => [`Rs. ${fmt(v)}`, 'Spend']}
-          />
-        </div>
-      )}
-
+      
       <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 p-4 shadow-sm mb-2">
         <div className="flex flex-col gap-3 items-end justify-end">
-         
+
           <div className="flex flex-wrap gap-3">
             <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
               <option value="All">All Categories</option>
@@ -697,17 +690,71 @@ export default function AssetList() {
               <option value="All">All Statuses</option>
               {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
             </select>
-            
-            
+
+
             <select value={assetTypeFilter} onChange={(e) => setAssetTypeFilter(e.target.value)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
               <option value="All">All Types</option>
               <option value="owned">Owned</option>
               <option value="rental">Rented</option>
             </select>
-            
+
           </div>
         </div>
       </div>
+      {summary.total > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-3 mb-2">
+          <div className="lg:col-span-2">
+            <DonutChart
+              title="Asset status distribution"
+              subtitle="Current asset split by status."
+              data={statusData}
+              colors={['#34d399', '#fbbf24', '#cbd5e1']}
+              tooltipLabel="Assets"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <DonutChart
+              title="Asset categories"
+              subtitle="Top categories by asset count."
+              data={categoryDistribution}
+              colors={['#60a5fa', '#818cf8', '#38bdf8', '#f97310', '#a855f7']}
+              tooltipLabel="Assets"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <PieChartCard
+              title="Asset types"
+              subtitle="Distribution of assets by type."
+              data={AssettypeDistribution}
+              colors={[
+                "#2563EB",
+                "#10B981",
+                "#F59E0B",
+                "#EF4444",
+                "#8B5CF6",
+                "#06B6D4",
+                "#EC4899",
+                "#84CC16",
+                "#F97316",
+                "#64748B",
+              ]}
+              tooltipLabel="Assets"
+            />
+          </div>
+
+          <div className="lg:col-span-4">
+            <BarChartCard
+              title="Purchase value by category"
+              subtitle="Total procurement spend per category."
+              data={purchaseValueData}
+              colors={['#34d399', '#818cf8', '#f97316', '#f59e0b']}
+              tooltipFormatter={(v) => [`Rs. ${fmt(v)}`, "Spend"]}
+            />
+          </div>
+        </div>
+      )}
 
       <DataTable
         isLoading={isLoading && !isInitialLoad}
@@ -851,7 +898,7 @@ export default function AssetList() {
             <div className="mt-4 flex items-center justify-center rounded-2xl bg-slate-50 p-4 dark:bg-slate-950">
               {previewModal.isPdf ? (
                 <iframe
-                  src={`${previewModal.src}#toolbar=0`} 
+                  src={`${previewModal.src}#toolbar=0`}
                   title={previewModal.title}
                   className="w-full rounded-xl"
                   style={{ height: '75vh' }}
@@ -1073,11 +1120,10 @@ export default function AssetList() {
                   placeholder={`Any additional notes (up to ${NOTES_WORD_LIMIT} words)...`}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-400"
                 />
-                <p className={`mt-1 text-xs text-right ${
-                  form.notes.trim().split(/\s+/).filter(Boolean).length >= NOTES_WORD_LIMIT
-                    ? 'text-red-500 font-medium'
-                    : 'text-slate-400'
-                }`}>
+                <p className={`mt-1 text-xs text-right ${form.notes.trim().split(/\s+/).filter(Boolean).length >= NOTES_WORD_LIMIT
+                  ? 'text-red-500 font-medium'
+                  : 'text-slate-400'
+                  }`}>
                   {form.notes.trim().split(/\s+/).filter(Boolean).length} / {NOTES_WORD_LIMIT} words
                 </p>
               </div>

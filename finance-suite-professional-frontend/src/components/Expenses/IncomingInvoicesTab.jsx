@@ -146,8 +146,9 @@ export default function IncomingInvoicesTab() {
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const current = filtered.slice((page - 1) * pageSize, page * pageSize);
-  const totalAmount = invoices.reduce((s, b) => s + Number(b.total || 0), 0);
-  const totalTds = invoices.filter(b => b.tds_applicable).reduce((s, b) => s + Number(b.tds_total || 0), 0);
+  const totalAmount = filtered.reduce((s, b) => s + Number(b.total || 0), 0);
+  const totalTds    = filtered.filter((b) => b.tds_applicable).reduce((s, b) => s + Number(b.tds_total || 0), 0);
+  const paidAmt     = filtered.filter((b) => b.status === "Paid").reduce((s, b) => s + Number(b.total || 0), 0);
 
   const handleDelete = () => {
     if (!deleteModal?.id) return;
@@ -250,7 +251,7 @@ export default function IncomingInvoicesTab() {
         </FilterSelect>
         <div className="relative">
           <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
-            <option value="all">All Time</option>
+            <option value="all">All</option>
             <option value="this_month">Current Month</option>
             <option value="last_month">Previous Month</option>
             <option value="last_3_months">Last 3 Months</option>
@@ -280,11 +281,12 @@ export default function IncomingInvoicesTab() {
 
       <FilterChips chips={chips} onRemove={removeChip} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <StatCard label="Total Records" value={invoices.length} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+        <StatCard label="Total Records" value={filtered.length} />
         <StatCard label="Total Amount"  value={`₹ ${totalAmount.toLocaleString("en-IN")}`} valueClass="text-indigo-700" />
-        <StatCard label="Total TDS"     value={`₹ ${totalTds.toLocaleString("en-IN")}`}    valueClass="text-red-600" />
-        <StatCard label="Unpaid"        value={invoices.filter((b) => b.status !== "Paid" && !isOverdue(b)).length} valueClass="text-yellow-600" />
+        <StatCard label="Paid"          value={`${filtered.filter((b) => b.status === "Paid").length}`} valueClass="text-green-600" />
+        <StatCard label="Total TDS"     value={`₹ ${totalTds.toLocaleString("en-IN")}`} valueClass="text-red-600" />
+        <StatCard label="Unpaid"        value={filtered.filter((b) => b.status !== "Paid" && !isOverdue(b)).length} valueClass="text-yellow-600" />
       </div>
 
       <DataTable isLoading={isLoading} data={current} rowKey={(bill) => getIncomingId(bill) || bill.invoice_number} columns={columns} />

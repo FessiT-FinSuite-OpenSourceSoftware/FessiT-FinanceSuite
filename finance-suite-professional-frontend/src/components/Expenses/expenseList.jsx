@@ -15,6 +15,7 @@ import IncomingInvoicesTab from "./IncomingInvoicesTab";
 import ProjectsTab from "./ProjectsTab";
 import { TabActionBar, FilterSelect, StatCard, DataTable, RowActions, Pagination, ConfirmModal, FilterChips } from "../../shared/ui";
 import MonthRangeSelector from "../../shared/MonthRangeSelector";
+import ExpenseAnalytics from "./ExpenseAnalytics";
 
 const getExpenseId = (expense) => {
   if (!expense) return "";
@@ -48,12 +49,12 @@ const formatDate = (dateStr) => {
 
 const getStatusColor = (status) => {
   switch ((status || "").toUpperCase()) {
-    case "DRAFT":      return "bg-gray-100 text-gray-700";
-    case "SUBMITTED":  return "bg-blue-100 text-blue-700";
-    case "APPROVED":   return "bg-green-100 text-green-700";
-    case "REJECTED":   return "bg-red-100 text-red-700";
+    case "DRAFT": return "bg-gray-100 text-gray-700";
+    case "SUBMITTED": return "bg-blue-100 text-blue-700";
+    case "APPROVED": return "bg-green-100 text-green-700";
+    case "REJECTED": return "bg-red-100 text-red-700";
     case "REIMBURSED": return "bg-purple-100 text-purple-700";
-    default:           return "bg-gray-100 text-gray-700";
+    default: return "bg-gray-100 text-gray-700";
   }
 };
 
@@ -70,10 +71,10 @@ const getDateRange = (period) => {
   let fromDate = new Date(today);
   let toDate = new Date(today);
   switch (period) {
-    case "this_month":   { fromDate.setDate(1); break; }
-    case "last_month":   { fromDate.setMonth(fromDate.getMonth() - 1); fromDate.setDate(1); toDate.setDate(0); break; }
-    case "last_3_months":{ fromDate.setMonth(fromDate.getMonth() - 2); fromDate.setDate(1); break; }
-    case "last_6_months":{ fromDate.setMonth(fromDate.getMonth() - 5); fromDate.setDate(1); break; }
+    case "this_month": { fromDate.setDate(1); break; }
+    case "last_month": { fromDate.setMonth(fromDate.getMonth() - 1); fromDate.setDate(1); toDate.setDate(0); break; }
+    case "last_3_months": { fromDate.setMonth(fromDate.getMonth() - 2); fromDate.setDate(1); break; }
+    case "last_6_months": { fromDate.setMonth(fromDate.getMonth() - 5); fromDate.setDate(1); break; }
     default: return null;
   }
   return { from: fromDate, to: toDate };
@@ -112,35 +113,36 @@ const toStoredDate = (yyyymmdd) => {
 const TABS = [
   { key: "expenses", label: "Reimbursements" },
   { key: "incoming", label: "Invoices" },
-  { key: "salary",   label: "Salary" },
-  { key: "others",   label: "General" },
+  { key: "salary", label: "Salary" },
+  { key: "others", label: "General" },
 ];
 
 export default function ExpenseList() {
   const location = useLocation();
   const initialTab = new URLSearchParams(location.search).get("tab") || "expenses";
-  const [activeTab,     setActiveTab]     = useState(initialTab);
-  const [searchTerm,    setSearchTerm]    = useState("");
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("All");
-  const [currentPage,   setCurrentPage]   = useState(1);
-  const [pageSize,      setPageSize]      = useState(5);
-  const [projects,      setProjects]      = useState([]);
-  const [statusPopup,   setStatusPopup]   = useState(null);
-  const [deleteModal,   setDeleteModal]   = useState(null);
-  const [dateFilter,    setDateFilter]    = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [projects, setProjects] = useState([]);
+  const [statusPopup, setStatusPopup] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [dateFilter, setDateFilter] = useState("all");
   const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
-  const dispatch  = useDispatch();
-  const nav       = useNavigate();
+  const dispatch = useDispatch();
+  const nav = useNavigate();
   const { expenseData, isLoading } = useSelector(expenseSelector);
-  const { user }  = useSelector(authSelector);
-  const isAdmin   = user?.is_admin === true;
-  const hasWrite  = canWrite(user, Module.Expenses);
+  const { user } = useSelector(authSelector);
+  const isAdmin = user?.is_admin === true;
+  const hasWrite = canWrite(user, Module.Expenses);
   const hasDelete = canDelete(user, Module.Expenses);
 
   useEffect(() => { dispatch(fetchExpenseData()); dispatch(fetchIncomingInvoices()); }, [dispatch]);
-  useEffect(() => { axiosInstance.get("/expenses/projects").then((res) => { if (res?.status === 200) setProjects(res.data || []); }).catch(() => {}); }, []);
+  useEffect(() => { axiosInstance.get("/expenses/projects").then((res) => { if (res?.status === 200) setProjects(res.data || []); }).catch(() => { }); }, []);
   useEffect(() => {
     if (!statusPopup) return;
     document.body.setAttribute("data-modal-open", "1");
@@ -171,8 +173,8 @@ export default function ExpenseList() {
     catch (err) { toast.error(err.message || "Something went wrong while deleting expense"); }
   };
 
-  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m - 1]} ${y}`; };
   const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
   const chips = [
     projectFilter !== "All" && { key: "project", label: `Project: ${projectFilter}` },
@@ -188,7 +190,7 @@ export default function ExpenseList() {
     ? parseMonthRange(customDateRange.from, customDateRange.to)
     : getDateRange(dateFilter);
 
-  const expenses   = (expenseData || []).filter((exp) => {
+  const expenses = (expenseData || []).filter((exp) => {
     if (searchTerm && !(exp.expense_title || "").toLowerCase().includes(searchTerm.toLowerCase())) return false;
     const expDate = exp.items?.[0]?.expense_date || exp.created_at || "";
     return isInDateRange(expDate, dateRangeObj?.from, dateRangeObj?.to);
@@ -196,7 +198,7 @@ export default function ExpenseList() {
   const totalCount = expenses.length;
   const totalAmount = expenses.reduce((sum, exp) => sum + (parseFloat(exp.total_amount) || 0), 0);
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const paginated  = expenses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginated = expenses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const columns = [
     {
@@ -207,7 +209,7 @@ export default function ExpenseList() {
       },
     },
     { label: "Project / Cost Center", hidden: true, render: (expense) => expense.project_cost_center || "-" },
-    { label: "Date",   hidden: true, render: (expense) => formatDate(expense.items?.[0]?.expense_date || expense.created_at) },
+    { label: "Date", hidden: true, render: (expense) => formatDate(expense.items?.[0]?.expense_date || expense.created_at) },
     {
       label: "Amount",
       render: (expense) => <span className="font-semibold">{expense.items?.[0]?.currency || "INR"} {Number(expense.total_amount || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>,
@@ -247,22 +249,33 @@ export default function ExpenseList() {
 
   return (
     <div>
-      <div className="flex border-b border-gray-200 mb-2">
-        {TABS.map((t) => (
-          <button key={t.key} onClick={() => { setActiveTab(t.key); nav(`/expenses?tab=${t.key}`, { replace: true }); }}
-            className={`px-5 py-2 text-md font-medium transition-colors ${activeTab === t.key ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between border-b border-gray-200 mb-2">
+        <div className="flex">
+          {TABS.map((t) => (
+            <button key={t.key} onClick={() => { setActiveTab(t.key); nav(`/expenses?tab=${t.key}`, { replace: true }); }}
+              className={`px-5 py-2 text-md font-medium transition-colors ${activeTab === t.key ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowAnalytics((v) => !v)}
+                        className="px-6 py-2 mb-1 ml-0 mr-8 w-full cursor-pointer text-black rounded-full border border-gray-300 sm:w-auto hover:border-blue-500 hover:shadow-md hover:-translate-y-px transition-all duration-200 hover:text-blue-600 dark:hover:border-blue-400 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400"
+
+        >
+          {showAnalytics ? "Hide Analytics" : "View Analytics"}
+        </button>
       </div>
 
+      {showAnalytics && <ExpenseAnalytics tab={activeTab} />}
+
       {activeTab === "incoming" && <IncomingInvoicesTab />}
-      {activeTab === "salary"   && <SalaryTab />}
-      {activeTab === "others"   && <OthersTab />}
+      {activeTab === "salary" && <SalaryTab />}
+      {activeTab === "others" && <OthersTab />}
       {activeTab === "projects" && <ProjectsTab />}
 
       {activeTab === "expenses" && (
-        <div className="w-full lg:w-full md:w-full">
+        <div className="w-full lg:w-full md:w-full -">
           <TabActionBar searchValue={searchTerm} onSearchChange={(v) => { setSearchTerm(v); setCurrentPage(1); }} searchPlaceholder="Search by title...">
             <FilterSelect value={projectFilter} onChange={(v) => { setProjectFilter(v); setCurrentPage(1); }}>
               <option value="All">All Projects</option>
@@ -299,9 +312,11 @@ export default function ExpenseList() {
 
           <FilterChips chips={chips} onRemove={removeChip} />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <StatCard label="Total Records" value={totalCount} />
             <StatCard label="Total Amount" value={`₹ ${totalAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} valueClass="text-indigo-700" />
+            <StatCard label="Approved" value={expenses.filter((e) => (e.status || "").toUpperCase() === "APPROVED").length} valueClass="text-green-600" />
+            <StatCard label="Reimbursed" value={expenses.filter((e) => (e.status || "").toUpperCase() === "REIMBURSED").length} valueClass="text-purple-600" />
           </div>
 
           <DataTable

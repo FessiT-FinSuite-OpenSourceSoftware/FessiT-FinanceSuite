@@ -308,7 +308,7 @@ export default function ProfitLossPage() {
           </div>
 
           {/* Summary strip */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="grid grid-cols-2 lg:grid-cols-5 divide-x divide-y lg:divide-y-0 divide-gray-100">
               {[
                 { label: "Revenue",            value: fmt(kpis.revenue),           color: "text-indigo-700" },
@@ -323,7 +323,7 @@ export default function ProfitLossPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Charts */}
           <motion.div
