@@ -9,7 +9,7 @@ import {
   FileText, ShoppingCart, Receipt, TrendingUp, Users, Settings,
   IndianRupee, Bell, Menu, X, ChevronRight, ChevronLeft, ArrowUp,
   UserLockIcon, Layers, FolderKanban, Boxes, LogOut, BookOpen,
-  ReceiptText, BarChart2, Package, Truck, UserCheck,
+  ReceiptText, BarChart2, Package, Truck, UserCheck, ArrowLeftRight,
 } from "lucide-react";
 import ThemeToggle from "../ThemeToggle";
 import { useTheme } from "../ThemeContext";
@@ -120,6 +120,7 @@ const NAV_GROUPS = [
     key: "reports", label: "Reports",
     items: [
       { id: "ledger", label: "Ledger", icon: BookOpen, module: Module.Invoice },
+      { id: "transactions", label: "Transactions", icon: ArrowLeftRight, module: Module.Invoice },
       { id: "profit-loss", label: "P&L Statement", icon: BarChart2, module: Module.Invoice },
     ],
   },
@@ -171,6 +172,7 @@ const PAGE_TITLES = {
   "/dashboard": "Dashboard",
   "/estimates": "Quotations",
   "/ledger": "Ledger",
+  "/transactions": "Transactions",
   "/profit-loss": "P&L Statement",
   "/delivery-challans": "Delivery Challans",
   "/invoices": "Sales Invoices",

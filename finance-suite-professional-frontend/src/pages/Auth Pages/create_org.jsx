@@ -26,6 +26,7 @@ const initialData = {
   newUserName: "",
   newUserEmail: "",
   newUserPassword: "",
+  professional_tax_amount:""
 };
 
 const steps = [
@@ -201,6 +202,7 @@ export default function CreateOrganization() {
         card_api_key: "",
         cash_instructions: "",
         custom_payment_name: "",
+        professional_tax_amount:""
       };
 
       await dispatch(createOrganisation(mappedData));

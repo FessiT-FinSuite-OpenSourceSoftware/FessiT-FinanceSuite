@@ -45,3 +45,5 @@ pub use delivery_challan_repository::DeliveryChallanRepository;
 pub use employee_repository::EmployeeRepository;
 pub mod gst_challan_repository;
 pub use gst_challan_repository::GstChallanRepository;
+pub mod transaction_repository;
+pub use transaction_repository::TransactionRepository;

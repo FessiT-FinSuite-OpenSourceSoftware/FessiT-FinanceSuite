@@ -352,8 +352,20 @@ export default function InvoiceList() {
     const due = i.invoice_dueDate || i.due_date || "";
     return (!due || new Date(due) >= today) ? (i.status || "New") === "Issued" : false;
   }).length;
-  const totalInvoiceValue = filtered.reduce((s, i) => s + toNumber(i.total), 0);
-  const paidInvoiceValue  = filtered.filter((i) => (i.status || "New") === "Paid").reduce((s, i) => s + toNumber(i.total), 0);
+  // Convert invoice total to org currency using the best available rate
+  const getConvertedTotal = (inv) => {
+    const total = toNumber(inv.total);
+    const isInternational = inv.invoice_type === "international";
+    const isSameCurrency = (inv.currency_type || "INR") === orgCurrency;
+    if (!isInternational || isSameCurrency) return total;
+    const rate = positiveRate(inv.conversionRate || inv.conversion_rate)
+      || positiveRate(inv.approxconversionRate || inv.approx_conversion_rate)
+      || positiveRate(inv.tempconversionRate || inv.temp_conversion_rate);
+    return rate ? total * rate : total; // fallback to raw if no rate available
+  };
+
+  const totalInvoiceValue = filtered.reduce((s, i) => s + getConvertedTotal(i), 0);
+  const paidInvoiceValue  = filtered.filter((i) => (i.status || "New") === "Paid").reduce((s, i) => s + getConvertedTotal(i), 0);
 
   const openPreview = async (invoice) => {
     await dispatch(fetchOrganisationByEmail(localStorage.getItem("email"), true));
@@ -598,10 +610,10 @@ export default function InvoiceList() {
 
       <FilterChips chips={chips} onRemove={removeChip} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total Invoices" value={filtered.length} />
         <StatCard label="Invoice Value" value={`₹ ${totalInvoiceValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} valueClass="text-indigo-700" />
-        <StatCard label="Paid" value={`${countByStatus("Paid")}`} valueClass="text-green-600" />
+        {/* <StatCard label="Paid" value={`${countByStatus("Paid")} · ₹ ${paidInvoiceValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`} valueClass="text-green-600" /> */}
         <StatCard label="Issued" value={countRaised} valueClass="text-blue-600" />
         <StatCard label="Overdue" value={countOverdue} valueClass="text-red-600" />
       </div>

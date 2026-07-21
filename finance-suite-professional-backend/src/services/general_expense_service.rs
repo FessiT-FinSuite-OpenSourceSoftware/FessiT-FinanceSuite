@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    models::general_expense::GeneralExpense,
+    models::general_expense::{GeneralExpense, GeneralExpenseResponse},
     repository::{
         general_expense_repository::GeneralExpenseRepository,
         user_repository::UserRepository,
@@ -31,7 +31,8 @@ impl GeneralExpenseService {
         Ok(self.repo.create(expense).await?)
     }
 
-    pub async fn list(&self, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Vec<GeneralExpense>> {
+    /// Returns expenses with resolved employee names.
+    pub async fn list(&self, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Vec<GeneralExpenseResponse>> {
         Ok(self.repo.get_by_org(org_id).await?)
     }
 

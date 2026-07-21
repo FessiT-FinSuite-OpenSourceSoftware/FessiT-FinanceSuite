@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use chrono::Utc;
 use mongodb::{
     bson::{doc, from_document, oid::ObjectId, Document},
     error::Error as MongoError,
@@ -8,44 +7,89 @@ use mongodb::{
 };
 use futures::stream::TryStreamExt;
 
-use crate::models::general_expense::GeneralExpense;
+use crate::models::{
+    general_expense::{GeneralExpense, GeneralExpenseResponse},
+    employee::Employee,
+};
 
 #[derive(Clone)]
 pub struct GeneralExpenseRepository {
     collection: Arc<Collection<GeneralExpense>>,
     raw_collection: Arc<Collection<Document>>,
+    employee_collection: Arc<Collection<Document>>,
 }
 
 fn doc_to_general_expense(raw: Document) -> Option<GeneralExpense> {
     let oid = raw.get_object_id("_id").ok();
     let mut expense: GeneralExpense = from_document(raw).ok()?;
     expense.id = oid;
-    // Ensure GST fields default to 0.0 for old documents that lack them
-    if expense.sub_total == 0.0 && expense.total_cgst == 0.0 && expense.total_sgst == 0.0 && expense.total_igst == 0.0 {
-        // sub_total for old docs = amount (no GST was applied)
-        if expense.sub_total == 0.0 {
-            expense.sub_total = expense.amount;
-        }
+    if expense.sub_total == 0.0 {
+        expense.sub_total = expense.amount;
     }
     Some(expense)
 }
 
+/// Enrich a `GeneralExpense` with the resolved employee name.
+/// Falls back to the stored `paid_by` string for legacy records.
+fn to_response(expense: GeneralExpense, emp_name: Option<String>) -> GeneralExpenseResponse {
+    let paid_by_employee_id = expense.paid_by_employee_id.map(|o| o.to_hex());
+    let paid_by = emp_name.unwrap_or_else(|| expense.paid_by.clone());
+    GeneralExpenseResponse {
+        id: expense.id,
+        title: expense.title,
+        category: expense.category,
+        date: expense.date,
+        amount: expense.amount,
+        sub_total: expense.sub_total,
+        total_cgst: expense.total_cgst,
+        total_sgst: expense.total_sgst,
+        total_igst: expense.total_igst,
+        billed_to: expense.billed_to,
+        tax_amount: expense.tax_amount,
+        paid_by,
+        paid_by_employee_id,
+        status: expense.status,
+        approved_date: expense.approved_date,
+        document: expense.document,
+        organisation_id: expense.organisation_id,
+        cost_type: expense.cost_type,
+    }
+}
+
 impl GeneralExpenseRepository {
-    pub fn new(collection: Collection<GeneralExpense>) -> Self {
+    pub fn new(
+        collection: Collection<GeneralExpense>,
+        employee_collection: Collection<Document>,
+    ) -> Self {
         let raw_collection = collection.clone_with_type::<Document>();
         Self {
             collection: Arc::new(collection),
             raw_collection: Arc::new(raw_collection),
+            employee_collection: Arc::new(employee_collection),
         }
     }
 
-    async fn fetch_many(&self, filter: impl Into<Option<Document>>) -> Result<Vec<GeneralExpense>, MongoError> {
+    /// Fetch all employees for an org into a fast id→name map.
+    async fn employee_name_map(&self, org_id: &ObjectId) -> std::collections::HashMap<ObjectId, String> {
+        let mut map = std::collections::HashMap::new();
+        let Ok(mut cursor) = self.employee_collection
+            .find(doc! { "organisationId": org_id }, None).await
+        else { return map; };
+        while let Ok(Some(raw)) = cursor.try_next().await {
+            let oid = match raw.get_object_id("_id") { Ok(o) => o, Err(_) => continue };
+            if let Ok(emp) = from_document::<Employee>(raw) {
+                let name = format!("{} {}", emp.first_name, emp.last_name).trim().to_string();
+                map.insert(oid, name);
+            }
+        }
+        map
+    }
+
+    async fn fetch_raw(&self, filter: impl Into<Option<Document>>) -> Result<Vec<GeneralExpense>, MongoError> {
         let mut cursor = self.raw_collection.find(filter, None).await?;
         let mut list = Vec::new();
         while let Some(raw) = cursor.try_next().await.unwrap_or(None) {
-            if let Some(e) = doc_to_general_expense(raw) {
-                list.push(e);
-            }
+            if let Some(e) = doc_to_general_expense(raw) { list.push(e); }
         }
         Ok(list)
     }
@@ -58,43 +102,39 @@ impl GeneralExpenseRepository {
         Ok(expense)
     }
 
-    pub async fn get_by_org(&self, org_id: &ObjectId) -> Result<Vec<GeneralExpense>, MongoError> {
-        self.fetch_many(doc! { "organisationId": org_id }).await
+    /// Returns expenses enriched with resolved employee names.
+    pub async fn get_by_org(&self, org_id: &ObjectId) -> Result<Vec<GeneralExpenseResponse>, MongoError> {
+        let expenses = self.fetch_raw(doc! { "organisationId": org_id }).await?;
+        let name_map = self.employee_name_map(org_id).await;
+        Ok(expenses.into_iter().map(|e| {
+            let emp_name = e.paid_by_employee_id.and_then(|id| name_map.get(&id).cloned());
+            to_response(e, emp_name)
+        }).collect())
     }
 
     pub async fn get_by_id(&self, id: &str) -> Result<Option<GeneralExpense>, MongoError> {
-        let oid = match ObjectId::parse_str(id) {
-            Ok(o) => o,
-            Err(_) => return Ok(None),
-        };
+        let oid = match ObjectId::parse_str(id) { Ok(o) => o, Err(_) => return Ok(None) };
         let raw = self.raw_collection.find_one(doc! { "_id": oid }, None).await?;
         Ok(raw.and_then(doc_to_general_expense))
     }
 
     pub async fn update(&self, id: &str, mut expense: GeneralExpense) -> Result<Option<GeneralExpense>, MongoError> {
-        let oid = match ObjectId::parse_str(id) {
-            Ok(o) => o,
-            Err(_) => return Ok(None),
-        };
+        let oid = match ObjectId::parse_str(id) { Ok(o) => o, Err(_) => return Ok(None) };
         expense.id = Some(oid);
         let result = self.collection.replace_one(doc! { "_id": oid }, expense, None).await?;
-        if result.matched_count == 0 {
-            return Ok(None);
-        }
+        if result.matched_count == 0 { return Ok(None); }
         self.get_by_id(id).await
     }
 
     pub async fn delete(&self, id: &str) -> Result<bool, MongoError> {
-        let oid = match ObjectId::parse_str(id) {
-            Ok(o) => o,
-            Err(_) => return Ok(false),
-        };
+        let oid = match ObjectId::parse_str(id) { Ok(o) => o, Err(_) => return Ok(false) };
         let result = self.collection.delete_one(doc! { "_id": oid }, None).await?;
         Ok(result.deleted_count > 0)
     }
 
     pub async fn get_monthly_gst_summary(&self, org_id: &ObjectId, year: &str, month: &str) -> Result<GeneralExpenseMonthlyGstSummary, MongoError> {
-        let expenses = self.get_by_org(org_id).await?;
+        // Use fetch_raw so we work with GeneralExpense (not the response type)
+        let expenses = self.fetch_raw(doc! { "organisationId": org_id }).await?;
 
         let mut expense_count = 0u32;
         let mut total_amount = 0.0f64;

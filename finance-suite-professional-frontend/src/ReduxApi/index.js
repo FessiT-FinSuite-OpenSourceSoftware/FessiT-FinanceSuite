@@ -25,6 +25,7 @@ import tdsSummaryReducer from './tdsSummary';
 import ptSummaryReducer from './ptSummary';
 import ptChallanReducer from './ptChallan';
 import gstChallanReducer from './gstChallan';
+import transactionsReducer from './transactions';
 import { injectStore } from '../utils/axiosInstance';
 
 const store = configureStore({
@@ -55,6 +56,7 @@ const store = configureStore({
     deliveryChallan: deliveryChallanReducer,
     employee: employeeReducer,
     gstChallan: gstChallanReducer,
+    transactions: transactionsReducer,
   },
 });
 

@@ -29,9 +29,11 @@ export function DonutChart({
   data = [],
   colors = DONUT_COLORS,
   tooltipLabel = 'Count',
-  valueFormatter = (v) => v,   // add this
+  valueFormatter = (v) => v,
 }) {
   const total = data.reduce((s, d) => s + (d.value || 0), 0);
+  const isEmpty = !data.length || total === 0;
+
   return (
     <div className={`${CHART_CARD_CLASS} p-4 ${CHART_HEIGHT_CLASS} flex min-w-0 flex-col`}>
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -41,48 +43,53 @@ export function DonutChart({
         </div>
         {badge && <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">{badge}</div>}
       </div>
-      <div className="flex flex-1 min-h-0 gap-2">
-        <div className="w-46 shrink-0 h-full">
-          <ResponsiveContainer width="100%" height="100%" debounce={100}>
-            <PieChart>
-              <Pie data={data} dataKey="value" nameKey="name" innerRadius={28} outerRadius={52} paddingAngle={3} isAnimationActive={false}>
-                {data.map((_, i) => (
-                  <Cell key={i} fill={colors[i % colors.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v) => [v, tooltipLabel]} />
-            </PieChart>
-          </ResponsiveContainer>
+
+      {isEmpty ? (
+        <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-1 text-center">
+          <div className="text-xs font-medium text-slate-400 dark:text-slate-500">
+            Not enough data
+          </div>
+          <div className="text-[11px] text-slate-350 dark:text-slate-600">
+            Nothing to show for this period
+          </div>
         </div>
-        {/* Legend — grid layout, no justify-between gap */}
-        <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0 overflow-y-auto">
-          {data.map((item, i) => (
-            <div
-              key={item.name}
-              className="flex items-center gap-2 min-w-0"
-            >
-              <span
-                className="h-2.5 w-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: colors[i % colors.length] }}
-              />
-
-              <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                {item.name}
-              </span>
-
-              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                {valueFormatter(item.value)}
-              </span>
-
-              {total > 0 && (
-                <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                  ({Math.round((item.value / total) * 100)}%)
+      ) : (
+        <div className="flex flex-1 min-h-0 gap-2">
+          <div className="w-46 shrink-0 h-full">
+            <ResponsiveContainer width="100%" height="100%" debounce={100}>
+              <PieChart>
+                <Pie data={data} dataKey="value" nameKey="name" innerRadius={28} outerRadius={52} paddingAngle={3} isAnimationActive={false}>
+                  {data.map((_, i) => (
+                    <Cell key={i} fill={colors[i % colors.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => [v, tooltipLabel]} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0 overflow-y-auto">
+            {data.map((item, i) => (
+              <div key={item.name} className="flex items-center gap-2 min-w-0">
+                <span
+                  className="h-2.5 w-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: colors[i % colors.length] }}
+                />
+                <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                  {item.name}
                 </span>
-              )}
-            </div>
-          ))}
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  {valueFormatter(item.value)}
+                </span>
+                {total > 0 && (
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                    ({Math.round((item.value / total) * 100)}%)
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

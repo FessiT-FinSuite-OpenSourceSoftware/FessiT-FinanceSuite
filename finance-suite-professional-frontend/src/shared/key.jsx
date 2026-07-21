@@ -11,13 +11,17 @@ const getConfig = () => ({
 const KeyUri = {
   // local server
   BACKENDURI: "http://127.0.0.1:8082/api/v1",
+  // BACKENDURI: "http://54.206.93.33:8082/api/v1",
+
+  //production server of trail period users
+  // BACKENDURI: "http://65.0.26.187:8082/api/v1",
+
+  // Python OCR / statement parser service
+  OCR_URI: "http://127.0.0.1:8000",
 };
 
-// Configure axios defaults for CORS
+// Configure axios defaults
 axios.defaults.withCredentials = false;
-axios.defaults.headers.common['Access-Control-Allow-Origin'] = '*';
-axios.defaults.headers.common['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-axios.defaults.headers.common['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
 
 // Add request interceptor for logging
 axios.interceptors.request.use(

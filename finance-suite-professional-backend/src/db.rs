@@ -6,6 +6,7 @@ use crate::models::{
     Organisation, PartyCounter, Product, PurchaseOrder, Salary, User, Account, Service, AssetCategory, Employee,
     professional_tax_challan::ProfessionalTaxChallan,
     gst_challan::GstChallan,
+    transaction::Transaction,
 };
 
 #[derive(Clone)]
@@ -134,5 +135,9 @@ impl MongoDbClient {
 
     pub fn get_gst_challan_collection(&self) -> Collection<GstChallan> {
         self.database.collection::<GstChallan>("gst_challans")
+    }
+
+    pub fn get_transaction_collection(&self) -> Collection<Transaction> {
+        self.database.collection::<Transaction>("transactions")
     }
 }

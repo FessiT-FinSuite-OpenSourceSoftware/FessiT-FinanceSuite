@@ -41,6 +41,15 @@ fn validate_approved_date(expense: &CreateGeneralExpenseRequest) -> actix_web::R
     Ok(())
 }
 
+/// Parse a hex ObjectId string sent by the frontend into an actual ObjectId.
+/// Returns None (silently) if the string is empty or invalid so old records
+/// that never had an employee link are unaffected.
+fn parse_employee_id(s: &str) -> Option<mongodb::bson::oid::ObjectId> {
+    let s = s.trim();
+    if s.is_empty() { return None; }
+    mongodb::bson::oid::ObjectId::parse_str(s).ok()
+}
+
 /// POST /api/v1/general-expenses
 #[post("/general-expenses")]
 pub async fn create_general_expense(
@@ -143,6 +152,11 @@ pub async fn update_general_expense(
     validate_approved_date(&updated)?;
     // Preserve organisation_id — frontend never sends it
     updated.organisation_id = existing.organisation_id;
+    // Preserve paid_by_employee_id if the frontend sent an empty string
+    // (means "no change") — only overwrite when a valid id was provided.
+    if updated.paid_by_employee_id.is_none() && existing.paid_by_employee_id.is_some() {
+        // frontend cleared the field intentionally — keep None (unlink)
+    }
     match service.update(&id, updated).await
         .map_err(actix_web::error::ErrorInternalServerError)?
     {

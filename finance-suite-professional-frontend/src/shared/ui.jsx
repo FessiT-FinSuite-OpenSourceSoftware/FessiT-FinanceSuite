@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Search, Filter, Edit2, Trash2, X, ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect, useMemo, useCallback, useId } from "react";
+import { Search, Filter, Edit2, Trash2, X, ChevronDown, Check } from "lucide-react";
 
 function useDark() {
   const [dark, setDark] = React.useState(() => document.documentElement.classList.contains("dark"));
@@ -738,6 +739,193 @@ export function Pagination({ currentPage, totalPages, pageSize, totalCount, onPa
           Next
         </button>
       </div>
+    </div>
+  );
+}
+
+
+export function SearchableSelect({
+  options,             // [{ value, label, sublabel? }]
+  value,
+  onChange,
+  placeholder = "Select…",
+  searchPlaceholder = "Search…",
+  emptyLabel = "No matches found",
+  disabled = false,
+  className = "",
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [highlighted, setHighlighted] = useState(0);
+  const containerRef = useRef(null);
+  const inputRef = useRef(null);
+  const listRef = useRef(null);
+  const listboxId = useId();
+
+  const selected = useMemo(
+    () => options.find((o) => String(o.value) === String(value)) || null,
+    [options, value]
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) =>
+      o.label.toLowerCase().includes(q) ||
+      (o.sublabel ?? "").toLowerCase().includes(q)
+    );
+  }, [options, query]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  // Focus search input when opening, reset highlight
+  useEffect(() => {
+    if (open) {
+      setHighlighted(0);
+      // slight delay so the input exists in the DOM before focusing
+      const t = setTimeout(() => inputRef.current?.focus(), 0);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  // Keep the highlighted row scrolled into view
+  useEffect(() => {
+    if (!open) return;
+    const el = listRef.current?.querySelector(`[data-index="${highlighted}"]`);
+    el?.scrollIntoView({ block: "nearest" });
+  }, [highlighted, open]);
+
+  const commitSelection = useCallback((option) => {
+    onChange(option ? option.value : "");
+    setOpen(false);
+    setQuery("");
+  }, [onChange]);
+
+  const handleKeyDown = (e) => {
+    if (!open) {
+      if (e.key === "Enter" || e.key === "ArrowDown" || e.key === " ") {
+        e.preventDefault();
+        setOpen(true);
+      }
+      return;
+    }
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setHighlighted((i) => Math.min(i + 1, filtered.length - 1));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setHighlighted((i) => Math.max(i - 1, 0));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (filtered[highlighted]) commitSelection(filtered[highlighted]);
+        break;
+      case "Escape":
+        e.preventDefault();
+        setOpen(false);
+        setQuery("");
+        break;
+      case "Tab":
+        setOpen(false);
+        setQuery("");
+        break;
+      default:
+        break;
+    }
+  };
+
+  return (
+    <div ref={containerRef} className={`relative ${className}`}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        onKeyDown={handleKeyDown}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        className={`w-full flex items-center justify-between gap-2 border border-gray-200 dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-left
+          focus:outline-none focus:ring-1 focus:ring-indigo-400
+          ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-gray-300 dark:hover:border-slate-600"}`}
+      >
+        <span className={`truncate ${selected ? "text-gray-800 dark:text-slate-100" : "text-gray-400 dark:text-slate-500"}`}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {selected && !disabled && (
+            <span
+              role="button"
+              tabIndex={-1}
+              onClick={(e) => { e.stopPropagation(); commitSelection(null); }}
+              className="p-0.5 rounded text-gray-300 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400 transition-colors"
+              title="Clear selection"
+            >
+              <X className="w-3.5 h-3.5" />
+            </span>
+          )}
+          <ChevronDown className={`w-4 h-4 text-gray-400 dark:text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-slate-800">
+            <Search className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500 shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setHighlighted(0); }}
+              onKeyDown={handleKeyDown}
+              placeholder={searchPlaceholder}
+              className="w-full bg-transparent text-sm outline-none text-gray-800 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500"
+            />
+          </div>
+          <ul ref={listRef} id={listboxId} role="listbox" className="max-h-56 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-2 text-sm text-gray-400 dark:text-slate-500 text-center">{emptyLabel}</li>
+            )}
+            {filtered.map((option, index) => {
+              const isSelected = selected && String(selected.value) === String(option.value);
+              const isHighlighted = index === highlighted;
+              return (
+                <li
+                  key={option.value}
+                  data-index={index}
+                  role="option"
+                  aria-selected={isSelected}
+                  onMouseEnter={() => setHighlighted(index)}
+                  onClick={() => commitSelection(option)}
+                  className={`flex items-center justify-between gap-2 px-3 py-2 text-sm cursor-pointer
+                    ${isHighlighted ? "bg-indigo-50 dark:bg-indigo-950/40" : ""}
+                    ${isSelected ? "font-medium text-indigo-600 dark:text-indigo-400" : "text-gray-700 dark:text-slate-200"}`}
+                >
+                  <span className="truncate">
+                    {option.label}
+                    {option.sublabel && (
+                      <span className="ml-1.5 text-xs text-gray-400 dark:text-slate-500">{option.sublabel}</span>
+                    )}
+                  </span>
+                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0 text-indigo-500" />}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

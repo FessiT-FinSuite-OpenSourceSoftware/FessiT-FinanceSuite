@@ -8,14 +8,14 @@ import { useDispatch, useSelector } from "react-redux";
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 import { fetchGeneralExpenses, createGeneralExpense, updateGeneralExpense, deleteGeneralExpense, uploadGeneralExpenseFile, generalExpenseSelector } from "../../ReduxApi/generalExpense";
 import { authSelector } from "../../ReduxApi/auth";
-import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal, FilterChips } from "../../shared/ui";
+import { StatCard, TabActionBar, FilterSelect, CreateButton, DataTable, RowActions, Modal, FormField, inputCls, Pagination, ConfirmModal, FilterChips, SearchableSelect } from "../../shared/ui";
 import MonthRangeSelector from "../../shared/MonthRangeSelector";
 import axiosInstance from "../../utils/axiosInstance";
 import { KeyUri } from "../../shared/key";
 import { toast } from "react-toastify";
 
 const CATEGORIES = ["Supplies", "Meals", "Software", "Travel", "Utilities", "Others"];
-const empty = () => ({ title: "", category: "Supplies", date: "", amount: "", cgstPct: "", sgstPct: "", igstPct: "", paid_by: "", billed_to: "", status: "Pending", approved_date: "", document: "", cost_type: "indirect" });
+const empty = () => ({ title: "", category: "Supplies", date: "", amount: "", cgstPct: "", sgstPct: "", igstPct: "", paid_by_employee_id: "", billed_to: "", status: "Pending", approved_date: "", document: "", cost_type: "indirect" });
 const formatDateForApi = (dateStr) => dateStr || "";
 
 const formatDate = (value) => {
@@ -37,7 +37,7 @@ const getId = (row) => row?._id?.$oid || row?.id || "";
 
 export default function OthersTab() {
   const dispatch = useDispatch();
-  const { generalExpenseData, isLoading } = useSelector(generalExpenseSelector);
+  const { generalExpenseData, isLoading, employees } = useSelector(generalExpenseSelector);
   const { user } = useSelector(authSelector);
   const isAdmin = user?.is_admin === true;
 
@@ -48,6 +48,7 @@ export default function OthersTab() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [employeeFilter, setEmployeeFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("all");
   const [customDateRange, setCustomDateRange] = useState({ from: "", to: "" });
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
@@ -104,7 +105,7 @@ export default function OthersTab() {
   const openCreate = () => { setForm(empty()); setDocFile(null); setDocFileName(""); setModal({ mode: "create" }); };
   const openEdit = (row) => {
     const amount = parseFloat(row.amount) || 0;
-    setForm({ ...row, cgstPct: amount > 0 ? ((row.total_cgst || 0) / amount * 100).toFixed(2) : "", sgstPct: amount > 0 ? ((row.total_sgst || 0) / amount * 100).toFixed(2) : "", igstPct: amount > 0 ? ((row.total_igst || 0) / amount * 100).toFixed(2) : "", approved_date: row.approved_date || "", billed_to: row.billed_to || "", cost_type: row.cost_type || "indirect" });
+    setForm({ ...row, cgstPct: amount > 0 ? ((row.total_cgst || 0) / amount * 100).toFixed(2) : "", sgstPct: amount > 0 ? ((row.total_sgst || 0) / amount * 100).toFixed(2) : "", igstPct: amount > 0 ? ((row.total_igst || 0) / amount * 100).toFixed(2) : "", approved_date: row.approved_date || "", billed_to: row.billed_to || "", cost_type: row.cost_type || "indirect", paid_by_employee_id: row.paid_by_employee_id || "" });
     setDocFile(null); setDocFileName(row.document || ""); setModal({ mode: "edit", id: getId(row) });
   };
   const closeModal = () => setModal(null);
@@ -119,7 +120,21 @@ export default function OthersTab() {
       let storedFilename = form.document || "";
       if (docFile) storedFilename = await uploadGeneralExpenseFile(docFile);
       const amount = parseFloat(form.amount) || 0;
-      const payload = { ...form, amount, date: formatDateForApi(form.date), total_cgst: calcTax(amount, form.cgstPct), total_sgst: calcTax(amount, form.sgstPct), total_igst: calcTax(amount, form.igstPct), billed_to: form.billed_to || null, approved_date: form.status === "Approved" ? formatDateForApi(form.approved_date) : null, document: storedFilename, cost_type: form.cost_type || "indirect" };
+      const selectedEmp = employees.find((e) => e.id === form.paid_by_employee_id);
+      const payload = {
+        ...form,
+        amount,
+        date: formatDateForApi(form.date),
+        total_cgst: calcTax(amount, form.cgstPct),
+        total_sgst: calcTax(amount, form.sgstPct),
+        total_igst: calcTax(amount, form.igstPct),
+        billed_to: form.billed_to || null,
+        approved_date: form.status === "Approved" ? formatDateForApi(form.approved_date) : null,
+        document: storedFilename,
+        cost_type: form.cost_type || "indirect",
+        paid_by_employee_id: form.paid_by_employee_id || null,
+        paid_by: selectedEmp?.name || form.paid_by || "",
+      };
       if (modal.mode === "create") dispatch(createGeneralExpense(payload));
       else dispatch(updateGeneralExpense(modal.id, payload));
       closeModal();
@@ -162,17 +177,19 @@ export default function OthersTab() {
     } catch { toast.error("Unable to download document"); }
   };
 
-  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m-1]} ${y}`; };
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m - 1]} ${y}`; };
   const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
   const chips = [
     categoryFilter !== "All" && { key: "category", label: `Category: ${categoryFilter}` },
     statusFilter !== "All" && { key: "status", label: `Status: ${statusFilter}` },
+    employeeFilter !== "All" && { key: "employee", label: `Paid By: ${employees.find((e) => e.id === employeeFilter)?.name ?? employeeFilter}` },
     dateFilter !== "all" && { key: "date", label: dateFilter === "custom" && customDateRange.from && customDateRange.to ? `${fmtYM(customDateRange.from)} → ${fmtYM(customDateRange.to)}` : dateFilterLabel[dateFilter] },
   ].filter(Boolean);
   const removeChip = (key) => {
     if (key === "category") setCategoryFilter("All");
     if (key === "status") setStatusFilter("All");
+    if (key === "employee") setEmployeeFilter("All");
     if (key === "date") { setDateFilter("all"); setCustomDateRange({ from: "", to: "" }); }
     setCurrentPage(1);
   };
@@ -181,8 +198,8 @@ export default function OthersTab() {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     let from = new Date(today), to = new Date(today);
     switch (period) {
-      case "this_month":    { from.setDate(1); break; }
-      case "last_month":    { from.setMonth(from.getMonth() - 1); from.setDate(1); to.setDate(0); break; }
+      case "this_month": { from.setDate(1); break; }
+      case "last_month": { from.setMonth(from.getMonth() - 1); from.setDate(1); to.setDate(0); break; }
       case "last_3_months": { from.setMonth(from.getMonth() - 2); from.setDate(1); break; }
       case "last_6_months": { from.setMonth(from.getMonth() - 5); from.setDate(1); break; }
       default: return null;
@@ -202,25 +219,36 @@ export default function OthersTab() {
     const matchSearch = !search || r.title?.toLowerCase().includes(q) || r.paid_by?.toLowerCase().includes(q);
     const matchCat = categoryFilter === "All" || r.category === categoryFilter;
     const matchStatus = statusFilter === "All" || r.status === statusFilter;
+    const matchEmp = employeeFilter === "All" || r.paid_by_employee_id === employeeFilter;
     let matchDate = true;
     if (dateRangeObj && r.date) {
       const d = new Date(r.date);
-      if (!isNaN(d.getTime())) { d.setHours(0,0,0,0); matchDate = d >= dateRangeObj.from && d <= dateRangeObj.to; }
+      if (!isNaN(d.getTime())) { d.setHours(0, 0, 0, 0); matchDate = d >= dateRangeObj.from && d <= dateRangeObj.to; }
     }
-    return matchSearch && matchCat && matchStatus && matchDate;
+    return matchSearch && matchCat && matchStatus && matchEmp && matchDate;
   });
 
-  const totalAmount   = filtered.reduce((s, r) => s + (parseFloat(r.subTotal) || parseFloat(r.amount) || 0), 0);
-  const approvedAmt   = filtered.filter((r) => r.status === "Approved").reduce((s, r) => s + (parseFloat(r.subTotal) || parseFloat(r.amount) || 0), 0);
+  const totalAmount = filtered.reduce((s, r) => s + (parseFloat(r.subTotal) || parseFloat(r.amount) || 0), 0);
+  const approvedAmt = filtered.filter((r) => r.status === "Approved").reduce((s, r) => s + (parseFloat(r.subTotal) || parseFloat(r.amount) || 0), 0);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const columns = [
-    { label: "Title",    render: (r) => <span className="font-medium text-gray-900">{r.title}</span> },
+    {
+      label: "Paid By", render: (r) => {
+        const emp = (employees || []).find((e) => e.id === r.paid_by_employee_id);
+        return (
+          <span className="text-gray-700 font-medium">
+            {r.paid_by || "—"}
+            {emp?.emp_id && <span className="ml-1 text-xs text-gray-400">({emp.emp_id})</span>}
+          </span>
+        );
+      }
+    },
+    { label: "Title", render: (r) => <span className="font-medium text-gray-900">{r.title}</span> },
     { label: "Category", render: (r) => <span className="text-gray-600">{r.category}</span> },
-    { label: "Date",     render: (r) => <span className="text-gray-600">{formatDate(r.date)}</span> },
-    { label: "Amount",   render: (r) => <span className="font-semibold">₹ {(parseFloat(r.amount) || 0).toLocaleString("en-IN")}</span> },
-    { label: "Tax",      render: (r) => <span className="text-gray-600">₹ {(parseFloat(r.tax_amount) || 0).toLocaleString("en-IN")}</span> },
+    { label: "Date", render: (r) => <span className="text-gray-600">{formatDate(r.date)}</span> },
+    { label: "Amount", render: (r) => <span className="font-semibold">₹ {(parseFloat(r.amount) || 0).toLocaleString("en-IN")}</span> },
     {
       label: "Status",
       render: (r) => {
@@ -272,6 +300,12 @@ export default function OthersTab() {
           <option value="Approved">Approved</option>
           <option value="Rejected">Rejected</option>
         </FilterSelect>
+        <FilterSelect value={employeeFilter} onChange={(v) => { setEmployeeFilter(v); setCurrentPage(1); }}>
+          <option value="All">All Employees</option>
+          {(employees || []).map((e) => (
+            <option key={e.id} value={e.id}>{e.name}{e.emp_id ? ` (${e.emp_id})` : ""}</option>
+          ))}
+        </FilterSelect>
         <div className="relative">
           <FilterSelect value={dateFilter} onChange={(v) => { setDateFilter(v); setCurrentPage(1); if (v !== "custom") setDateDropdownOpen(false); else setDateDropdownOpen(true); }}>
             <option value="all">All Time</option>
@@ -294,9 +328,9 @@ export default function OthersTab() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard label="Total Records" value={filtered.length} />
-        <StatCard label="Total Amount"  value={`₹ ${totalAmount.toLocaleString("en-IN")}`} valueClass="text-indigo-700" />
-        <StatCard label="Approved"      value={`${filtered.filter((r) => r.status === "Approved").length} `} valueClass="text-green-600" />
-        <StatCard label="Pending"       value={filtered.filter((r) => r.status === "Pending").length} valueClass="text-yellow-600" />
+        <StatCard label="Total Amount" value={`₹ ${totalAmount.toLocaleString("en-IN")}`} valueClass="text-indigo-700" />
+        <StatCard label="Approved" value={`${filtered.filter((r) => r.status === "Approved").length} `} valueClass="text-green-600" />
+        <StatCard label="Pending" value={filtered.filter((r) => r.status === "Pending").length} valueClass="text-yellow-600" />
       </div>
 
       <DataTable isLoading={isLoading} data={paginated} rowKey={getId} columns={columns} />
@@ -360,7 +394,26 @@ export default function OthersTab() {
           <FormField label="IGST %"><input type="number" name="igstPct" value={form.igstPct} onChange={handleChange} className={inputCls} placeholder="e.g. 18" min="0" max="100" /></FormField>
           <FormField label="Total Tax Amount"><input readOnly value={(calcTax(form.amount, form.cgstPct) + calcTax(form.amount, form.sgstPct) + calcTax(form.amount, form.igstPct)).toFixed(2)} className={`${inputCls} bg-gray-50 text-gray-600`} /></FormField>
           <FormField label="Sub Total (incl. GST)"><input readOnly value={((parseFloat(form.amount) || 0) + calcTax(form.amount, form.cgstPct) + calcTax(form.amount, form.sgstPct) + calcTax(form.amount, form.igstPct)).toFixed(2)} className={`${inputCls} bg-gray-50 text-blue-700 font-semibold`} /></FormField>
-          <FormField label="Paid By"><input type="text" name="paid_by" value={form.paid_by} onChange={handleChange} className={inputCls} /></FormField>
+          {/* <FormField label="Paid By (Employee)"><select name="paid_by_employee_id" value={form.paid_by_employee_id || ""} onChange={handleChange} className={inputCls}>
+            <option value="">— Select Employee —</option>
+            {(employees || []).map((e) => <option key={e.id} value={e.id}>{e.name}{e.emp_id ? ` (${e.emp_id})` : ""}</option>)}
+          </select></FormField> */}
+          <FormField label="Paid By (Employee)">
+            <SearchableSelect
+              options={(employees || []).map((e) => ({
+                value: e.id,
+                label: e.name,
+                sublabel: e.emp_id ? `(${e.emp_id})` : "",
+              }))}
+              value={form.paid_by_employee_id}
+              onChange={(val) =>
+                handleChange({ target: { name: "paid_by_employee_id", value: val } })
+              }
+              placeholder="— Select Employee —"
+              searchPlaceholder="Search by name or ID…"
+              emptyLabel="No matching employees"
+            />
+          </FormField>
           <FormField label="Billed To"><select name="billed_to" value={form.billed_to || ""} onChange={handleChange} className={inputCls}><option value="">Select</option><option value="Self">Self</option><option value="Company">Company</option><option value="Client">Client</option></select></FormField>
           <FormField label="Status"><select name="status" value={form.status} onChange={handleChange} className={inputCls}><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option></select></FormField>
           {form.status === "Approved" && (<FormField label="Approved Date *"><input type="date" name="approved_date" value={form.approved_date || ""} onChange={handleChange} className={inputCls} /></FormField>)}

@@ -47,3 +47,5 @@ pub use delivery_challan_handler::configure_routes as configure_delivery_challan
 pub use employee_handler::configure_routes as configure_employee_routes;
 pub mod gst_challan_handler;
 pub use gst_challan_handler::configure_routes as configure_gst_challan_routes;
+pub mod transaction_handler;
+pub use transaction_handler::configure_routes as configure_transaction_routes;

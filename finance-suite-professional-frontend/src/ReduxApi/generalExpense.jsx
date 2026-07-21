@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 const initialState = {
   isLoading: false,
   generalExpenseData: [],
+  employees: [],
   isError: false,
 };
 
@@ -15,18 +16,23 @@ const generalExpenseSlice = createSlice({
     generalExpenseRequest: (state) => { state.isLoading = true; state.isError = false; },
     generalExpenseSuccess: (state, { payload }) => { state.isLoading = false; state.generalExpenseData = payload; },
     generalExpenseFailure: (state) => { state.isLoading = false; state.isError = true; },
+    setEmployees: (state, { payload }) => { state.employees = payload; },
   },
 });
 
-export const { generalExpenseRequest, generalExpenseSuccess, generalExpenseFailure } = generalExpenseSlice.actions;
+export const { generalExpenseRequest, generalExpenseSuccess, generalExpenseFailure, setEmployees } = generalExpenseSlice.actions;
 export const generalExpenseSelector = (state) => state.generalExpense;
 export default generalExpenseSlice.reducer;
 
 export const fetchGeneralExpenses = () => async (dispatch) => {
   dispatch(generalExpenseRequest());
   try {
-    const { data } = await axiosInstance.get('/general-expenses');
-    dispatch(generalExpenseSuccess(data));
+    const [expRes, empRes] = await Promise.all([
+      axiosInstance.get('/general-expenses'),
+      axiosInstance.get('/employees/all'),
+    ]);
+    dispatch(generalExpenseSuccess(expRes.data));
+    dispatch(setEmployees(Array.isArray(empRes.data) ? empRes.data : []));
   } catch (error) {
     toast.error(error?.response?.data?.message || 'Failed to fetch general expenses');
     dispatch(generalExpenseFailure());

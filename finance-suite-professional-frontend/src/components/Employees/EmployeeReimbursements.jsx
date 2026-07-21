@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { expenseSelector, fetchExpenseData } from "../../ReduxApi/expense";
+import { generalExpenseSelector, fetchGeneralExpenses } from "../../ReduxApi/generalExpense";
 import { fetchAllEmployees } from "../../ReduxApi/employee";
-import { DonutChart, BarChartCard } from "../../shared/charts";
+import { DonutChart } from "../../shared/charts";
 import { FilterSelect, StatCard } from "../../shared/ui";
 
 const parseAmt = (v) => parseFloat(v) || 0;
 const fmt = (v) => `₹${Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 const yFmt = (v) => v >= 100000 ? `${(v / 100000).toFixed(1)}L` : v >= 1000 ? `${Math.round(v / 1000)}k` : v;
-const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const toYM = (dateStr) => {
   if (!dateStr) return null;
@@ -35,33 +37,28 @@ const getCutoffDate = (period) => {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   if (period === "this_month") {
-    const from = new Date(now.getFullYear(), now.getMonth(), 1);
-    const to   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return { from, to };
+    return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: new Date(now.getFullYear(), now.getMonth() + 1, 0) };
   }
   if (period === "last_month") {
-    const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const to   = new Date(now.getFullYear(), now.getMonth(), 0);
-    return { from, to };
+    return { from: new Date(now.getFullYear(), now.getMonth() - 1, 1), to: new Date(now.getFullYear(), now.getMonth(), 0) };
   }
-  const months = { "3m": 3, "6m": 6, "12m": 12 }[period];
-  const from = new Date(now.getFullYear(), now.getMonth() - months, 1);
-  return { from, to: now };
+  const n = { "3m": 3, "6m": 6, "12m": 12 }[period];
+  return { from: new Date(now.getFullYear(), now.getMonth() - n, 1), to: now };
 };
+
+const CHART_CARD = "rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-700/60 dark:bg-slate-900 p-4 h-64 flex flex-col";
 
 export default function EmployeeReimbursements() {
   const dispatch = useDispatch();
   const { expenseData = [] } = useSelector(expenseSelector);
+  const { generalExpenseData = [], employees = [] } = useSelector(generalExpenseSelector);
 
-  const [employees, setEmployees] = useState([]);
   const [selectedEmp, setSelectedEmp] = useState("all");
   const [timePeriod, setTimePeriod] = useState("all");
 
   useEffect(() => {
     dispatch(fetchExpenseData());
-    dispatch(fetchAllEmployees()).then((data) => {
-      setEmployees(Array.isArray(data) ? data : []);
-    });
+    dispatch(fetchGeneralExpenses()); // also fetches & caches employees in generalExpense slice
   }, [dispatch]);
 
   const months = useMemo(() => {
@@ -86,7 +83,19 @@ export default function EmployeeReimbursements() {
     });
   }, [expenseData, selectedEmp, timePeriod]);
 
-  const byCategory = useMemo(() => {
+  const filteredGeneral = useMemo(() => {
+    const range = getCutoffDate(timePeriod);
+    return generalExpenseData.filter((e) => {
+      if (selectedEmp !== "all" && e.paid_by_employee_id !== selectedEmp) return false;
+      if (!range) return true;
+      const d = e.date ? new Date(e.date) : null;
+      if (!d || isNaN(d)) return false;
+      d.setHours(0, 0, 0, 0);
+      return d >= range.from && d <= range.to;
+    });
+  }, [generalExpenseData, selectedEmp, timePeriod]);
+
+  const reimbByCategory = useMemo(() => {
     const map = {};
     filtered.forEach((e) => {
       (e.items || []).forEach((item) => {
@@ -95,39 +104,51 @@ export default function EmployeeReimbursements() {
       });
       if (!e.items?.length) map["Other"] = (map["Other"] || 0) + parseAmt(e.total_amount);
     });
-    return Object.entries(map)
-      .map(([name, value]) => ({ name, value: Math.round(value) }))
-      .sort((a, b) => b.value - a.value);
+    return Object.entries(map).map(([name, value]) => ({ name, value: Math.round(value) })).sort((a, b) => b.value - a.value);
   }, [filtered]);
 
-  const monthlyTrend = useMemo(() => {
-    const map = Object.fromEntries(months.map((m) => [m, 0]));
+  const genByCategory = useMemo(() => {
+    const map = {};
+    filteredGeneral.forEach((e) => {
+      const cat = e.category || "Other";
+      map[cat] = (map[cat] || 0) + parseAmt(e.subTotal);
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value: Math.round(value) })).sort((a, b) => b.value - a.value);
+  }, [filteredGeneral]);
+
+  // Combined monthly trend — one entry per month with both series
+  const combinedTrend = useMemo(() => {
+    const reimb = Object.fromEntries(months.map((m) => [m, 0]));
+    const gen = Object.fromEntries(months.map((m) => [m, 0]));
     filtered.forEach((e) => {
       const ym = toYM(e.items?.[0]?.expense_date || e.items?.[0]?.expenseDate || e.created_at);
-      if (ym && map[ym] !== undefined) map[ym] += parseAmt(e.total_amount);
+      if (ym && reimb[ym] !== undefined) reimb[ym] += parseAmt(e.total_amount);
+    });
+    filteredGeneral.forEach((e) => {
+      const ym = toYM(e.date);
+      if (ym && gen[ym] !== undefined) gen[ym] += parseAmt(e.amount);
     });
     return months.map((ym) => {
       const [y, m] = ym.split("-");
-      return { name: `${MONTHS_SHORT[+m - 1]} ${y.slice(2)}`, value: Math.round(map[ym]) };
+      return { name: `${MONTHS_SHORT[+m - 1]} ${y.slice(2)}`, reimbursements: Math.round(reimb[ym]), general: Math.round(gen[ym]) };
     });
-  }, [filtered, months]);
+  }, [filtered, filteredGeneral, months]);
 
-  const total = filtered.reduce((s, e) => s + parseAmt(e.total_amount), 0);
+  const reimbTotal = filtered.reduce((s, e) => s + parseAmt(e.total_amount), 0);
+  const genTotal = filteredGeneral.reduce((s, e) => s + parseAmt(e.subTotal), 0);
   const reimbursedCount = filtered.filter((e) => (e.status || "").toUpperCase() === "REIMBURSED").length;
-  const approvedCount   = filtered.filter((e) => (e.status || "").toUpperCase() === "APPROVED").length;
-  const selectedEmpName = employees.find((e) => e.id === selectedEmp)?.name;
-
+  const approvedCount = filtered.filter((e) => (e.status || "").toUpperCase() === "APPROVED").length
+    + filteredGeneral.filter((e) => e.status === "Approved").length;
+  console.log("This is the filtration of the data ,", filteredGeneral)
   return (
     <div>
       {/* Filter bar */}
-      <div className="sticky top-[88px] z-10 rounded-lg bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 py-4 shadow-sm mb-2">
+      <div className="sticky top-[88px] z-10 rounded-lg bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 py-4 shadow-sm mb-4">
         <div className="flex flex-wrap items-center justify-end gap-2 px-4">
           <FilterSelect value={selectedEmp} onChange={setSelectedEmp}>
             <option value="all">All Employees</option>
             {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.name}{emp.emp_id ? ` (${emp.emp_id})` : ""}
-              </option>
+              <option key={emp.id} value={emp.id}>{emp.name}{emp.emp_id ? ` (${emp.emp_id})` : ""}</option>
             ))}
           </FilterSelect>
           <FilterSelect value={timePeriod} onChange={setTimePeriod}>
@@ -141,43 +162,61 @@ export default function EmployeeReimbursements() {
         </div>
       </div>
 
-      {/* Stat cards — same as sales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <StatCard label="Total Records"   value={filtered.length} />
-        <StatCard label="Total Amount"    value={fmt(total)} valueClass="text-indigo-700" />
-        <StatCard label="Approved"        value={approvedCount}   valueClass="text-green-600" />
-        <StatCard label="Reimbursed"      value={reimbursedCount} valueClass="text-purple-600" />
+      {/* Single unified stat row */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+        <StatCard label="Reimbursements" value={fmt(reimbTotal)} valueClass="text-indigo-700" />
+        <StatCard label="General Expenses" value={fmt(genTotal)} valueClass="text-violet-600" />
+        <StatCard label="Combined Total" value={fmt(reimbTotal + genTotal)} valueClass="text-slate-700 dark:text-slate-200" />
+        <StatCard label="Approved" value={approvedCount} valueClass="text-green-600" />
+        <StatCard label="Reimbursed" value={reimbursedCount} valueClass="text-purple-600" />
       </div>
 
-      {/* Charts */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-gray-400 bg-white rounded-lg border border-gray-200">
-          <svg className="w-10 h-10 opacity-30 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6M3 17h18" />
-          </svg>
-          <p className="text-sm">No reimbursements found for the selected filters.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-10 sm:grid-cols-10 gap-4">
-          <div className="col-span-3 sm:col-span-3">
+      {/* Single chart row */}
+      <div className="grid grid-cols-10 gap-4">
+        {/* Reimbursements donut */}
+        <div className="col-span-3">
           <DonutChart
             title="Reimbursements by Category"
-            subtitle={selectedEmpName ? `${selectedEmpName} · ${fmt(total)}` : fmt(total)}
-            data={byCategory}
+            subtitle={fmt(reimbTotal)}
+            data={reimbByCategory}
             tooltipLabel="Amount (₹)"
           />
-          </div>
-          <div className="col-span-7">
-          <BarChartCard
-            title="Monthly Reimbursement Trend"
-            subtitle="Last 12 months"
-            data={monthlyTrend}
-            tooltipFormatter={(v) => [fmt(v), "Amount"]}
-            yTickFormatter={yFmt}
+        </div>
+
+        {/* General expenses donut */}
+        <div className="col-span-3">
+          <DonutChart
+            title="General Expenses by Category"
+            subtitle={fmt(genTotal)}
+            data={genByCategory}
+            tooltipLabel="Amount (₹)"
+            colors={["#a78bfa", "#f472b6", "#fb923c", "#38bdf8", "#4ade80"]}
           />
+        </div>
+
+        {/* Combined monthly bar */}
+        <div className="col-span-4">
+          <div className={CHART_CARD}>
+            <div className="mb-2">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Monthly Trend</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Last 12 months</p>
+            </div>
+            <div className="flex-1">
+              <ResponsiveContainer width="100%" height="100%" debounce={100}>
+                <BarChart data={combinedTrend} margin={{ top: 4, right: 8, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={1} tickLine={false} axisLine={false} angle={-35} textAnchor="end" height={36} />
+                  <YAxis tickFormatter={yFmt} tick={{ fontSize: 10 }} width={36} />
+                  <Tooltip formatter={(v, name) => [fmt(v), name === "reimbursements" ? "Reimbursements" : "General"]} />
+                  <Legend iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} formatter={(v) => v === "reimbursements" ? "Reimbursements" : "General Expenses"} />
+                  <Bar dataKey="reimbursements" fill="#6366f1" maxBarSize={12} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="general" fill="#a78bfa" maxBarSize={12} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

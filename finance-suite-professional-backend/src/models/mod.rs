@@ -47,3 +47,5 @@ pub use delivery_challan::DeliveryChallan;
 pub use employee::Employee;
 pub mod gst_challan;
 pub use gst_challan::GstChallan;
+pub mod transaction;
+pub use transaction::Transaction;

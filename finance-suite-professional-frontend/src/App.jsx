@@ -56,6 +56,7 @@ const EditEstimate = lazy(()=>import('./components/Estimates/EditEstimate'))
 const Assets = lazy(() => import('./components/Assets'))
 const Employees = lazy(() => import('./components/Employees'))
 const AddEmployee = lazy(() => import('./components/Employees/AddEmployee'))
+const Transactions = lazy(() => import('./components/Transactions'))
 
 
 const ACCOUNTANT_MODULES = new Set([Module.Invoice]);
@@ -203,6 +204,7 @@ export default function App() {
               <Route path="/items" element={<ProtectedRoute user={user} module={Module.Products}><Items /></ProtectedRoute>} />
               <Route path="/estimates" element={<ProtectedRoute user={user} module={Module.Invoice}><Estimates /></ProtectedRoute>} />
               <Route path="/ledger" element={<ProtectedRoute user={user} module={Module.Invoice}><Ledger /></ProtectedRoute>} />
+              <Route path="/transactions" element={<ProtectedRoute user={user} module={Module.Invoice}><Transactions /></ProtectedRoute>} />
               <Route path="/profit-loss" element={<ProtectedRoute user={user} module={Module.Invoice}><ProfitLoss /></ProtectedRoute>} />
               <Route path="/estimates/create" element={<ProtectedRoute user={user} module={Module.Invoice}><AddEstimate /></ProtectedRoute>} />
               <Route path="/estimates/edit/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditEstimate /></ProtectedRoute>} />
