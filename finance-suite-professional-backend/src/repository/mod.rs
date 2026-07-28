@@ -47,3 +47,5 @@ pub mod gst_challan_repository;
 pub use gst_challan_repository::GstChallanRepository;
 pub mod transaction_repository;
 pub use transaction_repository::TransactionRepository;
+pub mod record_repository;
+pub use record_repository::RecordRepository;

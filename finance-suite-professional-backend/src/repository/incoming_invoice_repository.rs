@@ -33,7 +33,8 @@ impl IncomingInvoiceRepository {
     }
 
     async fn fetch_many(&self, filter: impl Into<Option<Document>>) -> Result<Vec<IncomingInvoice>, MongoError> {
-        let mut cursor = self.raw_collection.find(filter, None).await?;
+        let opts = mongodb::options::FindOptions::builder().sort(doc! { "_id": -1 }).build();
+        let mut cursor = self.raw_collection.find(filter, opts).await?;
         let mut invoices = Vec::new();
         while let Some(raw) = cursor.try_next().await.unwrap_or(None) {
             if let Some(inv) = doc_to_incoming_invoice(raw) {

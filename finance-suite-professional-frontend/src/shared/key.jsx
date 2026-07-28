@@ -15,9 +15,6 @@ const KeyUri = {
 
   //production server of trail period users
   // BACKENDURI: "http://65.0.26.187:8082/api/v1",
-
-  // Python OCR / statement parser service
-  OCR_URI: "http://127.0.0.1:8000",
 };
 
 // Configure axios defaults

@@ -38,6 +38,56 @@ impl TransactionRepository {
         Ok(out)
     }
 
+    pub async fn get_records_with_stats(&self, org_id: &ObjectId) -> Result<Vec<Document>, MongoError> {
+        // Groups transactions by recordId, computes totals and derives status:
+        // all reconciled → "reconciled", any reviewed → "reviewed", else → "pending"
+        let pipeline = vec![
+            doc! { "$match": { "organisationId": org_id } },
+            doc! { "$group": {
+                "_id": "$recordId",
+                "count":        { "$sum": 1 },
+                "total_debit":  { "$sum": { "$ifNull": ["$debit",  0.0] } },
+                "total_credit": { "$sum": { "$ifNull": ["$credit", 0.0] } },
+                "from_date":    { "$min": "$date" },
+                "to_date":      { "$max": "$date" },
+                "reconciled_count": { "$sum": { "$cond": [{ "$eq": ["$status", "reconciled"] }, 1, 0] } },
+                "reviewed_count":   { "$sum": { "$cond": [{ "$eq": ["$status", "reviewed"]   }, 1, 0] } },
+            }},
+            doc! { "$addFields": {
+                "derived_status": { "$switch": {
+                    "branches": [
+                        { "case": { "$eq": ["$reconciled_count", "$count"] }, "then": "reconciled" },
+                        { "case": { "$gt": ["$reviewed_count", 0] },          "then": "reviewed"   },
+                    ],
+                    "default": "pending"
+                }}
+            }},
+            doc! { "$sort": { "_id": -1 } },
+        ];
+        let mut cursor = self.raw.aggregate(pipeline, None).await?;
+        let mut out = Vec::new();
+        while let Some(doc) = cursor.try_next().await? { out.push(doc); }
+        Ok(out)
+    }
+
+    pub async fn get_by_record_id(&self, org_id: &ObjectId, record_id: &ObjectId) -> Result<Vec<Transaction>, MongoError> {
+        let mut cursor = self.raw.find(
+            doc! { "organisationId": org_id, "recordId": record_id }, None,
+        ).await?;
+        let mut list = Vec::new();
+        while let Some(raw) = cursor.try_next().await? {
+            if let Some(t) = from_doc(raw) { list.push(t); }
+        }
+        Ok(list)
+    }
+
+    pub async fn delete_by_record_id(&self, org_id: &ObjectId, record_id: &ObjectId) -> Result<u64, MongoError> {
+        let res = self.collection.delete_many(
+            doc! { "organisationId": org_id, "recordId": record_id }, None,
+        ).await?;
+        Ok(res.deleted_count)
+    }
+
     pub async fn get_by_org(&self, org_id: &ObjectId) -> Result<Vec<Transaction>, MongoError> {
         let mut cursor = self.raw.find(doc! { "organisationId": org_id }, None).await?;
         let mut list = Vec::new();
@@ -68,4 +118,5 @@ impl TransactionRepository {
         let res = self.collection.delete_one(doc! { "_id": oid }, None).await?;
         Ok(res.deleted_count > 0)
     }
+
 }

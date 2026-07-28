@@ -7,6 +7,7 @@ use crate::models::{
     professional_tax_challan::ProfessionalTaxChallan,
     gst_challan::GstChallan,
     transaction::Transaction,
+    record::Record,
 };
 
 #[derive(Clone)]
@@ -139,5 +140,9 @@ impl MongoDbClient {
 
     pub fn get_transaction_collection(&self) -> Collection<Transaction> {
         self.database.collection::<Transaction>("transactions")
+    }
+
+    pub fn get_record_collection(&self) -> Collection<Record> {
+        self.database.collection::<Record>("records")
     }
 }

@@ -23,7 +23,7 @@ use handlers::{
     configure_service_routes, configure_report_routes, configure_asset_routes,
     configure_asset_category_routes, configure_delivery_challan_routes, configure_employee_routes,
     configure_professional_tax_challan_routes, configure_gst_challan_routes,
-    configure_transaction_routes,
+    configure_transaction_routes, configure_ocr_proxy_routes,
 };
 use repository::{
     CustomerRepository, ExpenseRepository, InvoiceRepository, IncomingInvoiceRepository,
@@ -31,7 +31,7 @@ use repository::{
     SalaryRepository, GeneralExpenseRepository, ChallanRepository, CategoryRepository, ProductRepository,
     EstimateRepository, LedgerRepository, AccountRepository, ServiceRepository, AssetRepository,
     AssetCategoryRepository, DeliveryChallanRepository, EmployeeRepository,
-    ProfessionalTaxChallanRepository, GstChallanRepository, TransactionRepository,
+    ProfessionalTaxChallanRepository, GstChallanRepository, TransactionRepository, RecordRepository,
 };
 use services::{CustomerService, ExpenseService, InvoiceService, IncomingInvoiceService, OrganisationService, UserService, PurchaseOrderService, CostCenterService, SalaryService, GeneralExpenseService, ChallanService, CategoryService, ProductService, EstimateService, LedgerService, AccountService, ServiceService, AssetService, AssetCategoryService, DeliveryChallanService, EmployeeService, ProfessionalTaxChallanService, GstChallanService, TransactionService};
 use utils::jwt_middleware::JwtMiddleware;
@@ -185,7 +185,9 @@ async fn main() -> std::io::Result<()> {
     // Transactions
     let transaction_collection = db_client.get_transaction_collection();
     let transaction_repository = TransactionRepository::new(transaction_collection);
-    let transaction_service = TransactionService::new(transaction_repository, user_repository.clone());
+    let record_collection = db_client.get_record_collection();
+    let record_repository = RecordRepository::new(record_collection);
+    let transaction_service = TransactionService::new(transaction_repository, record_repository, user_repository.clone());
 
     log::info!("Starting server at http://{}:{}", host, port);
 
@@ -258,6 +260,7 @@ async fn main() -> std::io::Result<()> {
                             .configure(configure_professional_tax_challan_routes)
                             .configure(configure_gst_challan_routes)
                             .configure(configure_transaction_routes)
+                            .configure(configure_ocr_proxy_routes)
                     )
             )
     })

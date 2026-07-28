@@ -50,4 +50,5 @@ actix-multipart = "0.6"
 bcrypt = "0.19.0"
 jsonwebtoken = "9.2"
 printpdf = "0.7"
+reqwest = { version = "0.12", features = ["multipart", "stream", "json"] }
 

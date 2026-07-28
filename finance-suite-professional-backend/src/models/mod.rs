@@ -49,3 +49,5 @@ pub mod gst_challan;
 pub use gst_challan::GstChallan;
 pub mod transaction;
 pub use transaction::Transaction;
+pub mod record;
+pub use record::Record;

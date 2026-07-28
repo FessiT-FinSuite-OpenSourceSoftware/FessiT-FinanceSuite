@@ -49,3 +49,5 @@ pub mod gst_challan_handler;
 pub use gst_challan_handler::configure_routes as configure_gst_challan_routes;
 pub mod transaction_handler;
 pub use transaction_handler::configure_routes as configure_transaction_routes;
+pub mod ocr_proxy_handler;
+pub use ocr_proxy_handler::configure_routes as configure_ocr_proxy_routes;

@@ -1,14 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
-import axios from "axios";
 import axiosInstance from "../utils/axiosInstance";
 import { KeyUri } from "../shared/key";
 import { toast } from "react-toastify";
-
-// ── OCR service axios instance ───────────────────────────────────────────────
-const ocrAxios = axios.create({
-  baseURL: KeyUri.OCR_URI,
-  timeout: 300_000, // 5 min — OCR on large PDFs can be slow
-});
 
 const MAX_STATEMENT_SIZE = 20 * 1024 * 1024;
 const SUPPORTED_STATEMENT_EXTENSIONS = new Set([
@@ -26,6 +19,9 @@ function normaliseTransaction(t) {
     debit:     t.debit  != null ? parseFloat(t.debit)  : null,
     credit:    t.credit != null ? parseFloat(t.credit) : null,
     balance:   t.balance != null ? parseFloat(t.balance) : null,
+    title:     t.title  ?? "",
+    status:    t.status ?? "pending",
+    notes:     t.notes  ?? "",
   };
 }
 
@@ -90,20 +86,23 @@ function errMsg(err, fallback) {
 const transactionsSlice = createSlice({
   name: "transactions",
   initialState: {
-    isLoading:    false,
-    isSaving:     false,
-    isUploading:  false,
-    isStreaming:  false,  // true from first meta chunk until summary received
-    uploadStage:  null,   // null | "uploading" | "extracting" | "parsing"
-    uploadError:  null,
-    entries:      [],
-    total:        0,
-    extracted:    [],
+    isLoading:     false,
+    isRecordLoading: false,
+    isSaving:      false,
+    isUploading:   false,
+    isStreaming:   false,
+    uploadStage:   null,
+    uploadError:   null,
+    entries:       [],
+    records:       [],   // [{ title, count, total_debit, total_credit, from_date, to_date }]
+    total:         0,
+    extracted:     [],
     statementMeta: null,
   },
   reducers: {
-    setLoading:     (s, { payload }) => { s.isLoading   = payload; },
-    setSaving:      (s, { payload }) => { s.isSaving    = payload; },
+    setLoading:        (s, { payload }) => { s.isLoading        = payload; },
+    setRecordLoading:  (s, { payload }) => { s.isRecordLoading  = payload; },
+    setSaving:         (s, { payload }) => { s.isSaving         = payload; },
     setUploading:   (s, { payload }) => {
       s.isUploading = payload;
       if (payload) s.uploadError = null;
@@ -112,6 +111,7 @@ const transactionsSlice = createSlice({
     setUploadStage: (s, { payload }) => { s.uploadStage = payload; },
     setUploadError: (s, { payload }) => { s.isUploading = false; s.isStreaming = false; s.uploadStage = null; s.uploadError = payload; },
     setStreaming:   (s, { payload }) => { s.isStreaming = payload; },
+    setRecords:     (s, { payload }) => { s.records = payload; },
     setEntries:     (s, { payload }) => {
       const arr = Array.isArray(payload) ? payload : (payload.data ?? payload.transactions ?? []);
       s.entries = arr;
@@ -120,10 +120,8 @@ const transactionsSlice = createSlice({
     setExtracted:   (s, { payload }) => {
       s.isUploading = false;
       s.uploadError = null;
-      // transactions: null means summary-only update — don't wipe accumulated rows
       if (payload.transactions !== null) s.extracted = payload.transactions;
       s.statementMeta = { ...(s.statementMeta ?? {}), ...payload.meta };
-      // summary chunk signals streaming is done
       if (payload.streamingDone) s.isStreaming = false;
     },
     appendTransactions: (s, { payload }) => {
@@ -144,8 +142,8 @@ const transactionsSlice = createSlice({
 });
 
 export const {
-  setLoading, setSaving, setUploading, setUploadStage, setUploadError,
-  setEntries, setExtracted, appendTransactions, clearExtracted, setStreaming,
+  setLoading, setRecordLoading, setSaving, setUploading, setUploadStage, setUploadError,
+  setEntries, setRecords, setExtracted, appendTransactions, clearExtracted, setStreaming,
   upsertEntry, removeEntry,
 } = transactionsSlice.actions;
 
@@ -153,6 +151,30 @@ export const transactionsSelector = (s) => s.transactions;
 export default transactionsSlice.reducer;
 
 // ── Thunks ────────────────────────────────────────────────────────────────────
+
+export const fetchRecords = () => async (dispatch) => {
+  dispatch(setRecordLoading(true));
+  try {
+    const { data } = await axiosInstance.get("/transactions/records");
+    dispatch(setRecords(data));
+  } catch (err) {
+    toast.error(errMsg(err, "Failed to fetch records"));
+  } finally {
+    dispatch(setRecordLoading(false));
+  }
+};
+
+export const fetchByRecord = (recordId) => async (dispatch) => {
+  dispatch(setLoading(true));
+  try {
+    const { data } = await axiosInstance.get(`/transactions/by-record/${recordId}`);
+    dispatch(setEntries(data));
+  } catch (err) {
+    toast.error(errMsg(err, "Failed to fetch transactions"));
+  } finally {
+    dispatch(setLoading(false));
+  }
+};
 
 export const fetchTransactions = (params = {}) => async (dispatch) => {
   dispatch(setLoading(true));
@@ -202,8 +224,9 @@ export const uploadStatement = (file, password = null) => async (dispatch) => {
   let totalTransactions = 0;
 
   try {
-    const response = await fetch(`${KeyUri.OCR_URI}/ocr/bank-statement/stream`, {
+    const response = await fetch(`${KeyUri.BACKENDURI}/ocr/bank-statement/stream`, {
       method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       body: form,
     });
 
@@ -272,7 +295,7 @@ export const uploadStatement = (file, password = null) => async (dispatch) => {
   } catch (err) {
     const msg =
       err?.message?.includes("Failed to fetch") || err?.message?.includes("NetworkError")
-        ? "OCR service is not reachable. Make sure the Python service is running on port 8000."
+        ? "Statement upload failed. Make sure the backend is running."
         : err?.status === 400
         ? err.message || "Invalid file. Check format or size (max 20 MB)."
         : err?.status === 422
@@ -286,19 +309,29 @@ export const uploadStatement = (file, password = null) => async (dispatch) => {
   }
 };
 
-export const saveExtracted = (rows) => async (dispatch) => {
+export const saveExtracted = (rows, title = "") => async (dispatch) => {
   dispatch(setSaving(true));
   try {
-    await axiosInstance.post("/transactions/save", { transactions: rows });
+    await axiosInstance.post("/transactions/save", { transactions: rows, title });
     toast.success(`Saved ${rows.length} transaction${rows.length !== 1 ? "s" : ""}`);
     dispatch(clearExtracted());
-    dispatch(fetchTransactions());
+    dispatch(fetchRecords());
     return true;
   } catch (err) {
     toast.error(errMsg(err, "Failed to save transactions"));
     return false;
   } finally {
     dispatch(setSaving(false));
+  }
+};
+
+export const updateTransactionNotes = (id, notes, status) => async (dispatch) => {
+  try {
+    const { data } = await axiosInstance.patch(`/transactions/${id}/notes`, { notes, status });
+    dispatch(upsertEntry(data));
+    toast.success("Notes saved");
+  } catch (err) {
+    toast.error(errMsg(err, "Failed to save notes"));
   }
 };
 
@@ -319,5 +352,39 @@ export const deleteTransaction = (id) => async (dispatch) => {
     toast.success("Transaction deleted");
   } catch (err) {
     toast.error(errMsg(err, "Failed to delete transaction"));
+  }
+};
+
+export const deleteRecord = (recordId) => async (dispatch) => {
+  try {
+    const { data } = await axiosInstance.delete(`/transactions/records/${recordId}`);
+    dispatch(fetchRecords());
+    toast.success(`Deleted ${data.deleted} transaction${data.deleted !== 1 ? "s" : ""}`);
+    return true;
+  } catch (err) {
+    toast.error(errMsg(err, "Failed to delete record"));
+    return false;
+  }
+};
+
+export const updateRecordNotes = (recordId, notes) => async (dispatch) => {
+  try {
+    await axiosInstance.patch(`/transactions/records/${recordId}/notes`, { notes });
+    dispatch(fetchRecords());
+  } catch (err) {
+    toast.error(errMsg(err, "Failed to update record notes"));
+  }
+};
+
+export const updateRecordStatus = (recordId, status) => async (dispatch) => {
+  try {
+    await axiosInstance.patch(`/transactions/records/${recordId}/status`, { status });
+    dispatch(setRecords(
+      // optimistic: re-fetch to get fresh list
+      undefined
+    ));
+    dispatch(fetchRecords());
+  } catch (err) {
+    toast.error(errMsg(err, "Failed to update record status"));
   }
 };
