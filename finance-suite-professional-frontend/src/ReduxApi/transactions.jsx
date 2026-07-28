@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 
 const MAX_STATEMENT_SIZE = 20 * 1024 * 1024;
 const SUPPORTED_STATEMENT_EXTENSIONS = new Set([
-  "pdf", "png", "jpg", "jpeg", "tiff", "tif", "bmp", "webp",
+  "pdf", "xlsx", "xls", "csv", "png", "jpg", "jpeg", "tiff", "tif", "bmp", "webp",
 ]);
 
 // ── Response normaliser ───────────────────────────────────────────────────────

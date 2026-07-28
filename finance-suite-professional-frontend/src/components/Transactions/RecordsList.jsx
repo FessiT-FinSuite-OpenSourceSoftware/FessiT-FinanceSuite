@@ -269,16 +269,7 @@ export default function RecordsList({ records, isRecordLoading, onSelect, onDele
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
-            <colgroup>
-              <col className="w-[22%]" />  {/* Title */}
-              <col className="w-[12%]" />  {/* Status */}
-              <col className="w-[9%]" />   {/* Transactions */}
-              <col className="w-[12%]" />  {/* Debit */}
-              <col className="w-[12%]" />  {/* Credit */}
-              <col className="w-[12%]" />  {/* Imported */}
-              <col />                       {/* Notes — fills remaining */}
-              <col className="w-[72px]" /> {/* Actions */}
-            </colgroup>
+            <colgroup><col className="w-[22%]" /><col className="w-[12%]" /><col className="w-[9%]" /><col className="w-[12%]" /><col className="w-[12%]" /><col className="w-[12%]" /><col /><col className="w-[72px]" /></colgroup>
             <thead>
               <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900">
                 <th className="px-5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">Title</th>

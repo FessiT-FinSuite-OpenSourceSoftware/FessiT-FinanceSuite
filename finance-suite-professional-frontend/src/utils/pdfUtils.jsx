@@ -56,6 +56,25 @@ export const revealInFolder = async (filePath) => {
   }
 };
 
+export const saveBytes = async (bytes, fileName) => {
+  const safeFileName = sanitizeDownloadFileName(fileName);
+  if (isTauri()) {
+    try {
+      const { filePath } = await saveBytesToDownloads(bytes, safeFileName);
+      return filePath;
+    } catch (e) {
+      console.error("Tauri save failed, falling back:", e);
+    }
+  }
+  // Browser fallback
+  const blob = new Blob([bytes], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = safeFileName; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return null;
+};
+
 export const showDownloadNotification = async (fileName, filePath) => {
   const content = () => (
     <div className="flex flex-col gap-1">

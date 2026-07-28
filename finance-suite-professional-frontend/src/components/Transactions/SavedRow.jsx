@@ -2,9 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
 import { Check, X, Edit2, Trash2, PenLine, FileText } from "lucide-react";
 import { updateTransaction, updateTransactionNotes, deleteTransaction } from "../../ReduxApi/transactions";
-import { inputCls, selectCls, TRANSACTION_CATEGORIES } from "./constants";
+import { inputCls, selectCls, TRANSACTION_CATEGORIES, STATUS_META, STATUS_OPTIONS } from "./constants";
 import { fmtDate, truncateText, toInputDate, getTransactionType } from "./helpers";
-import StatusBadge from "./StatusBadge";
 
 const fmt = (n) =>
   "₹ " + Math.abs(parseFloat(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -64,14 +63,8 @@ function NotesModal({ row, onSave, onClose }) {
         {/* Status */}
         <div className="mb-3">
           <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Status</label>
-          <select
-            value={statusDraft}
-            onChange={(e) => setStatusDraft(e.target.value)}
-            className={selectCls}
-          >
-            <option value="pending">Pending</option>
-            <option value="reviewed">Reviewed</option>
-            <option value="reconciled">Reconciled</option>
+          <select value={statusDraft} onChange={(e) => setStatusDraft(e.target.value)} className={selectCls}>
+            {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
 
@@ -122,6 +115,28 @@ function NotesCellTxn({ notes }) {
       {notes || <span className="italic text-gray-300 dark:text-slate-600">No notes</span>}
       {hovered && <NotesTooltip notes={notes} anchorRef={ref} />}
     </span>
+  );
+}
+
+function StatusCell({ value, editing, onChange, onQuickSave }) {
+  const [open, setOpen] = useState(false);
+  const status = value || "pending";
+  const m = STATUS_META[status] ?? STATUS_META.pending;
+  const opts = STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>);
+  if (editing) {
+    return <select value={status} onChange={(e) => onChange(e.target.value)} className={selectCls + " w-28"}>{opts}</select>;
+  }
+  if (open) {
+    return (
+      <select autoFocus value={status} onChange={(e) => { onQuickSave(e.target.value); setOpen(false); }} onBlur={() => setOpen(false)} className={selectCls + " w-28"}>
+        {opts}
+      </select>
+    );
+  }
+  return (
+    <button onClick={() => setOpen(true)} className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer ${m.cls}`}>
+      {m.label}
+    </button>
   );
 }
 
@@ -213,17 +228,6 @@ const SavedRow = React.memo(function SavedRow({ row, onSave, onDelete, onSaveNot
         <td className="px-4 py-2 text-sm font-medium text-gray-800 dark:text-slate-100 max-w-60">
           {editing ? f("narration") : <span className="block truncate" title={row.narration ?? row.description}>{row.narration ?? row.description ?? "-"}</span>}
         </td>
-        <td className="px-4 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-          <CategoryCell
-            value={editing ? draft.transaction_category : row.transaction_category}
-            editing={editing}
-            onChange={(v) => setDraft((p) => ({ ...p, transaction_category: v }))}
-            onQuickSave={editing ? null : (v) => onSave({ ...row, transaction_category: v })}
-          />
-        </td>
-        <td className="px-4 py-2 whitespace-nowrap">
-          <StatusBadge value={row.status} />
-        </td>
         <td className="px-4 py-2 text-right whitespace-nowrap text-sm font-semibold text-red-600 dark:text-red-400">
           {editing ? f("debit", "number") : (debitValue == null || debitValue === "" ? "—" : fmt(debitValue))}
         </td>
@@ -235,6 +239,22 @@ const SavedRow = React.memo(function SavedRow({ row, onSave, onDelete, onSaveNot
         </td>
         <td className="px-4 py-2 min-w-[180px]">
           <NotesCellTxn notes={row.notes} />
+        </td>
+        <td className="px-4 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+          <StatusCell
+            value={editing ? draft.status : row.status}
+            editing={editing}
+            onChange={(v) => setDraft((p) => ({ ...p, status: v }))}
+            onQuickSave={(v) => onSaveNotes(row.notes ?? "", v)}
+          />
+        </td>
+        <td className="px-4 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+          <CategoryCell
+            value={editing ? draft.transaction_category : row.transaction_category}
+            editing={editing}
+            onChange={(v) => setDraft((p) => ({ ...p, transaction_category: v }))}
+            onQuickSave={editing ? null : (v) => onSave({ ...row, transaction_category: v })}
+          />
         </td>
         <td className="px-4 py-2 whitespace-nowrap">
           <div className="flex items-center justify-end gap-1">

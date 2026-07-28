@@ -1,8 +1,11 @@
 import React, { useMemo } from "react";
-import { ArrowLeft, FileText, RefreshCw, PenLine } from "lucide-react";
+import { ArrowLeft, FileText, RefreshCw, PenLine, Download } from "lucide-react";
+import * as XLSX from "xlsx";
+import { toast } from "react-toastify";
+import { saveBytes, showDownloadNotification } from "../../utils/pdfUtils";
 import { StatCard, TabActionBar, FilterSelect, Pagination, TableWrapper, TableHead } from "../../shared/ui";
 import { SAVED_COLS, TRANSACTION_CATEGORIES } from "./constants";
-import { fmt, getTransactionType } from "./helpers";
+import { fmt, fmtDate, getTransactionType } from "./helpers";
 import { SavedRowWrapper } from "./SavedRow";
 
 export default function RecordDrillDown({
@@ -49,6 +52,39 @@ export default function RecordDrillDown({
 
   const netFlow = totalCredits - totalDebits;
 
+  const handleExport = async () => {
+    const toastId = toast.loading("Preparing Excel export…");
+    try {
+      const rows = filtered.map((t) => {
+        const type = getTransactionType(t);
+        const debit  = t.debit  != null && t.debit  !== "" ? parseFloat(t.debit)  : (type === "Debit"  ? parseFloat(t.amount) || "" : "");
+        const credit = t.credit != null && t.credit !== "" ? parseFloat(t.credit) : (type === "Credit" ? parseFloat(t.amount) || "" : "");
+        return {
+          Date:                    fmtDate(t.date),
+          Reference:               t.reference ?? "",
+          Narration:               t.narration ?? t.description ?? "",
+          Debit:                   debit,
+          Credit:                  credit,
+          Balance:                 t.balance != null ? parseFloat(t.balance) : "",
+          Notes:                   t.notes ?? "",
+          Status:                  t.status ?? "",
+          "Transaction Category":  t.transaction_category || "General",
+        };
+      });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [10, 18, 40, 14, 14, 14, 30, 12, 22].map((w) => ({ wch: w }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Transactions");
+      const fileName = `${title || "transactions"}.xlsx`;
+      const bytes = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      toast.dismiss(toastId);
+      const filePath = await saveBytes(new Uint8Array(bytes), fileName);
+      await showDownloadNotification(fileName, filePath);
+    } catch (err) {
+      toast.update(toastId, { render: `Export failed: ${err.message}`, type: "error", isLoading: false, autoClose: 4000 });
+    }
+  };
+
   return (
     <>
       {/* Header */}
@@ -64,6 +100,9 @@ export default function RecordDrillDown({
           <button onClick={onAddManually} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
             <PenLine className="w-3.5 h-3.5" /> Add Manually
           </button>
+          <button onClick={handleExport} disabled={filtered.length === 0} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <Download className="w-3.5 h-3.5" /> Export Excel
+          </button>
           <button onClick={onRefresh} className="p-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors" title="Refresh">
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
           </button>
@@ -75,7 +114,7 @@ export default function RecordDrillDown({
         <StatCard label="Total Transactions" value={isLoading ? "…" : filtered.length} />
         <StatCard label="Total Credits" value={isLoading ? "…" : fmt(totalCredits)} valueClass="text-green-600 dark:text-green-400" /> 
         <StatCard label="Total Debits"  value={isLoading ? "…" : fmt(totalDebits)}  valueClass="text-red-600 dark:text-red-400" />
-        <StatCard label="Net Flow" value={isLoading ? "…" : fmt(netFlow)} valueClass={netFlow >= 0 ? "text-indigo-700 dark:text-indigo-400" : "text-red-600 dark:text-red-400"} />
+        <StatCard label="Net Balance" value={isLoading ? "…" : fmt(netFlow)} valueClass={netFlow >= 0 ? "text-indigo-700 dark:text-indigo-400" : "text-red-600 dark:text-red-400"} />
       </div>
 
       {/* Filter Bar */}
