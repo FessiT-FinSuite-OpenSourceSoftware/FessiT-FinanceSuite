@@ -21,6 +21,10 @@ pub struct Transaction {
     #[serde(default)]
     pub category: String,
 
+    /// Classification: "General" | "Reimbursement" | "Invoices" | "Salary"
+    #[serde(default = "default_transaction_category")]
+    pub transaction_category: String,
+
     #[serde(default)]
     pub r#type: String,
 
@@ -56,6 +60,7 @@ pub struct Transaction {
 }
 
 fn default_status() -> String { "pending".to_string() }
+fn default_transaction_category() -> String { "General".to_string() }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SaveTransactionsRequest {

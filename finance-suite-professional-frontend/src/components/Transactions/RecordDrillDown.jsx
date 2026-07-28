@@ -1,17 +1,17 @@
 import React, { useMemo } from "react";
 import { ArrowLeft, FileText, RefreshCw, PenLine } from "lucide-react";
 import { StatCard, TabActionBar, FilterSelect, Pagination, TableWrapper, TableHead } from "../../shared/ui";
-import { SAVED_COLS } from "./constants";
+import { SAVED_COLS, TRANSACTION_CATEGORIES } from "./constants";
 import { fmt, getTransactionType } from "./helpers";
 import { SavedRowWrapper } from "./SavedRow";
 
 export default function RecordDrillDown({
   title, entries, isLoading,
-  search, typeFilter, categoryFilter,
+  search, typeFilter, categoryFilter, txnCategoryFilter,
   currentPage, pageSize,
   dispatch, setDeleteConfirm,
   onBack, onRefresh, onAddManually,
-  onSearchChange, onTypeChange, onCategoryChange,
+  onSearchChange, onTypeChange, onCategoryChange, onTxnCategoryChange,
   onPageChange, onPageSizeChange,
 }) {
   const categories = useMemo(() =>
@@ -24,12 +24,13 @@ export default function RecordDrillDown({
     return entries.filter((t) => {
       if (typeFilter !== "All" && getTransactionType(t) !== typeFilter) return false;
       if (categoryFilter !== "All" && t.category !== categoryFilter) return false;
+      if (txnCategoryFilter !== "All" && (t.transaction_category || "General") !== txnCategoryFilter) return false;
       const narration = (t.narration ?? t.description ?? "").toLowerCase();
       const reference = (t.reference ?? "").toLowerCase();
       if (q && !narration.includes(q) && !reference.includes(q)) return false;
       return true;
     });
-  }, [entries, search, typeFilter, categoryFilter]);
+  }, [entries, search, typeFilter, categoryFilter, txnCategoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated  = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -86,6 +87,10 @@ export default function RecordDrillDown({
         </FilterSelect>
         <FilterSelect value={categoryFilter} onChange={onCategoryChange}>
           {categories.map((c) => <option key={c} value={c}>{c === "All" ? "All Categories" : c}</option>)}
+        </FilterSelect>
+        <FilterSelect value={txnCategoryFilter} onChange={onTxnCategoryChange}>
+          <option value="All">All Types</option>
+          {TRANSACTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </FilterSelect>
       </TabActionBar>
 

@@ -1,10 +1,12 @@
 export const SAVED_COLS = [
-  { label: "Date" }, { label: "Reference" }, { label: "Narration" }, 
-  // { label: "Title" },
+  { label: "Date" }, { label: "Reference" }, { label: "Narration" },
+  { label: "Category" },
   { label: "Status" },
   { label: "Debit", right: true }, { label: "Credit", right: true }, { label: "Balance", right: true },
   { label: "Notes" }, { label: "", right: true },
 ];
+
+export const TRANSACTION_CATEGORIES = ["General", "Reimbursement", "Invoices", "Salary"];
 
 export const inputCls = "w-full border border-gray-200 dark:border-slate-700 rounded px-2 py-1 text-xs bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-400";
 export const selectCls = inputCls + " cursor-pointer";

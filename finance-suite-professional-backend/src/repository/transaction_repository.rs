@@ -105,10 +105,24 @@ impl TransactionRepository {
         Ok(raw.and_then(from_doc))
     }
 
-    pub async fn update(&self, id: &str, mut t: Transaction) -> Result<Option<Transaction>, MongoError> {
+    pub async fn update(&self, id: &str, t: Transaction) -> Result<Option<Transaction>, MongoError> {
         let oid = match ObjectId::parse_str(id) { Ok(o) => o, Err(_) => return Ok(None) };
-        t.id = Some(oid);
-        let res = self.collection.replace_one(doc! { "_id": oid }, &t, None).await?;
+        let set_doc = doc! { "$set": {
+            "date":                 &t.date,
+            "description":          &t.description,
+            "narration":            &t.narration,
+            "reference":            &t.reference,
+            "category":             &t.category,
+            "transaction_category": &t.transaction_category,
+            "type":                 &t.r#type,
+            "amount":               t.amount,
+            "balance":              t.balance,
+            "debit":                t.debit,
+            "credit":               t.credit,
+            "status":               &t.status,
+            "notes":                &t.notes,
+        }};
+        let res = self.raw.update_one(doc! { "_id": oid }, set_doc, None).await?;
         if res.matched_count == 0 { return Ok(None); }
         self.get_by_id(id).await
     }

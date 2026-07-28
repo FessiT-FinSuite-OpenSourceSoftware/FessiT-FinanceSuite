@@ -1,13 +1,32 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
 import { Check, X, Edit2, Trash2, PenLine, FileText } from "lucide-react";
 import { updateTransaction, updateTransactionNotes, deleteTransaction } from "../../ReduxApi/transactions";
-import { inputCls, selectCls } from "./constants";
+import { inputCls, selectCls, TRANSACTION_CATEGORIES } from "./constants";
 import { fmtDate, truncateText, toInputDate, getTransactionType } from "./helpers";
 import StatusBadge from "./StatusBadge";
 
 const fmt = (n) =>
   "₹ " + Math.abs(parseFloat(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function NotesTooltip({ notes, anchorRef }) {
+  const [pos, setPos] = useState(null);
+  useEffect(() => {
+    if (!anchorRef.current) return;
+    const r = anchorRef.current.getBoundingClientRect();
+    setPos({ top: r.bottom + window.scrollY + 6, left: r.left + window.scrollX });
+  }, [anchorRef]);
+  if (!pos) return null;
+  return ReactDOM.createPortal(
+    <div
+      style={{ top: pos.top, left: pos.left, maxWidth: 280 }}
+      className="absolute z-[9999] bg-gray-900 dark:bg-slate-700 text-white text-xs rounded-lg px-3 py-2 shadow-xl pointer-events-none whitespace-pre-wrap break-words"
+    >
+      {notes}
+    </div>,
+    document.body
+  );
+}
 
 function NotesModal({ row, onSave, onClose }) {
   const [notesDraft,  setNotesDraft]  = useState(row.notes  ?? "");
@@ -90,6 +109,56 @@ function NotesModal({ row, onSave, onClose }) {
   );
 }
 
+function NotesCellTxn({ notes }) {
+  const [hovered, setHovered] = useState(false);
+  const ref = useRef(null);
+  return (
+    <span
+      ref={ref}
+      className="block text-xs text-gray-500 dark:text-slate-400 truncate max-w-[180px] cursor-default"
+      onMouseEnter={() => notes && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {notes || <span className="italic text-gray-300 dark:text-slate-600">No notes</span>}
+      {hovered && <NotesTooltip notes={notes} anchorRef={ref} />}
+    </span>
+  );
+}
+
+function CategoryCell({ value, editing, onChange, onQuickSave }) {
+  const [open, setOpen] = useState(false);
+  const cat = value || "General";
+  if (editing) {
+    return (
+      <select
+        value={cat}
+        onChange={(e) => onChange(e.target.value)}
+        className={selectCls + " w-32"}
+      >
+        {TRANSACTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+      </select>
+    );
+  }
+  if (open) {
+    return (
+      <select
+        autoFocus
+        value={cat}
+        onChange={(e) => { onQuickSave(e.target.value); setOpen(false); }}
+        onBlur={() => setOpen(false)}
+        className={selectCls + " w-32"}
+      >
+        {TRANSACTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+      </select>
+    );
+  }
+  return (
+    <button onClick={() => setOpen(true)} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer">
+      {cat}
+    </button>
+  );
+}
+
 const SavedRow = React.memo(function SavedRow({ row, onSave, onDelete, onSaveNotes }) {
   const [editing,    setEditing]    = useState(false);
   const [notesOpen,  setNotesOpen]  = useState(false);
@@ -144,6 +213,14 @@ const SavedRow = React.memo(function SavedRow({ row, onSave, onDelete, onSaveNot
         <td className="px-4 py-2 text-sm font-medium text-gray-800 dark:text-slate-100 max-w-60">
           {editing ? f("narration") : <span className="block truncate" title={row.narration ?? row.description}>{row.narration ?? row.description ?? "-"}</span>}
         </td>
+        <td className="px-4 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+          <CategoryCell
+            value={editing ? draft.transaction_category : row.transaction_category}
+            editing={editing}
+            onChange={(v) => setDraft((p) => ({ ...p, transaction_category: v }))}
+            onQuickSave={editing ? null : (v) => onSave({ ...row, transaction_category: v })}
+          />
+        </td>
         <td className="px-4 py-2 whitespace-nowrap">
           <StatusBadge value={row.status} />
         </td>
@@ -157,9 +234,7 @@ const SavedRow = React.memo(function SavedRow({ row, onSave, onDelete, onSaveNot
           {row.balance != null ? fmt(row.balance) : "-"}
         </td>
         <td className="px-4 py-2 min-w-[180px]">
-          <span className="block text-xs text-gray-500 dark:text-slate-400 truncate max-w-[180px]" title={row.notes}>
-            {row.notes || <span className="italic text-gray-300 dark:text-slate-600">No notes</span>}
-          </span>
+          <NotesCellTxn notes={row.notes} />
         </td>
         <td className="px-4 py-2 whitespace-nowrap">
           <div className="flex items-center justify-end gap-1">

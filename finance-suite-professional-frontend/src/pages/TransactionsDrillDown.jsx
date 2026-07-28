@@ -18,10 +18,11 @@ export default function TransactionsDrillDownPage() {
 
   const record = records.find((r) => r.id === recordId);
 
-  const [search,         setSearch]         = useState("");
-  const [typeFilter,     setTypeFilter]     = useState("All");
-  const [categoryFilter, setCategoryFilter] = useState("All");
-  const [currentPage,    setCurrentPage]    = useState(1);
+  const [search,             setSearch]             = useState("");
+  const [typeFilter,         setTypeFilter]         = useState("All");
+  const [categoryFilter,     setCategoryFilter]     = useState("All");
+  const [txnCategoryFilter,  setTxnCategoryFilter]  = useState("All");
+  const [currentPage,        setCurrentPage]        = useState(1);
   const [pageSize,       setPageSize]       = useState(10);
   const [deleteConfirm,  setDeleteConfirm]  = useState(null);
   const [showAddModal,   setShowAddModal]   = useState(false);
@@ -45,6 +46,7 @@ export default function TransactionsDrillDownPage() {
         search={search}
         typeFilter={typeFilter}
         categoryFilter={categoryFilter}
+        txnCategoryFilter={txnCategoryFilter}
         currentPage={currentPage}
         pageSize={pageSize}
         dispatch={dispatch}
@@ -55,6 +57,7 @@ export default function TransactionsDrillDownPage() {
         onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }}
         onTypeChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}
         onCategoryChange={(v) => { setCategoryFilter(v); setCurrentPage(1); }}
+        onTxnCategoryChange={(v) => { setTxnCategoryFilter(v); setCurrentPage(1); }}
         onPageChange={setCurrentPage}
         onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }}
       />

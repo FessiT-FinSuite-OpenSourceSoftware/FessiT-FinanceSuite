@@ -21,6 +21,7 @@ function normaliseTransaction(t) {
     balance:   t.balance != null ? parseFloat(t.balance) : null,
     title:     t.title  ?? "",
     status:    t.status ?? "pending",
+    transaction_category: t.transaction_category ?? "General",
     notes:     t.notes  ?? "",
   };
 }
@@ -379,10 +380,6 @@ export const updateRecordNotes = (recordId, notes) => async (dispatch) => {
 export const updateRecordStatus = (recordId, status) => async (dispatch) => {
   try {
     await axiosInstance.patch(`/transactions/records/${recordId}/status`, { status });
-    dispatch(setRecords(
-      // optimistic: re-fetch to get fresh list
-      undefined
-    ));
     dispatch(fetchRecords());
   } catch (err) {
     toast.error(errMsg(err, "Failed to update record status"));
