@@ -19,3 +19,25 @@ pub fn last_two_months() -> (String, String) {
     };
     (current, prev)
 }
+
+/// Returns all "YYYY-MM" strings in the current Indian financial year (Apr–Mar),
+/// up to and including the current month.
+pub fn current_fy_months() -> Vec<String> {
+    use chrono::Datelike;
+    let now = chrono::Utc::now();
+    let fy_start_year = if now.month() >= 4 { now.year() } else { now.year() - 1 };
+    let mut months = Vec::new();
+    // Apr..Dec of fy_start_year
+    for m in 4u32..=12 {
+        let ym = format!("{}-{:02}", fy_start_year, m);
+        months.push(ym.clone());
+        if fy_start_year == now.year() && m == now.month() { return months; }
+    }
+    // Jan..Mar of fy_start_year+1
+    for m in 1u32..=3 {
+        let ym = format!("{}-{:02}", fy_start_year + 1, m);
+        months.push(ym.clone());
+        if fy_start_year + 1 == now.year() && m == now.month() { return months; }
+    }
+    months
+}

@@ -54,6 +54,11 @@ const getDateRange = (period) => {
       fromDate.setDate(1);
       break;
     }
+    case "current_fy": {
+      const fyStartYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+      fromDate = new Date(fyStartYear, 3, 1); // April 1
+      break;
+    }
     default:
       return null;
   }
@@ -131,7 +136,6 @@ export default function InvoiceList() {
   const hasWrite = canWrite(user, Module.Invoice);
   const hasDelete = canDelete(user, Module.Invoice);
   const isAccountant = user?.is_accountant === true;
-  console.log("The logged in user is accountant:", isAccountant);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -294,7 +298,7 @@ export default function InvoiceList() {
 
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const fmtYM = (ym) => { if (!ym) return ""; const [y, m] = ym.split("-"); return `${MONTHS[+m - 1]} ${y}`; };
-  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months" };
+  const dateFilterLabel = { this_month: "Current Month", last_month: "Previous Month", last_3_months: "Last 3 Months", last_6_months: "Last 6 Months", current_fy: "Current FY" };
   const chips = [
     statusFilter !== "All" && { key: "status", label: `Status: ${statusFilter}` },
     currencyFilter !== "All" && { key: "currency", label: `Currency: ${currencyFilter}` },
@@ -413,7 +417,6 @@ export default function InvoiceList() {
       payment_reference: selectedStatus === "Paid" ? paymentReference : fullInvoice.payment_reference || "",
       template_id: ["Issued", "Re Issued"].includes(selectedStatus) ? selectedTemplate : fullInvoice.template_id || "classic",
     };
-    console.log("Updating invoice with payload:", payload);
     const result = await dispatch(updateInvoice(statusModal.id, payload));
     if (result) closeStatusModal();
   };
@@ -544,9 +547,10 @@ export default function InvoiceList() {
             <option value="all">All Time</option>
             <option value="this_month">Current Month</option>
             <option value="last_month">Previous Month</option>
-            {!isAccountant ? <option value="last_3_months">Last 3 Months</option> : "" }
-            {!isAccountant ? <option value="last_6_months">Last 6 Months</option> : "" }
-            {!isAccountant ? <option value="custom">Custom</option> : "" }
+            <option value="last_3_months">Last 3 Months</option>
+            <option value="last_6_months">Last 6 Months</option>
+            <option value="current_fy">Current FY</option>
+            <option value="custom">Custom</option>
           </FilterSelect>
           {dateFilter === "custom" && dateDropdownOpen && (
             <div className="absolute top-full mt-2 right-0 z-50 bg-white border border-gray-300 rounded-lg p-3 shadow-lg">

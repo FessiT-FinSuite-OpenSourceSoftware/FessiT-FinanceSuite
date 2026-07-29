@@ -66,10 +66,10 @@ pub async fn list_incoming_invoices(
     let mut invoices = service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
     if user.is_accountant {
-        let (current, prev) = crate::utils::last_two_months();
+        let fy = crate::utils::current_fy_months();
         invoices.retain(|inv| {
             let ym = inv.invoice_date.trim();
-            ym.len() >= 7 && (&ym[..7] == current || &ym[..7] == prev)
+            ym.len() >= 7 && fy.contains(&ym[..7].to_string())
         });
     }
     if query.year.is_some() || query.month.is_some() {
@@ -104,9 +104,9 @@ pub async fn get_incoming_invoice(
     {
         Some(inv) if inv.organisation_id == Some(org_id) => {
             if user.is_accountant {
-                let (current, prev) = crate::utils::last_two_months();
+                let fy = crate::utils::current_fy_months();
                 let ym = inv.invoice_date.trim();
-                if ym.len() < 7 || (&ym[..7] != current && &ym[..7] != prev) {
+                if ym.len() < 7 || !fy.contains(&ym[..7].to_string()) {
                     return Ok(HttpResponse::NotFound().json(json!({ "message": "Not found" })));
                 }
             }

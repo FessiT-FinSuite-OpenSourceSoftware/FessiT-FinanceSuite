@@ -60,10 +60,10 @@ pub async fn list_salaries(
     let mut salaries = service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
     if user.is_accountant {
-        let (current, prev) = crate::utils::last_two_months();
+        let fy = crate::utils::current_fy_months();
         salaries.retain(|s| {
             let p = s.period.trim();
-            p.len() >= 7 && (&p[..7] == current || &p[..7] == prev)
+            p.len() >= 7 && fy.contains(&p[..7].to_string())
         });
     }
     if query.year.is_some() || query.month.is_some() {
@@ -99,9 +99,9 @@ pub async fn get_salary(
     {
         Some(s) if s.organisation_id == Some(org_id) => {
             if user.is_accountant {
-                let (current, prev) = crate::utils::last_two_months();
+                let fy = crate::utils::current_fy_months();
                 let p = s.period.trim();
-                if p.len() < 7 || (&p[..7] != current && &p[..7] != prev) {
+                if p.len() < 7 || !fy.contains(&p[..7].to_string()) {
                     return Ok(HttpResponse::NotFound().json(json!({ "message": "Salary record not found" })));
                 }
             }

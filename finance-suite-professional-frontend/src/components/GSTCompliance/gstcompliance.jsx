@@ -153,7 +153,6 @@ export default function GSTCompliance() {
       dispatch(fetchIncomingInvoices());
     }
   }, [dispatch, selectedMonths]);
-  console.log("GST Summary Data:", data);
   const outgoing = data?.outgoing_invoice_details || data?.outgoing_invoices || {};
   const gstSummary = data?.gst_summary || data?.net_gst_payable || {};
   const netPayable = toNumber(gstSummary.net_payable);

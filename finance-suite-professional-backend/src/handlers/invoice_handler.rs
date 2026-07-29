@@ -267,10 +267,10 @@ pub async fn list_invoices(
     };
 
     if user.is_accountant {
-        let (current, prev) = crate::utils::last_two_months();
+        let fy = crate::utils::current_fy_months();
         invoices.retain(|inv| {
             let ym = inv.invoice_date.trim();
-            ym.len() >= 7 && (&ym[..7] == current || &ym[..7] == prev)
+            ym.len() >= 7 && fy.contains(&ym[..7].to_string())
         });
     }
 
@@ -320,9 +320,9 @@ pub async fn get_invoice(
     if let Some(invoice) = maybe_invoice {
         if invoice_belongs_to_user_org(&service, &invoice, org_id).await? {
             if user.is_accountant {
-                let (current, prev) = crate::utils::last_two_months();
+                let fy = crate::utils::current_fy_months();
                 let ym = invoice.invoice_date.trim();
-                if ym.len() < 7 || (&ym[..7] != current && &ym[..7] != prev) {
+                if ym.len() < 7 || !fy.contains(&ym[..7].to_string()) {
                     return Ok(HttpResponse::NotFound().json(json!({ "message": "Invoice not found" })));
                 }
             }

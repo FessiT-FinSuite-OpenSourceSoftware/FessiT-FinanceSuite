@@ -72,42 +72,13 @@ export default function PeriodSelector({ onChange, isAccountant = false }) {
   const currentFYStart = getFYStart(now);
 
   // All hooks must be declared before any conditional return
-  const [accountantPreset, setAccountantPreset] = useState("this_month");
+  const [acctPreset, setAcctPreset] = useState("this_month");
+  const [acctFrom, setAcctFrom]     = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+  const [acctTo,   setAcctTo]       = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
   const [fyStart, setFYStart]       = useState(currentFYStart);
   const [preset, setPreset]         = useState("this_month");
   const [customFrom, setCustomFrom] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
   const [customTo,   setCustomTo]   = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
-
-  // Accountant mode: emit on mount and when preset changes
-  useEffect(() => {
-    if (!isAccountant) return;
-    const current = { year: now.getFullYear(), month: now.getMonth() + 1 };
-    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prev = { year: prevDate.getFullYear(), month: prevDate.getMonth() + 1 };
-    if (accountantPreset === "this_month") onChange([current]);
-    else if (accountantPreset === "last_month") onChange([prev]);
-    else onChange([prev, current]);
-  }, [isAccountant, accountantPreset]); // eslint-disable-line
-
-  const fyOptions = [];
-  for (let y = currentFYStart - 4; y <= currentFYStart; y++) fyOptions.push(y);
-
-  const isPastFY = fyStart < currentFYStart;
-  const PRESETS = isPastFY ? PRESETS_PAST : PRESETS_CURRENT;
-
-  const nowIdx = now.getFullYear() * 12 + now.getMonth() + 1;
-  const elapsedInFY = fyMonths(fyStart).filter(({ year, month }) => year * 12 + month <= nowIdx).length;
-
-  const disabledPresets = isPastFY ? new Set() : new Set(
-    elapsedInFY < 2  ? ["last_month", "last_3", "last_6", "last_12"] :
-    elapsedInFY < 3  ? ["last_3", "last_6", "last_12"] :
-    elapsedInFY < 6  ? ["last_6", "last_12"] :
-    elapsedInFY < 12 ? ["last_12"] : []
-  );
-
-  useEffect(() => {
-    if (disabledPresets.has(preset)) setPreset("this_month");
-  }, [fyStart]); // eslint-disable-line
 
   function resolvePreset(p, fy) {
     const all = fyMonths(fy);
@@ -130,6 +101,39 @@ export default function PeriodSelector({ onChange, isAccountant = false }) {
     return null;
   }
 
+  // Accountant mode: emit on mount and when preset/custom changes
+  useEffect(() => {
+    if (!isAccountant) return;
+    if (acctPreset === "custom") {
+      const fromIdx = acctFrom.year * 12 + acctFrom.month;
+      const toIdx   = acctTo.year   * 12 + acctTo.month;
+      onChange(fromIdx <= toIdx ? monthRange(acctFrom.year, acctFrom.month, acctTo.year, acctTo.month) : [acctFrom]);
+    } else {
+      const months = resolvePreset(acctPreset, currentFYStart);
+      if (months) onChange(months);
+    }
+  }, [isAccountant, acctPreset, acctFrom, acctTo]); // eslint-disable-line
+
+  const fyOptions = [];
+  for (let y = currentFYStart - 4; y <= currentFYStart; y++) fyOptions.push(y);
+
+  const isPastFY = fyStart < currentFYStart;
+  const PRESETS = isPastFY ? PRESETS_PAST : PRESETS_CURRENT;
+
+  const nowIdx = now.getFullYear() * 12 + now.getMonth() + 1;
+  const elapsedInFY = fyMonths(fyStart).filter(({ year, month }) => year * 12 + month <= nowIdx).length;
+
+  const disabledPresets = isPastFY ? new Set() : new Set(
+    elapsedInFY < 2  ? ["last_month", "last_3", "last_6", "last_12"] :
+    elapsedInFY < 3  ? ["last_3", "last_6", "last_12"] :
+    elapsedInFY < 6  ? ["last_6", "last_12"] :
+    elapsedInFY < 12 ? ["last_12"] : []
+  );
+
+  useEffect(() => {
+    if (disabledPresets.has(preset)) setPreset("this_month");
+  }, [fyStart]); // eslint-disable-line
+
   function emit(p, fy, from, to) {
     if (p === "custom") {
       const cFrom = clampToFY(from.year, from.month, fy);
@@ -150,27 +154,46 @@ export default function PeriodSelector({ onChange, isAccountant = false }) {
 
   // Accountant UI — rendered after all hooks
   if (isAccountant) {
-    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prevLabel = `${MONTHS[prevDate.getMonth()]} ${prevDate.getFullYear()}`;
-    const curLabel  = `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
-    const labelMap  = { this_month: curLabel, last_month: prevLabel, both: `${prevLabel} – ${curLabel}` };
+    const fyLabel = `FY ${currentFYStart}-${String(currentFYStart + 1).slice(-2)}`;
+    const acctNowIdx = now.getFullYear() * 12 + now.getMonth() + 1;
+    const acctElapsed = fyMonths(currentFYStart).filter(({ year, month }) => year * 12 + month <= acctNowIdx).length;
+    const acctDisabled = new Set(
+      acctElapsed < 2  ? ["last_month", "last_3", "last_6", "last_12"] :
+      acctElapsed < 3  ? ["last_3", "last_6", "last_12"] :
+      acctElapsed < 6  ? ["last_6", "last_12"] :
+      acctElapsed < 12 ? ["last_12"] : []
+    );
     return (
       <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+        <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5">{fyLabel}</span>
+        <span className="text-gray-300 dark:text-slate-600">|</span>
         <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5">
           <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">Period</span>
           <select
-            value={accountantPreset}
-            onChange={(e) => setAccountantPreset(e.target.value)}
+            value={acctPreset}
+            onChange={(e) => setAcctPreset(e.target.value)}
             className="text-xs font-semibold text-gray-700 dark:text-slate-200 bg-transparent dark:bg-slate-700 border-none outline-none cursor-pointer"
           >
-            <option value="this_month">Current Month</option>
-            <option value="last_month">Previous Month</option>
-            <option value="both">Both</option>
+            {PRESETS_CURRENT.filter(p => !acctDisabled.has(p.key)).map(p => (
+              <option key={p.key} value={p.key}>{p.label}</option>
+            ))}
           </select>
         </div>
-        <span className="text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-900/50 rounded px-2 py-1 whitespace-nowrap">
-          {labelMap[accountantPreset]}
-        </span>
+        {acctPreset !== "custom" && <ActiveBadge preset={acctPreset} fyStart={currentFYStart} now={now} />}
+        {acctPreset === "custom" && (
+          <>
+            <span className="text-gray-300 dark:text-slate-600">|</span>
+            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5">
+              <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">From</span>
+              <MonthPicker value={acctFrom} fyStart={currentFYStart} dark={dark} onChange={(v) => { setAcctFrom(v); if (v.year * 12 + v.month > acctTo.year * 12 + acctTo.month) setAcctTo(v); }} maxValue={acctTo} />
+            </div>
+            <span className="text-xs text-gray-400 dark:text-slate-500">→</span>
+            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5">
+              <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">To</span>
+              <MonthPicker value={acctTo} fyStart={currentFYStart} dark={dark} onChange={(v) => { setAcctTo(v); if (v.year * 12 + v.month < acctFrom.year * 12 + acctFrom.month) setAcctFrom(v); }} minValue={acctFrom} />
+            </div>
+          </>
+        )}
       </div>
     );
   }
