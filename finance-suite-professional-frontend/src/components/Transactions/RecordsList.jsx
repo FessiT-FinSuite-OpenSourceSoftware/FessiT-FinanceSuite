@@ -95,7 +95,7 @@ function RecordNotesModal({ rec, onSave, onClose }) {
   );
 }
 
-function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange }) {
+function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange, canWrite }) {
   const [confirming,     setConfirming]     = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
   const [notesOpen,      setNotesOpen]      = useState(false);
@@ -167,7 +167,7 @@ function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange }) {
               <option value="rejected">Rejected</option>
             </select>
           ) : (
-            <button onClick={(e) => { e.stopPropagation(); setChangingStatus(true); }} title="Change status">
+            <button onClick={canWrite ? (e) => { e.stopPropagation(); setChangingStatus(true); } : undefined} title={canWrite ? "Change status" : undefined} className={!canWrite ? "cursor-default" : ""}>
               <RecordStatusBadge value={rec.status} />
             </button>
           )}
@@ -210,6 +210,7 @@ function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange }) {
             >
               <PenLine className="w-3.5 h-3.5" />
             </button>
+            {canWrite && (
             <button
               onClick={handleDelete}
               className="p-1.5 rounded-md text-gray-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
@@ -217,6 +218,7 @@ function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange }) {
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
+            )}
           </div>
         </td>
       </tr>
@@ -232,7 +234,7 @@ function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange }) {
   );
 }
 
-export default function RecordsList({ records, isRecordLoading, onSelect, onDelete, onRefresh, onStatusChange, onNotesChange }) {
+export default function RecordsList({ records, isRecordLoading, onSelect, onDelete, onRefresh, onStatusChange, onNotesChange, canWrite = true }) {
   return (
     <div className="bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
       {/* Header */}
@@ -291,6 +293,7 @@ export default function RecordsList({ records, isRecordLoading, onSelect, onDele
                   onDelete={onDelete}
                   onStatusChange={onStatusChange}
                   onNotesChange={onNotesChange}
+                  canWrite={canWrite}
                 />
               ))}
             </tbody>

@@ -60,12 +60,18 @@ const Transactions = lazy(() => import('./components/Transactions'))
 const TransactionsDrillDown = lazy(() => import('./pages/TransactionsDrillDown'))
 
 
-const ACCOUNTANT_MODULES = new Set([Module.Invoice]);
+const ACCOUNTANT_MODULES = new Set([
+  Module.Invoice,
+  Module.Transactions,
+]);
 
 function ProtectedRoute({ user, module, children }) {
-  const allowed = user?.is_admin || user?.is_accountant || canRead(user, module);
-  if (!allowed) return <Forbidden />;
-  if (user?.is_accountant && !ACCOUNTANT_MODULES.has(module)) return <Forbidden />;
+  if (!user) return <Forbidden />;
+  if (user.is_admin) return children;
+  if (user.is_accountant) {
+    return ACCOUNTANT_MODULES.has(module) ? children : <Forbidden />;
+  }
+  if (!canRead(user, module)) return <Forbidden />;
   return children;
 }
 
@@ -205,8 +211,8 @@ export default function App() {
               <Route path="/items" element={<ProtectedRoute user={user} module={Module.Products}><Items /></ProtectedRoute>} />
               <Route path="/estimates" element={<ProtectedRoute user={user} module={Module.Invoice}><Estimates /></ProtectedRoute>} />
               <Route path="/ledger" element={<ProtectedRoute user={user} module={Module.Invoice}><Ledger /></ProtectedRoute>} />
-              <Route path="/transactions" element={<ProtectedRoute user={user} module={Module.Invoice}><Transactions /></ProtectedRoute>} />
-              <Route path="/transactions/:recordId" element={<ProtectedRoute user={user} module={Module.Invoice}><TransactionsDrillDown /></ProtectedRoute>} />
+              <Route path="/transactions" element={<ProtectedRoute user={user} module={Module.Transactions}><Transactions /></ProtectedRoute>} />
+              <Route path="/transactions/:recordId" element={<ProtectedRoute user={user} module={Module.Transactions}><TransactionsDrillDown /></ProtectedRoute>} />
               <Route path="/profit-loss" element={<ProtectedRoute user={user} module={Module.Invoice}><ProfitLoss /></ProtectedRoute>} />
               <Route path="/estimates/create" element={<ProtectedRoute user={user} module={Module.Invoice}><AddEstimate /></ProtectedRoute>} />
               <Route path="/estimates/edit/:id" element={<ProtectedRoute user={user} module={Module.Invoice}><EditEstimate /></ProtectedRoute>} />

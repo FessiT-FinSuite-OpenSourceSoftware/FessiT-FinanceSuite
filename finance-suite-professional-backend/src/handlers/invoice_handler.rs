@@ -266,14 +266,6 @@ pub async fn list_invoices(
         Vec::new()
     };
 
-    if user.is_accountant {
-        let fy = crate::utils::current_fy_months();
-        invoices.retain(|inv| {
-            let ym = inv.invoice_date.trim();
-            ym.len() >= 7 && fy.contains(&ym[..7].to_string())
-        });
-    }
-
     if query.start_date.is_some() || query.end_date.is_some() {
         let start = query.start_date.clone().unwrap_or_default();
         let end = query.end_date.clone().unwrap_or_default();
@@ -319,13 +311,6 @@ pub async fn get_invoice(
 
     if let Some(invoice) = maybe_invoice {
         if invoice_belongs_to_user_org(&service, &invoice, org_id).await? {
-            if user.is_accountant {
-                let fy = crate::utils::current_fy_months();
-                let ym = invoice.invoice_date.trim();
-                if ym.len() < 7 || !fy.contains(&ym[..7].to_string()) {
-                    return Ok(HttpResponse::NotFound().json(json!({ "message": "Invoice not found" })));
-                }
-            }
             return Ok(HttpResponse::Ok().json(invoice));
         }
     }

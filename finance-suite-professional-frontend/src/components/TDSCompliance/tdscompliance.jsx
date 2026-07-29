@@ -331,7 +331,7 @@ export default function TDSCompliance() {
         </div>
         {/* Dashboard Stats - Always Visible */}
         <div className="mb-2">
-          <PeriodSelector onChange={handlePeriodChange} isAccountant={isAccountant} />
+          <PeriodSelector onChange={handlePeriodChange} />
         </div>
         <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2 transition-opacity duration-300 ${isLoading && data ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
           {!data ? (

@@ -29,6 +29,8 @@ pub async fn list_records(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin || user.is_accountant)
+        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
     let records = service.list_records(&org_id).await
@@ -48,6 +50,8 @@ pub async fn list_by_record(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin || user.is_accountant)
+        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
     let rid = parse_oid(&record_id.into_inner())
@@ -68,6 +72,8 @@ pub async fn list_transactions(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin || user.is_accountant)
+        .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
     let items = service.list(&org_id).await
@@ -222,7 +228,7 @@ pub async fn patch_record_status(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Expenses, PermissionAction::Write, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Write, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;

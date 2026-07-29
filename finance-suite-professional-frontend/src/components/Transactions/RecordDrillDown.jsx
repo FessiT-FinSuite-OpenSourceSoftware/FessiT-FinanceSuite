@@ -1,12 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useCallback } from "react";
 import { ArrowLeft, FileText, RefreshCw, PenLine, Download } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 import { saveBytes, showDownloadNotification } from "../../utils/pdfUtils";
-import { StatCard, TabActionBar, FilterSelect, Pagination, TableWrapper, TableHead } from "../../shared/ui";
-import { SAVED_COLS, TRANSACTION_CATEGORIES } from "./constants";
+import { StatCard, TabActionBar, FilterSelect, Pagination, DataTable } from "../../shared/ui";
+import { TRANSACTION_CATEGORIES } from "./constants";
 import { fmt, fmtDate, getTransactionType } from "./helpers";
-import { SavedRowWrapper } from "./SavedRow";
+import { SavedRowWrapper, buildTxnColumns, renderTxnExpanded } from "./SavedRow";
 
 export default function RecordDrillDown({
   title, entries, isLoading,
@@ -16,7 +16,15 @@ export default function RecordDrillDown({
   onBack, onRefresh, onAddManually,
   onSearchChange, onTypeChange, onCategoryChange, onTxnCategoryChange,
   onPageChange, onPageSizeChange,
+  canWrite = true,
 }) {
+  // Shared map: rowId → live state object (populated by SavedRowWrapper via onRegister)
+  const stateMap = useRef({});
+
+  const onRegister = useCallback((id, state) => {
+    stateMap.current[id] = state;
+  }, []);
+
   const categories = useMemo(() =>
     ["All", ...Array.from(new Set(entries.map((e) => e.category).filter(Boolean))).sort()],
     [entries]
@@ -56,19 +64,19 @@ export default function RecordDrillDown({
     const toastId = toast.loading("Preparing Excel export…");
     try {
       const rows = filtered.map((t) => {
-        const type = getTransactionType(t);
+        const type  = getTransactionType(t);
         const debit  = t.debit  != null && t.debit  !== "" ? parseFloat(t.debit)  : (type === "Debit"  ? parseFloat(t.amount) || "" : "");
         const credit = t.credit != null && t.credit !== "" ? parseFloat(t.credit) : (type === "Credit" ? parseFloat(t.amount) || "" : "");
         return {
-          Date:                    fmtDate(t.date),
-          Reference:               t.reference ?? "",
-          Narration:               t.narration ?? t.description ?? "",
-          Debit:                   debit,
-          Credit:                  credit,
-          Balance:                 t.balance != null ? parseFloat(t.balance) : "",
-          Notes:                   t.notes ?? "",
-          Status:                  t.status ?? "",
-          "Transaction Category":  t.transaction_category || "General",
+          Date:                   fmtDate(t.date),
+          Reference:              t.reference ?? "",
+          Narration:              t.narration ?? t.description ?? "",
+          Debit:                  debit,
+          Credit:                 credit,
+          Balance:                t.balance != null ? parseFloat(t.balance) : "",
+          Notes:                  t.notes ?? "",
+          Status:                 t.status ?? "",
+          "Transaction Category": t.transaction_category || "General",
         };
       });
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -85,6 +93,9 @@ export default function RecordDrillDown({
     }
   };
 
+  // Stable columns — reads live state from stateMap ref at render time
+  const columns = useMemo(() => buildTxnColumns(stateMap, canWrite), [canWrite]); // eslint-disable-line
+
   return (
     <>
       {/* Header */}
@@ -97,9 +108,11 @@ export default function RecordDrillDown({
           <span className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} transaction{filtered.length !== 1 ? "s" : ""}</span>
         </div>
         <div className="flex items-center gap-2">
+          {canWrite && (
           <button onClick={onAddManually} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
             <PenLine className="w-3.5 h-3.5" /> Add Manually
           </button>
+          )}
           <button onClick={handleExport} disabled={filtered.length === 0} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             <Download className="w-3.5 h-3.5" /> Export Excel
           </button>
@@ -112,9 +125,9 @@ export default function RecordDrillDown({
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Transactions" value={isLoading ? "…" : filtered.length} />
-        <StatCard label="Total Credits" value={isLoading ? "…" : fmt(totalCredits)} valueClass="text-green-600 dark:text-green-400" /> 
+        <StatCard label="Total Credits" value={isLoading ? "…" : fmt(totalCredits)} valueClass="text-green-600 dark:text-green-400" />
         <StatCard label="Total Debits"  value={isLoading ? "…" : fmt(totalDebits)}  valueClass="text-red-600 dark:text-red-400" />
-        <StatCard label="Net Balance" value={isLoading ? "…" : fmt(netFlow)} valueClass={netFlow >= 0 ? "text-indigo-700 dark:text-indigo-400" : "text-red-600 dark:text-red-400"} />
+        <StatCard label="Net Balance"   value={isLoading ? "…" : fmt(netFlow)}      valueClass={netFlow >= 0 ? "text-indigo-700 dark:text-indigo-400" : "text-red-600 dark:text-red-400"} />
       </div>
 
       {/* Filter Bar */}
@@ -133,27 +146,37 @@ export default function RecordDrillDown({
         </FilterSelect>
       </TabActionBar>
 
-      {/* Table */}
-      <TableWrapper>
-        <TableHead columns={SAVED_COLS} />
-        <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-          {isLoading ? (
-            <tr><td colSpan={10} className="px-6 py-12 text-center text-sm text-gray-400 dark:text-slate-500">Loading…</td></tr>
-          ) : paginated.length === 0 ? (
-            <tr>
-              <td colSpan={10} className="px-6 py-14 text-center">
-                <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
-                  <FileText className="w-10 h-10 opacity-30" />
-                  <p className="text-sm">{entries.length === 0 ? "No transactions in this record" : "No transactions match your filters"}</p>
-                </div>
-              </td>
-            </tr>
-          ) : paginated.map((row) => {
-            const id = row._id?.$oid || row._id || row.id;
-            return <SavedRowWrapper key={id} row={row} id={id} dispatch={dispatch} setDeleteConfirm={setDeleteConfirm} />;
-          })}
-        </tbody>
-      </TableWrapper>
+      {/*
+        SavedRowWrappers hold per-row state and register it into stateMap.
+        They render only their modals (portaled to body) — no DOM output in the table.
+        Must render before DataTable so stateMap is populated on first paint.
+      */}
+      {paginated.map((row) => {
+        const id = row._id?.$oid || row._id || row.id;
+        return (
+          <SavedRowWrapper
+            key={id}
+            row={row}
+            id={id}
+            dispatch={dispatch}
+            setDeleteConfirm={setDeleteConfirm}
+            onRegister={onRegister}
+            canWrite={canWrite}
+          />
+        );
+      })}
+
+      {/* Table — Assets-style expand with animated ExpandedRow from DataTable */}
+      <DataTable
+        isLoading={isLoading}
+        data={paginated}
+        rowKey={(row) => row._id?.$oid || row._id || row.id}
+        columns={columns}
+        wrapperClass="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 shadow-sm"
+        tbodyClass="divide-y divide-slate-200 dark:divide-slate-800"
+        emptyMessage={entries.length === 0 ? "No transactions in this record" : "No transactions match your filters"}
+        renderExpanded={(row) => renderTxnExpanded(row, stateMap, canWrite)}
+      />
 
       <Pagination
         currentPage={currentPage}

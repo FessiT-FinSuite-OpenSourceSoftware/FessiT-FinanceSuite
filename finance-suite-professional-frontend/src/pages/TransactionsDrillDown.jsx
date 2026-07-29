@@ -5,6 +5,8 @@ import {
   transactionsSelector, fetchByRecord, fetchRecords,
   deleteTransaction, saveExtracted,
 } from "../ReduxApi/transactions";
+import { authSelector } from "../ReduxApi/auth";
+import { canWrite as checkCanWrite, Module } from "../utils/permissions";
 import { ConfirmModal } from "../shared/ui";
 import RecordDrillDown from "../components/Transactions/RecordDrillDown";
 
@@ -15,6 +17,8 @@ export default function TransactionsDrillDownPage() {
   const navigate     = useNavigate();
   const dispatch     = useDispatch();
   const { isLoading, isSaving, entries, records } = useSelector(transactionsSelector);
+  const { user } = useSelector(authSelector);
+  const canWrite = checkCanWrite(user, Module.Transactions);
 
   const record = records.find((r) => r.id === recordId);
 
@@ -60,6 +64,7 @@ export default function TransactionsDrillDownPage() {
         onTxnCategoryChange={(v) => { setTxnCategoryFilter(v); setCurrentPage(1); }}
         onPageChange={setCurrentPage}
         onPageSizeChange={(n) => { setPageSize(n); setCurrentPage(1); }}
+        canWrite={canWrite}
       />
 
       {deleteConfirm && (

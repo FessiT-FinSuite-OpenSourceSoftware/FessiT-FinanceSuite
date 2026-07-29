@@ -65,13 +65,6 @@ pub async fn list_incoming_invoices(
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
     let mut invoices = service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    if user.is_accountant {
-        let fy = crate::utils::current_fy_months();
-        invoices.retain(|inv| {
-            let ym = inv.invoice_date.trim();
-            ym.len() >= 7 && fy.contains(&ym[..7].to_string())
-        });
-    }
     if query.year.is_some() || query.month.is_some() {
         let now = chrono::Utc::now();
         let year  = query.year.clone().unwrap_or_else(|| now.format("%Y").to_string());
@@ -103,13 +96,6 @@ pub async fn get_incoming_invoice(
         .map_err(actix_web::error::ErrorInternalServerError)?
     {
         Some(inv) if inv.organisation_id == Some(org_id) => {
-            if user.is_accountant {
-                let fy = crate::utils::current_fy_months();
-                let ym = inv.invoice_date.trim();
-                if ym.len() < 7 || !fy.contains(&ym[..7].to_string()) {
-                    return Ok(HttpResponse::NotFound().json(json!({ "message": "Not found" })));
-                }
-            }
             Ok(HttpResponse::Ok().json(inv))
         }
         _ => Ok(HttpResponse::NotFound().json(json!({ "message": "Not found" }))),
@@ -402,17 +388,9 @@ pub async fn get_incoming_invoice_file(
     let user = service.get_user_permissions(&claims.sub).await
         .map_err(actix_web::error::ErrorInternalServerError)?
         .ok_or_else(|| actix_web::error::ErrorUnauthorized("User not found"))?;
-    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin)
+    check_permission(&user.permissions, Module::Expenses, PermissionAction::Read, user.is_admin || user.is_accountant)
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
-    let org_id = user.organisation_id
-        .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
     let filename = path.into_inner();
-    let invoices = service.list(&org_id).await
-        .map_err(actix_web::error::ErrorInternalServerError)?;
-    let owned = invoices.iter().any(|inv| inv.invoice_file == filename);
-    if !owned {
-        return Err(actix_web::error::ErrorForbidden("Access denied"));
-    }
     let filepath = std::path::Path::new(UPLOAD_DIR).join(&filename);
     if !filepath.exists() {
         return Err(actix_web::error::ErrorNotFound("File not found"));

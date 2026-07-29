@@ -116,12 +116,8 @@ pub async fn list_challans(
         .map_err(|e| actix_web::error::ErrorForbidden(create_permission_error(&e)))?;
     let org_id = user.organisation_id
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
-    let mut challans = service.list(&org_id).await
+    let challans = service.list(&org_id).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    if user.is_accountant {
-        let (current, prev) = crate::utils::last_two_months();
-        challans.retain(|c| c.period == current || c.period == prev);
-    }
     Ok(HttpResponse::Ok().json(challans))
 }
 
@@ -144,15 +140,7 @@ pub async fn get_challan(
     match service.get_by_id(&id.into_inner()).await
         .map_err(actix_web::error::ErrorInternalServerError)?
     {
-        Some(c) if c.organisation_id == Some(org_id) => {
-            if user.is_accountant {
-                let (current, prev) = crate::utils::last_two_months();
-                if c.period != current && c.period != prev {
-                    return Ok(HttpResponse::NotFound().json(json!({ "message": "Challan not found" })));
-                }
-            }
-            Ok(HttpResponse::Ok().json(c))
-        }
+        Some(c) if c.organisation_id == Some(org_id) => Ok(HttpResponse::Ok().json(c)),
         _ => Ok(HttpResponse::NotFound().json(json!({ "message": "Challan not found" }))),
     }
 }

@@ -125,7 +125,7 @@ export default function ProfessionalTaxCompliance() {
 
         {/* Period Selector */}
         <div className="mb-2">
-          <PeriodSelector onChange={handlePeriodChange} isAccountant={isAccountant} />
+          <PeriodSelector onChange={handlePeriodChange} />
         </div>
 
         {/* Stat Cards */}

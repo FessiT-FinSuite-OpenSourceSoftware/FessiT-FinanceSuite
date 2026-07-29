@@ -282,7 +282,7 @@ export default function GSTCompliance() {
           </div> */}
         </div>
         <div className="mb-2">
-          <PeriodSelector onChange={handlePeriodChange} isAccountant={isAccountant} />
+          <PeriodSelector onChange={handlePeriodChange} />
         </div>
         
         <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-2 transition-opacity duration-300 ${isLoading && data ? "opacity-50 pointer-events-none" : "opacity-100"}`}>

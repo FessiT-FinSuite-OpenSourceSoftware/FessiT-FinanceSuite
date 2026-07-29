@@ -8,15 +8,16 @@ export const Module = {
   Products: "products",
   Users: "users",
   Organisation: "organisation",
+  Transactions: "transactions",
 };
 
 /**
  * Returns true if the user has read access to the given module.
- * Admins bypass all permission checks.
+ * Admins and accountants bypass all permission checks.
  */
 export const canRead = (user, module) => {
   if (!user) return false;
-  if (user.is_admin) return true;
+  if (user.is_admin || user.is_accountant) return true;
   return user.permissions?.[module]?.read === true;
 };
 

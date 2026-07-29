@@ -6,6 +6,8 @@ import {
   uploadStatement, saveExtracted, deleteRecord, updateRecordStatus, updateRecordNotes,
   clearExtracted, setUploadError,
 } from "../../ReduxApi/transactions";
+import { authSelector } from "../../ReduxApi/auth";
+import { canWrite as checkCanWrite, Module } from "../../utils/permissions";
 import { isAllowedFile } from "./helpers";
 import { EMPTY_ROW } from "./constants";
 
@@ -17,6 +19,8 @@ const PdfPasswordModal = lazy(() => import("./PdfPasswordModal"));
 export default function Transactions() {
   const dispatch  = useDispatch();
   const navigate  = useNavigate();
+  const { user } = useSelector(authSelector);
+  const canWrite = checkCanWrite(user, Module.Transactions);
   const {
     isRecordLoading, isUploading, isStreaming, isSaving,
     records, extracted, uploadError, statementMeta, uploadStage,
@@ -105,6 +109,7 @@ export default function Transactions() {
   return (
     <div className="w-full space-y-4">
 
+      {canWrite && (
       <UploadCard
         isUploading={isUploading}
         isStreaming={isStreaming}
@@ -131,6 +136,7 @@ export default function Transactions() {
         onRecordTitleChange={setRecordTitle}
         onClearError={() => { dispatch(setUploadError(null)); setPendingFile(null); }}
       />
+      )}
 
       <RecordsList
         records={records}
@@ -140,6 +146,7 @@ export default function Transactions() {
         onRefresh={() => dispatch(fetchRecords())}
         onStatusChange={(id, status) => dispatch(updateRecordStatus(id, status))}
         onNotesChange={(id, notes) => dispatch(updateRecordNotes(id, notes))}
+        canWrite={canWrite}
       />
 
       {pdfPasswordState && (

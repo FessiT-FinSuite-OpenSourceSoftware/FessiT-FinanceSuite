@@ -356,7 +356,7 @@ export default function SideBar({ component }) {
     return { ...p, [key]: !p[key] };
   });
 
-  const ACCOUNTANT_IDS = new Set(["invoices", "gstcompliance", "tdscompliance", "ptcompliance"]);
+  const ACCOUNTANT_IDS = new Set(["invoices", "transactions", "gstcompliance", "tdscompliance", "ptcompliance"]);
 
   const getVisibleItems = (group) => group.items.filter((item) => {
     if (user?.is_accountant) return ACCOUNTANT_IDS.has(item.id);
