@@ -1,5 +1,17 @@
-use mongodb::bson::oid::ObjectId;
-use serde::{Deserialize, Serialize};
+use mongodb::bson::{oid::ObjectId, Bson};
+use serde::{Deserialize, Deserializer, Serialize};
+
+fn deserialize_optional_oid<'de, D>(deserializer: D) -> Result<Option<ObjectId>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Bson::deserialize(deserializer)? {
+        Bson::ObjectId(oid) => Ok(Some(oid)),
+        Bson::String(s) if !s.is_empty() =>
+            ObjectId::parse_str(&s).map(Some).map_err(serde::de::Error::custom),
+        _ => Ok(None),
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -138,6 +150,10 @@ pub struct IncomingInvoice {
     #[serde(default)]
     pub tds_section_nature: String,
 
+    /// PAN of the vendor — denormalised from Customer at save time
+    #[serde(default)]
+    pub pan: String,
+
     #[serde(default)]
     pub payment_type: String,
 
@@ -147,7 +163,7 @@ pub struct IncomingInvoice {
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,
 
-    #[serde(rename = "vendorId", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "vendorId", alias = "vendor_id", default, skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_oid")]
     pub vendor_id: Option<ObjectId>,
 
     #[serde(default)]

@@ -12,6 +12,8 @@ const SUPPORTED_STATEMENT_EXTENSIONS = new Set([
 // API returns debit/credit as separate nullable floats — keep them as-is.
 function normaliseTransaction(t) {
   return {
+    id:        t._id?.$oid ?? t._id ?? t.id ?? "",
+    _id:       t._id,
     date:      normaliseDate(t.date ?? ""),
     narration: (t.narration ?? t.description ?? "").trim(),
     reference: t.reference ?? t.ref_no ?? t.cheque_no ?? "",
@@ -99,6 +101,7 @@ const transactionsSlice = createSlice({
     total:         0,
     extracted:     [],
     statementMeta: null,
+    debtStats:     null, // { debt_taken, debt_repaid, net_debt }
   },
   reducers: {
     setLoading:        (s, { payload }) => { s.isLoading        = payload; },
@@ -132,20 +135,25 @@ const transactionsSlice = createSlice({
     upsertEntry:    (s, { payload }) => {
       const id  = payload._id?.$oid ?? payload._id ?? payload.id;
       const idx = s.entries.findIndex((e) => (e._id?.$oid ?? e._id ?? e.id) === id);
-      if (idx >= 0) s.entries[idx] = payload; else s.entries.unshift(payload);
+      if (idx >= 0) s.entries[idx] = { ...s.entries[idx], ...payload }; else s.entries.unshift(payload);
       s.total = s.entries.length;
+    },
+    patchEntry: (s, { payload: { id, changes } }) => {
+      const idx = s.entries.findIndex((e) => (e._id?.$oid ?? e._id ?? e.id) === id);
+      if (idx >= 0) s.entries[idx] = { ...s.entries[idx], ...changes };
     },
     removeEntry:    (s, { payload }) => {
       s.entries = s.entries.filter((e) => (e._id?.$oid ?? e._id ?? e.id) !== payload);
       s.total   = s.entries.length;
     },
+    setDebtStats:   (s, { payload }) => { s.debtStats = payload; },
   },
 });
 
 export const {
   setLoading, setRecordLoading, setSaving, setUploading, setUploadStage, setUploadError,
   setEntries, setRecords, setExtracted, appendTransactions, clearExtracted, setStreaming,
-  upsertEntry, removeEntry,
+  upsertEntry, patchEntry, removeEntry, setDebtStats,
 } = transactionsSlice.actions;
 
 export const transactionsSelector = (s) => s.transactions;
@@ -337,6 +345,7 @@ export const updateTransactionNotes = (id, notes, status) => async (dispatch) =>
 };
 
 export const updateTransaction = (id, payload) => async (dispatch) => {
+  dispatch(patchEntry({ id, changes: { transaction_category: payload.transaction_category, narration: payload.narration, reference: payload.reference, date: payload.date, debit: payload.debit, credit: payload.credit, balance: payload.balance } }));
   try {
     const { data } = await axiosInstance.put(`/transactions/${id}`, payload);
     dispatch(upsertEntry(data.transaction ?? data));

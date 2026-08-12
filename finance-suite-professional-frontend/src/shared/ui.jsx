@@ -31,7 +31,7 @@ export function FilterChips({ chips, onRemove }) {
 }
 
 // ── Stat Card ────────────────────────────────────────────────────────────────
-export function StatCard({ label, value, valueClass = "text-gray-900 dark:text-slate-100", isLoading = false }) {
+export function StatCard({ label, value, valueClass = "text-gray-900 dark:text-slate-100", isLoading = false, subtext }) {
   if (isLoading) return (
     <div className="bg-white dark:bg-slate-950 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm animate-pulse">
       <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-2/3 mb-3" />
@@ -39,9 +39,10 @@ export function StatCard({ label, value, valueClass = "text-gray-900 dark:text-s
     </div>
   );
   return (
-    <div className="bg-white dark:bg-slate-950 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
-      <p className="text-sm text-gray-600 dark:text-slate-300 mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${valueClass}`}>{value}</p>
+    <div className="bg-white dark:bg-slate-950 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm min-w-0">
+      <p className="text-sm text-gray-600 dark:text-slate-300 mb-1 truncate">{label}</p>
+      <p className={`text-xl font-bold break-all leading-tight ${valueClass}`}>{value}</p>
+      {subtext && <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 break-all">{subtext}</p>}
     </div>
   );
 }

@@ -87,6 +87,8 @@ export default function AddIncomingInvoice() {
     setField("vendor_name", c.companyName || c.customerName || "");
     setField("vendor_gstin", c.gstIN || "");
     setField("vendor_address", address);
+    setField("vendor_id", getCustomerId(c));
+    setField("pan", c.pan || "");
     setVendorSearch(c.companyName || c.customerName || "");
     setShowVendorDrop(false);
   };

@@ -27,6 +27,18 @@ where
     }
 }
 
+fn deserialize_optional_oid<'de, D>(deserializer: D) -> Result<Option<ObjectId>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Bson::deserialize(deserializer)? {
+        Bson::ObjectId(oid) => Ok(Some(oid)),
+        Bson::String(s) if !s.is_empty() =>
+            ObjectId::parse_str(&s).map(Some).map_err(serde::de::Error::custom),
+        _ => Ok(None),
+    }
+}
+
 // Deserializes SalaryStatus from any casing variant stored in MongoDB
 fn deserialize_salary_status<'de, D>(deserializer: D) -> Result<SalaryStatus, D::Error>
 where
@@ -120,6 +132,22 @@ pub struct Salary {
     /// Nature of payment description
     #[serde(default)]
     pub tds_section_nature: String,
+
+    /// PAN of the employee — denormalised from Employee at save time
+    #[serde(default)]
+    pub pan: String,
+
+    /// Employee type — denormalised from Employee at list time (permanent / contract / intern)
+    #[serde(default)]
+    pub employee_type: String,
+
+    /// MongoDB _id of the linked Employee document — sent from frontend at save time
+    #[serde(rename = "employeeId", default, skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_optional_oid")]
+    pub employee_object_id: Option<ObjectId>,
+
+    /// User account linked to this employee — resolved from employee_object_id at save time
+    #[serde(rename = "userId", default, deserialize_with = "deserialize_optional_oid")]
+    pub user_id: Option<ObjectId>,
 
     #[serde(rename = "organisationId", skip_serializing_if = "Option::is_none")]
     pub organisation_id: Option<ObjectId>,

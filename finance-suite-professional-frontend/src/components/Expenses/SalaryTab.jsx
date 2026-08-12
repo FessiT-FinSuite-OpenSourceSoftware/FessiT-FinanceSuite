@@ -11,7 +11,7 @@ import MonthRangeSelector from "../../shared/MonthRangeSelector";
 import { TDS_FLAT_LIST } from "../../utils/tdsData";
 
 const currentPeriod = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`; };
-const EMPTY = { emp_name: "", emp_id: "", department: "", period: currentPeriod(), gross_salary: "", tds: "", reimbursement: "", status: "YetToBePaid", paid_on: "", cost_type: "indirect", tds_section_key: "", tds_section_new: "", tds_section_old: "", tds_section_nature: "", _manual: false, _tdsManual: false };
+const EMPTY = { emp_name: "", emp_id: "", employeeId: "", department: "", period: currentPeriod(), gross_salary: "", tds: "", reimbursement: "", status: "YetToBePaid", paid_on: "", cost_type: "indirect", tds_section_key: "", tds_section_new: "", tds_section_old: "", tds_section_nature: "", _manual: false, _tdsManual: false };
 
 const statusColor = (s) => {
   switch (s) {
@@ -220,7 +220,7 @@ export default function SalaryTab() {
   const handleSave = () => {
     const formWithTds = { ...form, tds: String(calcTdsAmount(form)) };
     const total = calcSalaryTotal(formWithTds);
-    const { _selectedEmpId, _tdsManual, ...rest } = formWithTds;
+    const { _selectedEmpId, _tdsManual, _manual, ...rest } = formWithTds;
     const payload = { ...rest, net_salary: String(total) };
     if (modal.mode === "create") dispatch(createSalary(payload));
     else dispatch(updateSalary(modal.id, payload));
@@ -433,7 +433,8 @@ const formatCompactINR = (value) => {
                     setForm((p) => ({ ...p, emp_name: emp._manualName, emp_id: "", department: "" }));
                   } else {
                     const name = `${emp.first_name || ""} ${emp.last_name || ""}`.trim();
-                    setForm((p) => ({ ...p, emp_name: name, emp_id: emp.emp_id || "", department: emp.department || "", _manual: false }));
+                    const empObjId = emp._id?.$oid || emp._id || "";
+                    setForm((p) => ({ ...p, emp_name: name, emp_id: emp.emp_id || "", employeeId: empObjId, department: emp.department || "", _manual: false }));
                   }
                 }}
                 manual={form._manual}

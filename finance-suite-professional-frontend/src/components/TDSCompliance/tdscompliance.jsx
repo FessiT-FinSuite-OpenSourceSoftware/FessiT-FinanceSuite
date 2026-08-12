@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchTdsSummary, tdsSummarySelector, tdsSummaryClear } from "../../ReduxApi/tdsSummary";
 import { fetchSalaries, salarySelector } from "../../ReduxApi/salary";
 import { fetchIncomingInvoices, incomingInvoiceSelector } from "../../ReduxApi/incomingInvoice";
+import { fetchEmployees, employeeSelector } from "../../ReduxApi/employee";
+import { fetchCustomerData, customerSelector } from "../../ReduxApi/customer";
 import TDSDeductions from "./TDSDeductions";
 import ChallansTab from "./challans";
 import PeriodSelector from "../../shared/PeriodSelector";
@@ -133,6 +135,8 @@ export default function TDSCompliance() {
   const { data, isLoading } = useSelector(tdsSummarySelector)
   const { salaryData } = useSelector(salarySelector)
   const { data: incomingInvoices } = useSelector(incomingInvoiceSelector)
+  const { data: employees } = useSelector(employeeSelector)
+  const { customersData } = useSelector(customerSelector)
   const { user } = useSelector((state) => state.auth)
   const isAccountant = user?.is_accountant === true
 
@@ -161,6 +165,8 @@ export default function TDSCompliance() {
       dispatch(fetchSalaries());
       dispatch(fetchIncomingInvoices());
     }
+    dispatch(fetchEmployees({ page: 1, pageSize: 500 }));
+    dispatch(fetchCustomerData());
   }, [dispatch, selectedMonths])
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -183,12 +189,29 @@ export default function TDSCompliance() {
       `${year}-${String(month).padStart(2, "0")}`
     ));
 
+    // Lookup maps for live population
+    const employeeByObjId = {};
+    const employeeByEmpId = {};
+    (Array.isArray(employees) ? employees : []).forEach((e) => {
+      const objId = e._id?.$oid || e.id || "";
+      if (objId) employeeByObjId[objId] = e;
+      if (e.emp_id) employeeByEmpId[e.emp_id] = e;
+    });
+
+    const customerByObjId = {};
+    const customerByName = {};
+    (Array.isArray(customersData) ? customersData : []).forEach((c) => {
+      const objId = c._id?.$oid || c.id || "";
+      if (objId) customerByObjId[objId] = c;
+      const name = (c.companyName || c.customerName || "").toLowerCase();
+      if (name) customerByName[name] = c;
+    });
+
     function inSelectedMonths(dateStr) {
       if (!dateStr) return false;
       const raw = String(dateStr).trim();
       if (/^\d{4}-\d{2}/.test(raw)) return monthSet.has(raw.slice(0, 7));
       if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) return monthSet.has(`${raw.slice(6,10)}-${raw.slice(3,5)}`);
-      // period field is YYYY-MM
       if (/^\d{4}-\d{2}$/.test(raw)) return monthSet.has(raw);
       const d = new Date(raw);
       if (!isNaN(d)) return monthSet.has(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
@@ -202,46 +225,60 @@ export default function TDSCompliance() {
         return inSelectedMonths(s.period);
       })
       .map((s) => {
-      const gross = parseFloat(s.gross_salary || 0);
-      const tds = parseFloat(s.tds || 0);
-      const rate = gross > 0 ? parseFloat(((tds / gross) * 100).toFixed(2)) : 0;
-      return {
-        id: `sal-${s._id?.$oid || s.emp_id}`,
-        date: s.paid_on || (s.period ? `${s.period}-01` : null),
-        period: s.period,
-        deductee: s.emp_name || "-",
-        pan: s.pan || "-",
-        section: "192",
-        amount: gross,
-        tdsRate: rate,
-        tdsAmount: tds,
-        challan: "-",
-        status: s.status === "Paid" ? "deposited" : "pending",
-        source: "Salary",
-        emp_id: s.emp_id || "-",
-        designation: s.designation || "-",
-        department: s.department || "-",
-        basic_salary: parseFloat(s.basic_salary || 0),
-        net_salary: parseFloat(s.net_salary || 0),
-        payment_mode: s.payment_mode || "-",
-        tds_section_key: s.tds_section_key || "",
-        tds_section_old: s.tds_section_old || "",
-        tds_section_new: s.tds_section_new || "",
-        tds_section_nature: s.tds_section_nature || "",
-      };
-    });
+        const empObjId = s.employeeId?.$oid || s.employeeId || "";
+        const liveEmp = employeeByObjId[empObjId] || employeeByEmpId[s.emp_id] || null;
+        const livePan = liveEmp?.pan_number || liveEmp?.pan || s.pan || "-";
+        const liveName = liveEmp
+          ? [liveEmp.first_name, liveEmp.last_name].filter(Boolean).join(" ") || liveEmp.name || s.emp_name
+          : s.emp_name;
+        const empType = liveEmp?.employee_type || s.employee_type || "permanent";
+        const source = empType === "contract" ? "Contract" : empType === "intern" ? "Intern" : "Salary";
+        const gross = parseFloat(s.gross_salary || 0);
+        const tds = parseFloat(s.tds || 0);
+        const rate = gross > 0 ? parseFloat(((tds / gross) * 100).toFixed(2)) : 0;
+        return {
+          id: `sal-${s._id?.$oid || s.emp_id}`,
+          date: s.paid_on || (s.period ? `${s.period}-01` : null),
+          period: s.period,
+          deductee: liveName || "-",
+          pan: livePan,
+          section: "192",
+          amount: gross,
+          tdsRate: rate,
+          tdsAmount: tds,
+          challan: "-",
+          status: s.status === "Paid" ? "deposited" : "pending",
+          source,
+          emp_id: liveEmp?.emp_id || s.emp_id || "-",
+          designation: liveEmp?.designation || s.designation || "-",
+          department: liveEmp?.department || s.department || "-",
+          basic_salary: parseFloat(s.basic_salary || 0),
+          net_salary: parseFloat(s.net_salary || 0),
+          payment_mode: s.payment_mode || "-",
+          tds_section_key: s.tds_section_key || "",
+          tds_section_old: s.tds_section_old || "",
+          tds_section_new: s.tds_section_new || "",
+          tds_section_nature: s.tds_section_nature || "",
+        };
+      });
 
     const invoiceRows = (Array.isArray(incomingInvoices) ? incomingInvoices : [])
       .filter((inv) => inv.tds_applicable === true && inSelectedMonths(inv.invoice_date || inv.paid_on))
       .map((inv) => {
+        const vendorObjId = inv.vendorId?.$oid || inv.vendorId || inv.vendor_id?.$oid || inv.vendor_id || "";
+        const liveCustomer = customerByObjId[vendorObjId]
+          || customerByName[(inv.vendor_name || "").toLowerCase()]
+          || null;
+        const livePan = liveCustomer?.pan || liveCustomer?.pan_number || inv.pan || "-";
         const gross = parseFloat(inv.subTotal || inv.sub_total || 0);
         const tds = parseFloat(inv.tds_total || inv.total_tds || 0);
         const rate = gross > 0 ? parseFloat(((tds / gross) * 100).toFixed(2)) : 0;
         return {
           id: `inv-${inv._id?.$oid || inv.invoice_number}`,
           date: inv.invoice_date || inv.paid_on,
-          deductee: inv.vendor_name || inv.company_name || "-",
-          pan: inv.pan || "-",
+          deductee: liveCustomer?.companyName || liveCustomer?.customerName || inv.vendor_name || "-",
+          pan: livePan,
+          vendor_id: vendorObjId || "-",
           section: "",
           amount: gross,
           tdsRate: rate,
@@ -251,7 +288,7 @@ export default function TDSCompliance() {
           source: "Invoice",
           invoice_number: inv.invoice_number || "-",
           due_date: inv.due_date || "-",
-          vendor_gstin: inv.vendor_gstin || "-",
+          vendor_gstin: liveCustomer?.gstIN || liveCustomer?.gstin || inv.vendor_gstin || "-",
           place_of_supply: inv.place_of_supply || "-",
           tds_section_key: inv.tds_section_key || "",
           tds_section_new: inv.tds_section_new || "",
@@ -271,7 +308,7 @@ export default function TDSCompliance() {
       const tb = b.date ? new Date(b.date).getTime() : 0;
       return tb - ta;
     });
-  }, [salaryData, incomingInvoices, selectedMonths]);
+  }, [salaryData, incomingInvoices, selectedMonths, employees, customersData]);
 
   const filteredReturns = filterStatus === "all"
     ? tdsReturns

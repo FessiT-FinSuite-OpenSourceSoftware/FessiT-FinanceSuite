@@ -64,6 +64,7 @@ const initialCustomer = {
   customerName: "",
   companyName: "",
   gstIN: "",
+  pan: "",
   CustomerCode: "",
   addresses: [{ label: "Primary Address", value: "", isEditing: false }],
   country: "",
@@ -185,6 +186,11 @@ export default function EditCustomer() {
           error = "Invalid email address.";
         break;
 
+      case "pan":
+        if (value && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value.toUpperCase()))
+          error = "Invalid PAN format (e.g. ABCDE1234F).";
+        break;
+
       case "gstIN":
         if (!/^[A-Za-z0-9]*$/.test(value))
           error = "GSTIN must be alphanumeric only.";
@@ -201,7 +207,7 @@ export default function EditCustomer() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setCustomer({ ...customer, [name]: value });
+    setCustomer({ ...customer, [name]: name === "pan" ? value.toUpperCase() : value });
     validateForm(name, value);
     if (inputErrors[name]) {
       setInputErrors((prevErrors) => {
@@ -330,6 +336,7 @@ export default function EditCustomer() {
         customerName: currentCustomer.customerName || "",
         companyName: currentCustomer.companyName || "",
         gstIN: currentCustomer.gstIN || "",
+        pan: currentCustomer.pan || "",
         CustomerCode: displayCustomerCode,
         country: currentCustomer.country || "",
         phone: currentCustomer.phone || "",
@@ -527,16 +534,15 @@ export default function EditCustomer() {
               className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500"
               placeholder="Enter GSTIN"
             />
-            {inputErrors.gstIN && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {inputErrors.gstIN}
-              </p>
-            )}
-            {errors.gstIN && (
-              <p className="absolute text-[13px] text-[#f10404]">
-                {errors.gstIN}
-              </p>
-            )}
+            {inputErrors.gstIN && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.gstIN}</p>}
+            {errors.gstIN && <p className="absolute text-[13px] text-[#f10404]">{errors.gstIN}</p>}
+          </div>
+
+          {/* PAN */}
+          <div className="relative">
+            <label className="block text-gray-700 font-medium mb-1">PAN</label>
+            <input type="text" name="pan" value={customer.pan} onChange={handleChange} maxLength={10} className="border border-gray-300 rounded-md px-3 py-2 w-full focus:ring-1 focus:ring-blue-500 uppercase" placeholder="e.g. ABCDE1234F" />
+            {(inputErrors.pan || errors.pan) && <p className="absolute text-[13px] text-[#f10404]">{inputErrors.pan || errors.pan}</p>}
           </div>
 
           {/* Customer Code */}

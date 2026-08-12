@@ -116,7 +116,7 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
     const q = search.trim().toLowerCase();
     const sq = sectionSearch.trim().toLowerCase();
     return deductions.filter((d) => {
-      const dateToCheck = d.source === "Salary" ? (d.period || d.date) : d.date;
+      const dateToCheck = d.source === "Invoice" ? d.date : (d.period || d.date);
       if (monthSet.size > 0 && !inMonthSet(dateToCheck, monthSet)) return false;
       const matchSearch = !q ||
         (d.deductee || "").toLowerCase().includes(q) ||
@@ -127,7 +127,8 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
         (d.tds_section_key || "").toLowerCase().includes(sq) ||
         (d.tds_section_old || "").toLowerCase().includes(sq) ||
         (d.tds_section_new || "").toLowerCase().includes(sq);
-      const matchSource = sourceFilter === "All" || d.source === sourceFilter;
+      const matchSource = sourceFilter === "All" || 
+        (sourceFilter === "Invoice" ? (d.source === "Invoice" || d.source === "Contract" || d.source === "Intern") : d.source === sourceFilter);
       const matchStatus = statusFilter === "All" || d.status === statusFilter;
       return matchSearch && matchSection && matchSource && matchStatus;
     });
@@ -176,8 +177,12 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
     {
       label: "Source",
       render: (d) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${d.source === "Salary" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
-          }`}>
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          d.source === "Salary" ? "bg-purple-100 text-purple-800" :
+          d.source === "Contract" ? "bg-orange-100 text-orange-800" :
+          d.source === "Intern" ? "bg-pink-100 text-pink-800" :
+          "bg-blue-100 text-blue-800"
+        }`}>
           {d.source}
         </span>
       ),
@@ -186,10 +191,10 @@ export default function TDSDeductions({ deductions = [], isLoading = false, sele
       label: "Amount", right: true,
       render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">₹ {fmt(d.amount)}</span>,
     },
-    {
-      label: "TDS Rate", right: true,
-      render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">{d.tdsRate}%</span>,
-    },
+    // {
+    //   label: "TDS Rate", right: true,
+    //   render: (d) => <span className="text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap">{d.tdsRate}%</span>,
+    // },
     {
       label: "TDS Amount", right: true,
       render: (d) => <span className="text-sm font-semibold text-gray-800 dark:text-slate-200 whitespace-nowrap">₹ {fmt(d.tdsAmount)}</span>,

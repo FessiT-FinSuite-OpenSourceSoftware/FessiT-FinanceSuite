@@ -6,6 +6,7 @@ use crate::{
         salary_repository::SalaryRepository,
         user_repository::UserRepository,
         organisation_repository::OrganisationRepository,
+        employee_repository::EmployeeRepository,
     },
 };
 
@@ -14,14 +15,16 @@ pub struct SalaryService {
     repo: Arc<SalaryRepository>,
     user_repo: Arc<UserRepository>,
     org_repo: Arc<OrganisationRepository>,
+    employee_repo: Arc<EmployeeRepository>,
 }
 
 impl SalaryService {
-    pub fn new(repo: SalaryRepository, user_repo: UserRepository, org_repo: OrganisationRepository) -> Self {
+    pub fn new(repo: SalaryRepository, user_repo: UserRepository, org_repo: OrganisationRepository, employee_repo: EmployeeRepository) -> Self {
         Self {
             repo: Arc::new(repo),
             user_repo: Arc::new(user_repo),
             org_repo: Arc::new(org_repo),
+            employee_repo: Arc::new(employee_repo),
         }
     }
 
@@ -31,6 +34,38 @@ impl SalaryService {
 
     pub async fn create(&self, mut salary: Salary, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Salary> {
         salary.organisation_id = Some(*org_id);
+
+        // Populate PAN and user_id from employee record
+        if let Some(emp_oid) = salary.employee_object_id {
+            if let Ok(Some(emp)) = self.employee_repo.get_by_id(&emp_oid.to_hex()).await {
+                if salary.pan.is_empty() {
+                    salary.pan = emp.pan_number.clone();
+                }
+                if salary.employee_type.is_empty() {
+                    salary.employee_type = format!("{:?}", emp.employee_type).to_lowercase();
+                }
+                if salary.user_id.is_none() && !emp.email.is_empty() {
+                    if let Ok(Some(user)) = self.user_repo.get_user_by_email(&emp.email).await {
+                        salary.user_id = user.id;
+                    }
+                }
+            }
+        } else if !salary.emp_id.is_empty() {
+            // fallback: scan by emp_id string
+            if let Ok(employees) = self.employee_repo.get_all_for_org(org_id).await {
+                if let Some(emp) = employees.iter().find(|e| e.emp_id == salary.emp_id) {
+                    if salary.pan.is_empty() { salary.pan = emp.pan_number.clone(); }
+                    if salary.employee_type.is_empty() {
+                        salary.employee_type = format!("{:?}", emp.employee_type).to_lowercase();
+                    }
+                    if salary.user_id.is_none() && !emp.email.is_empty() {
+                        if let Ok(Some(user)) = self.user_repo.get_user_by_email(&emp.email).await {
+                            salary.user_id = user.id;
+                        }
+                    }
+                }
+            }
+        }
 
         // Fetch professional_tax from org settings (not user-editable)
         let professional_tax = self.org_repo
@@ -52,14 +87,59 @@ impl SalaryService {
     }
 
     pub async fn list(&self, org_id: &mongodb::bson::oid::ObjectId) -> anyhow::Result<Vec<Salary>> {
-        Ok(self.repo.get_by_org(org_id).await?)
+        let mut salaries = self.repo.get_by_org(org_id).await?;
+        // Enrich pan and emp_name from live employee record for older records that lack them
+        let needs_enrich = salaries.iter().any(|s| s.pan.is_empty() || s.emp_name.is_empty());
+        if needs_enrich {
+            let employees = self.employee_repo.get_all_for_org(org_id).await.unwrap_or_default();
+            for s in salaries.iter_mut() {
+                if s.pan.is_empty() || s.emp_name.is_empty() {
+                    let emp = s.employee_object_id
+                        .and_then(|oid| employees.iter().find(|e| e.id == Some(oid)))
+                        .or_else(|| employees.iter().find(|e| e.emp_id == s.emp_id));
+                    if let Some(emp) = emp {
+                        if s.pan.is_empty() { s.pan = emp.pan_number.clone(); }
+                        if s.emp_name.is_empty() {
+                            s.emp_name = format!("{} {}", emp.first_name, emp.last_name).trim().to_string();
+                        }
+                        if s.employee_type.is_empty() {
+                            s.employee_type = format!("{:?}", emp.employee_type).to_lowercase();
+                        }
+                    }
+                }
+            }
+        }
+        Ok(salaries)
     }
 
     pub async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Salary>> {
         Ok(self.repo.get_by_id(id).await?)
     }
 
-    pub async fn update(&self, id: &str, salary: Salary) -> anyhow::Result<Option<Salary>> {
+    pub async fn update(&self, id: &str, mut salary: Salary) -> anyhow::Result<Option<Salary>> {
+        if salary.user_id.is_none() {
+            if let Some(emp_oid) = salary.employee_object_id {
+                if let Ok(Some(emp)) = self.employee_repo.get_by_id(&emp_oid.to_hex()).await {
+                    if !emp.email.is_empty() {
+                        if let Ok(Some(user)) = self.user_repo.get_user_by_email(&emp.email).await {
+                            salary.user_id = user.id;
+                        }
+                    }
+                }
+            } else if !salary.emp_id.is_empty() {
+                if let Ok(employees) = self.employee_repo.get_all_for_org(
+                    &salary.organisation_id.unwrap_or_default()
+                ).await {
+                    if let Some(emp) = employees.iter().find(|e| e.emp_id == salary.emp_id) {
+                        if !emp.email.is_empty() {
+                            if let Ok(Some(user)) = self.user_repo.get_user_by_email(&emp.email).await {
+                                salary.user_id = user.id;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         Ok(self.repo.update(id, salary).await?)
     }
 

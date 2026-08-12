@@ -144,6 +144,12 @@ impl CustomerRepository {
                 .unwrap()
                 .insert("CustomerCode", customer_code);
         }
+        if let Some(pan) = req.pan {
+            update_doc
+                .get_document_mut("$set")
+                .unwrap()
+                .insert("pan", pan);
+        }
         if let Some(addresses) = req.addresses {
             let addresses_bson = mongodb::bson::to_bson(&addresses)
                 .map_err(|e| ApiError::InternalServerError(e.to_string()))?;

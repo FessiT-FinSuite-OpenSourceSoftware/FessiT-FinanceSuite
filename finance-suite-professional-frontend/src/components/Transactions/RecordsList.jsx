@@ -54,7 +54,7 @@ function RecordStatusBadge({ value }) {
   );
 }
 
-function RecordNotesModal({ rec, onSave, onClose }) {
+function RecordNotesModal({ rec, onSave, onClose, canWrite = true }) {
   const [draft, setDraft] = useState(rec.notes ?? "");
 
   React.useEffect(() => {
@@ -76,18 +76,19 @@ function RecordNotesModal({ rec, onSave, onClose }) {
         </div>
         <div className="mb-5">
           <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Notes</label>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={4}
-            placeholder="Add notes…"
-            autoFocus
-            className="w-full border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
-          />
+          {canWrite
+            ? <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={4} placeholder="Add notes…" autoFocus className="w-full border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none" />
+            : <p className="text-sm text-gray-700 dark:text-slate-200 whitespace-pre-wrap">{draft || <span className="italic text-gray-400">No notes</span>}</p>
+          }
         </div>
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">Cancel</button>
-          <button onClick={() => { onSave(draft); onClose(); }} className="px-4 py-2 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white">Save</button>
+          {canWrite
+            ? <>
+                <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">Cancel</button>
+                <button onClick={() => { onSave(draft); onClose(); }} className="px-4 py-2 text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white">Save</button>
+              </>
+            : <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">Close</button>
+          }
         </div>
       </div>
     </div>,
@@ -165,6 +166,7 @@ function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange, can
               <option value="notreviewed">Not Reviewed</option>
               <option value="accepted">Accepted</option>
               <option value="rejected">Rejected</option>
+              
             </select>
           ) : (
             <button onClick={canWrite ? (e) => { e.stopPropagation(); setChangingStatus(true); } : undefined} title={canWrite ? "Change status" : undefined} className={!canWrite ? "cursor-default" : ""}>
@@ -203,6 +205,7 @@ function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange, can
         {/* Actions */}
         <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-end gap-1">
+            {canWrite && (
             <button
               onClick={() => setNotesOpen(true)}
               className={`p-1.5 rounded-md transition-colors ${rec.notes ? "text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" : "text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"}`}
@@ -210,6 +213,7 @@ function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange, can
             >
               <PenLine className="w-3.5 h-3.5" />
             </button>
+            )}
             {canWrite && (
             <button
               onClick={handleDelete}
@@ -228,6 +232,7 @@ function RecordRow({ rec, onSelect, onDelete, onStatusChange, onNotesChange, can
           rec={rec}
           onSave={(notes) => onNotesChange(rec.id, notes)}
           onClose={() => setNotesOpen(false)}
+          canWrite={canWrite}
         />
       )}
     </>

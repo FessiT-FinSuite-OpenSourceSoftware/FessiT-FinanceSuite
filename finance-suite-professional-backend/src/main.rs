@@ -98,17 +98,17 @@ async fn main() -> std::io::Result<()> {
     // 🔹 Incoming Invoices
     let incoming_invoice_collection = db_client.get_incoming_invoice_collection();
     let incoming_invoice_repository = IncomingInvoiceRepository::new(incoming_invoice_collection);
-    let incoming_invoice_service = IncomingInvoiceService::new(incoming_invoice_repository, user_repository.clone());
-
-    // 🔹 Salaries
-    let salary_collection = db_client.get_salary_collection();
-    let salary_repository = SalaryRepository::new(salary_collection);
-    let salary_service = SalaryService::new(salary_repository, user_repository.clone(), organisation_repository.clone());
+    let incoming_invoice_service = IncomingInvoiceService::new(incoming_invoice_repository, user_repository.clone(), customer_repository.clone());
 
     // 🔹 Employees
     let employee_collection = db_client.get_employee_collection();
     let employee_repository = EmployeeRepository::new(employee_collection.clone());
-    let employee_service = EmployeeService::new(employee_repository, user_repository.clone());
+    let employee_service = EmployeeService::new(employee_repository.clone(), user_repository.clone());
+
+    // 🔹 Salaries
+    let salary_collection = db_client.get_salary_collection();
+    let salary_repository = SalaryRepository::new(salary_collection);
+    let salary_service = SalaryService::new(salary_repository, user_repository.clone(), organisation_repository.clone(), employee_repository.clone());
 
     // 🔹 General Expenses (needs employee collection for name resolution)
     let general_expense_collection = db_client.get_general_expense_collection();

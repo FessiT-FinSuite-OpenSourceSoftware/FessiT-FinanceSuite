@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, createContext, useCont
 import ReactDOM from "react-dom";
 import { Check, X, Edit2, Trash2, FileText } from "lucide-react";
 import { updateTransaction, updateTransactionNotes } from "../../ReduxApi/transactions";
-import { inputCls, selectCls, TRANSACTION_CATEGORIES, STATUS_META, STATUS_OPTIONS } from "./constants";
+import { inputCls, selectCls, TRANSACTION_CATEGORIES, CATEGORY_COLORS, STATUS_META, STATUS_OPTIONS } from "./constants";
 import { fmtDate, truncateText, toInputDate, getTransactionType } from "./helpers";
 import { InfoCard } from "../../shared/ui";
 
@@ -13,6 +13,7 @@ export const fmt = (n) =>
 function NotesModal({ row, onSave, onClose, canWrite = true }) {
   const [notesDraft,  setNotesDraft]  = useState(row.notes  ?? "");
   const [statusDraft, setStatusDraft] = useState(row.status ?? "pending");
+  const backdropDown = useRef(false);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -21,7 +22,11 @@ function NotesModal({ row, onSave, onClose, canWrite = true }) {
   }, [onClose]);
 
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-[2px]" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
+      onMouseDown={(e) => { backdropDown.current = e.target === e.currentTarget; }}
+      onMouseUp={(e) => { if (backdropDown.current && e.target === e.currentTarget) onClose(); backdropDown.current = false; }}
+    >
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-black/10 dark:ring-slate-700 p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-slate-100">{canWrite ? "Edit Notes & Status" : "Notes & Status"}</h3>
@@ -69,7 +74,7 @@ export function StatusCell({ value, editing, onChange, onQuickSave, canWrite = t
   const m = STATUS_META[status] ?? STATUS_META.pending;
   const opts = STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>);
   if (editing && canWrite) return <select value={status} onChange={(e) => onChange(e.target.value)} className={selectCls + " w-28"}>{opts}</select>;
-  if (open && canWrite)    return <select autoFocus value={status} onChange={(e) => { onQuickSave(e.target.value); setOpen(false); }} onBlur={() => setOpen(false)} className={selectCls + " w-28"}>{opts}</select>;
+  if (open && canWrite)    return <select autoFocus value={status} onChange={(e) => { onQuickSave(e.target.value); setOpen(false); }} onBlur={() => setOpen(false)} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} className={selectCls + " w-28"}>{opts}</select>;
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${canWrite ? "cursor-pointer" : "cursor-default"} ${m.cls}`} onClick={canWrite ? (e) => { e.stopPropagation(); setOpen(true); } : undefined}>{m.label}</span>;
 }
 
@@ -78,9 +83,9 @@ function CategoryCell({ value, editing, onChange, onQuickSave, canWrite = true }
   const [open, setOpen] = useState(false);
   const cat = value || "General";
   const opts = TRANSACTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>);
-  if (editing && canWrite) return <select value={cat} onChange={(e) => onChange(e.target.value)} className={selectCls + " w-32"}>{opts}</select>;
-  if (open && canWrite)    return <select autoFocus value={cat} onChange={(e) => { onQuickSave(e.target.value); setOpen(false); }} onBlur={() => setOpen(false)} className={selectCls + " w-32"}>{opts}</select>;
-  return <span onClick={canWrite ? (e) => { e.stopPropagation(); setOpen(true); } : undefined} className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 ${canWrite ? "hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer" : "cursor-default"}`}>{cat}</span>;
+  if (editing && canWrite) return <select value={cat} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === "Escape" && onChange(cat)} className={selectCls + " w-32"}>{opts}</select>;
+  if (open && canWrite)    return <select autoFocus value={cat} onChange={(e) => { onQuickSave(e.target.value); setOpen(false); }} onBlur={() => setOpen(false)} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} className={selectCls + " w-32"}>{opts}</select>;
+  return <span onClick={canWrite ? (e) => { e.stopPropagation(); setOpen(true); } : undefined} className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${CATEGORY_COLORS[cat] ?? CATEGORY_COLORS.General} ${canWrite ? "cursor-pointer" : "cursor-default"}`}>{cat}</span>;
 }
 
 // ── Inline edit input helper ──────────────────────────────────────────────────
@@ -101,9 +106,9 @@ export const TxnRowContext = createContext({});
 
 // ── SavedRowWrapper: holds state + registers into context map ─────────────────
 export const SavedRowWrapper = React.memo(function SavedRowWrapper({ row, id, dispatch, setDeleteConfirm, onRegister, canWrite = true }) {
-  const onSave      = useCallback((d)           => dispatch(updateTransaction(id, d)),                    [dispatch, id]);
-  const onDelete    = useCallback(()            => setDeleteConfirm(id),                                  [setDeleteConfirm, id]);
-  const onSaveNotes = useCallback((notes, status) => dispatch(updateTransactionNotes(id, notes, status)), [dispatch, id]);
+  const onSave      = useCallback((d)             => dispatch(updateTransaction(id, d)),                    [dispatch, id]);
+  const onDelete    = useCallback(()              => setDeleteConfirm(id),                                  [setDeleteConfirm, id]);
+  const onSaveNotes = useCallback((notes, status) => dispatch(updateTransactionNotes(id, notes, status)),   [dispatch, id]);
 
   const initDraft = useCallback(() => ({
     ...row,
@@ -126,6 +131,14 @@ export const SavedRowWrapper = React.memo(function SavedRowWrapper({ row, id, di
     onRegister(id, { editing, setEditing, notesOpen, setNotesOpen, draft, setDraft, resetDraft, onSave, onDelete, onSaveNotes, row });
   });
 
+  // Esc cancels row editing
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (e) => { if (e.key === "Escape") { resetDraft(); setEditing(false); } };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [editing, resetDraft]);
+
   // Render modals that belong to this row
   return notesOpen ? (
     <NotesModal row={row} onSave={onSaveNotes} onClose={() => setNotesOpen(false)} canWrite={canWrite} />
@@ -133,7 +146,7 @@ export const SavedRowWrapper = React.memo(function SavedRowWrapper({ row, id, di
 });
 
 // ── Columns definition (stable — reads live state via stateMap ref) ───────────
-export function buildTxnColumns(stateMap, canWrite = true) {
+export function buildTxnColumns(stateMap, canWrite = true, dispatch = null) {
   const s = (row) => stateMap.current[row._id?.$oid || row._id || row.id];
 
   return [
@@ -217,7 +230,10 @@ export function buildTxnColumns(stateMap, canWrite = true) {
             value={st?.editing ? st.draft.transaction_category : row.transaction_category}
             editing={st?.editing}
             onChange={(v) => st?.setDraft((p) => ({ ...p, transaction_category: v }))}
-            onQuickSave={canWrite && !st?.editing ? (v) => st?.onSave({ ...row, transaction_category: v }) : null}
+            onQuickSave={canWrite && !st?.editing && dispatch ? (v) => {
+              const rowId = row._id?.$oid || row._id || row.id;
+              dispatch(updateTransaction(rowId, { ...row, transaction_category: v }));
+            } : null}
             canWrite={canWrite}
           />
         );

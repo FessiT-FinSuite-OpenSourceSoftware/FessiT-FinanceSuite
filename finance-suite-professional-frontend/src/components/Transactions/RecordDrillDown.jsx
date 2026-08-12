@@ -46,19 +46,24 @@ export default function RecordDrillDown({
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated  = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const { totalCredits, totalDebits } = useMemo(() => {
-    let credits = 0, debits = 0;
+  const { totalCredits, totalDebits, debtTaken, debtRepaid } = useMemo(() => {
+    let credits = 0, debits = 0, debtTaken = 0, debtRepaid = 0;
     for (const t of filtered) {
       const type   = getTransactionType(t);
       const credit = t.credit != null && t.credit !== "" ? parseFloat(t.credit) : null;
       const debit  = t.debit  != null && t.debit  !== "" ? parseFloat(t.debit)  : null;
       if (type === "Credit") credits += credit ?? (parseFloat(t.amount) || 0);
       else                   debits  += debit  ?? (parseFloat(t.amount) || 0);
+      const txnCat = t.transaction_category ?? "General";
+      const amt = (debit ?? credit ?? parseFloat(t.amount) ?? 0);
+      if (txnCat === "Debt Taken")  debtTaken  += amt;
+      if (txnCat === "Debt Repaid") debtRepaid += amt;
     }
-    return { totalCredits: credits, totalDebits: debits };
+    return { totalCredits: credits, totalDebits: debits, debtTaken, debtRepaid };
   }, [filtered]);
 
-  const netFlow = totalCredits - totalDebits;
+  const netFlow   = totalCredits - totalDebits;
+  const netDebt   = debtTaken - debtRepaid;
 
   const handleExport = async () => {
     const toastId = toast.loading("Preparing Excel export…");
@@ -94,7 +99,7 @@ export default function RecordDrillDown({
   };
 
   // Stable columns — reads live state from stateMap ref at render time
-  const columns = useMemo(() => buildTxnColumns(stateMap, canWrite), [canWrite]); // eslint-disable-line
+  const columns = useMemo(() => buildTxnColumns(stateMap, canWrite, dispatch), [canWrite, dispatch]); // eslint-disable-line
 
   return (
     <>
@@ -123,11 +128,18 @@ export default function RecordDrillDown({
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Total Transactions" value={isLoading ? "…" : filtered.length} />
         <StatCard label="Total Credits" value={isLoading ? "…" : fmt(totalCredits)} valueClass="text-green-600 dark:text-green-400" />
         <StatCard label="Total Debits"  value={isLoading ? "…" : fmt(totalDebits)}  valueClass="text-red-600 dark:text-red-400" />
+       <StatCard
+          label="Net Debt"
+          value={isLoading ? "…" : fmt(netDebt)}
+          valueClass={netDebt > 0 ? "text-orange-600 dark:text-orange-400" : netDebt < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-gray-700 dark:text-slate-200"}
+          // subtext={isLoading ? undefined : `↑ ${fmt(debtTaken)}  ↓ ${fmt(debtRepaid)}`}
+        />
         <StatCard label="Net Balance"   value={isLoading ? "…" : fmt(netFlow)}      valueClass={netFlow >= 0 ? "text-indigo-700 dark:text-indigo-400" : "text-red-600 dark:text-red-400"} />
+        
       </div>
 
       {/* Filter Bar */}
@@ -137,11 +149,11 @@ export default function RecordDrillDown({
           <option value="Credit">Credit</option>
           <option value="Debit">Debit</option>
         </FilterSelect>
-        <FilterSelect value={categoryFilter} onChange={onCategoryChange}>
+        {/* <FilterSelect value={categoryFilter} onChange={onCategoryChange}>
           {categories.map((c) => <option key={c} value={c}>{c === "All" ? "All Categories" : c}</option>)}
-        </FilterSelect>
+        </FilterSelect> */}
         <FilterSelect value={txnCategoryFilter} onChange={onTxnCategoryChange}>
-          <option value="All">All Types</option>
+          <option value="All">All Categories</option>
           {TRANSACTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </FilterSelect>
       </TabActionBar>

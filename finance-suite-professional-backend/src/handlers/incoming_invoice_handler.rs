@@ -316,6 +316,7 @@ pub async fn update_incoming_invoice_with_file(
         organisation_id: existing.organisation_id,
         vendor_id: existing.vendor_id,
         cost_type: parse_cost_type(fields.remove("cost_type").or_else(|| fields.remove("costType"))),
+        pan: existing.pan,
     };
 
     match service.update(&id, req).await

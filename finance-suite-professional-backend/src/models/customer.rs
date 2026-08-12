@@ -62,6 +62,9 @@ pub struct Customer {
     #[serde(rename = "CustomerCode", default)]
     pub customer_code: String,
 
+    #[serde(default)]
+    pub pan: Option<String>,
+
     #[validate(length(min = 1, message = "At least one address is required"))]
     pub addresses: Vec<Address>,
 
@@ -108,6 +111,8 @@ pub struct CreateCustomerRequest {
     pub gst_in: String,
     #[serde(rename = "CustomerCode", default)]
     pub customer_code: String,
+    #[serde(default)]
+    pub pan: Option<String>,
     pub addresses: Vec<Address>,
     pub country: String,
     pub phone: String,
@@ -136,6 +141,8 @@ pub struct UpdateCustomerRequest {
     pub gst_in: Option<String>,
     #[serde(rename = "CustomerCode")]
     pub customer_code: Option<String>,
+    #[serde(default)]
+    pub pan: Option<String>,
     pub addresses: Option<Vec<Address>>,
     pub country: Option<String>,
     pub phone: Option<String>,
@@ -164,6 +171,7 @@ impl Customer {
             company_name: req.company_name,
             gst_in: req.gst_in,
             customer_code: req.customer_code,
+            pan: req.pan,
             addresses: req.addresses,
             country: req.country,
             phone: req.phone,
