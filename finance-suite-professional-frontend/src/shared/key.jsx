@@ -11,10 +11,16 @@ const getConfig = () => ({
 const KeyUri = {
   // local server
   BACKENDURI: "http://127.0.0.1:8082/api/v1",
+  
+  // Gous sir
   // BACKENDURI: "http://54.206.93.33:8082/api/v1",
 
   //production server of trail period users
   // BACKENDURI: "http://65.0.26.187:8082/api/v1",
+
+  //Syed Sir server
+    // BACKENDURI: "http://13.60.184.133:8082/api/v1",
+
 };
 
 // Configure axios defaults

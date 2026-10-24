@@ -1,6 +1,6 @@
 use actix_web::{
     delete, get, patch, post, put,
-    web::{self, Json, Path},
+    web::{self, Json, Path, Query},
     HttpMessage, HttpRequest, HttpResponse, Responder,
 };
 use mongodb::bson::oid::ObjectId;
@@ -11,6 +11,7 @@ use crate::{
         record::{UpdateRecordStatusRequest, UpdateRecordNotesRequest},
         transaction::{SaveTransactionsRequest, Transaction, UpdateNotesRequest},
     },
+    repository::transaction_repository::TransactionFilterParams,
     services::transaction_service::TransactionService,
     utils::auth::Claims,
     utils::permissions::{check_permission, create_permission_error, Module, PermissionAction},
@@ -43,6 +44,7 @@ pub async fn list_records(
 pub async fn list_by_record(
     service: web::Data<TransactionService>,
     record_id: Path<String>,
+    query: Query<TransactionFilterParams>,
     http_req: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     let claims = http_req.extensions().get::<Claims>().cloned()
@@ -56,9 +58,13 @@ pub async fn list_by_record(
         .ok_or_else(|| actix_web::error::ErrorBadRequest("User has no organisation"))?;
     let rid = parse_oid(&record_id.into_inner())
         .ok_or_else(|| actix_web::error::ErrorBadRequest("Invalid record id"))?;
-    let items = service.list_by_record_id(&org_id, &rid).await
+    let params = query.into_inner();
+    eprintln!("[TXN] record={} type={:?} cat={:?} from={:?} to={:?} search={:?} page={:?} size={:?}",
+        rid, params.txn_type, params.txn_category, params.date_from, params.date_to,
+        params.search, params.page, params.page_size);
+    let (items, total) = service.list_by_record_filtered(&org_id, &rid, &params).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    Ok(HttpResponse::Ok().json(json!({ "data": items, "total": items.len() })))
+    Ok(HttpResponse::Ok().json(json!({ "data": items, "total": total })))
 }
 
 /// GET /api/v1/transactions

@@ -4,7 +4,7 @@ use crate::{
     models::{record::Record, transaction::Transaction},
     repository::{
         record_repository::RecordRepository,
-        transaction_repository::TransactionRepository,
+        transaction_repository::{TransactionRepository, TransactionFilterParams},
         user_repository::UserRepository,
     },
 };
@@ -99,6 +99,15 @@ impl TransactionService {
 
     pub async fn list_by_record_id(&self, org_id: &ObjectId, record_id: &ObjectId) -> anyhow::Result<Vec<Transaction>> {
         Ok(self.repo.get_by_record_id(org_id, record_id).await?)
+    }
+
+    pub async fn list_by_record_filtered(
+        &self,
+        org_id: &ObjectId,
+        record_id: &ObjectId,
+        params: &TransactionFilterParams,
+    ) -> anyhow::Result<(Vec<Transaction>, u64)> {
+        Ok(self.repo.get_by_record_id_filtered(org_id, record_id, params).await?)
     }
 
     pub async fn list(&self, org_id: &ObjectId) -> anyhow::Result<Vec<Transaction>> {

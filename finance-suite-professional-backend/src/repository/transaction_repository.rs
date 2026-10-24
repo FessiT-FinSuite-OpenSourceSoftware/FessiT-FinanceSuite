@@ -5,12 +5,48 @@ use mongodb::{
     Collection,
 };
 use futures::stream::TryStreamExt;
+use serde::Deserialize;
 use crate::models::transaction::Transaction;
+
+#[derive(Debug, Deserialize, Default)]
+pub struct TransactionFilterParams {
+    pub txn_type:     Option<String>,
+    pub txn_category: Option<String>,
+    pub date_from:    Option<String>,
+    pub date_to:      Option<String>,
+    pub search:       Option<String>,
+    pub page:         Option<u32>,
+    pub page_size:    Option<u32>,
+}
 
 #[derive(Clone)]
 pub struct TransactionRepository {
     collection: Arc<Collection<Transaction>>,
     raw: Arc<Collection<Document>>,
+}
+
+fn detect_mongo_date_format(sample: &str) -> &'static str {
+    // "01-Jul-2026"  dd-Mon-yyyy
+    if sample.len() == 11 && sample.chars().nth(2) == Some('-') && sample.chars().nth(6) == Some('-') {
+        return "%d-%b-%Y";
+    }
+    // "2026-07-01"  yyyy-mm-dd
+    if sample.len() == 10 && sample.chars().nth(4) == Some('-') && sample.chars().nth(7) == Some('-') {
+        return "%Y-%m-%d";
+    }
+    // "01/07/2026"  dd/mm/yyyy
+    if sample.len() == 10 && sample.chars().nth(2) == Some('/') && sample.chars().nth(5) == Some('/') {
+        return "%d/%m/%Y";
+    }
+    // "01.07.2026"  dd.mm.yyyy
+    if sample.len() == 10 && sample.chars().nth(2) == Some('.') && sample.chars().nth(5) == Some('.') {
+        return "%d.%m.%Y";
+    }
+    // "2026/07/01"  yyyy/mm/dd
+    if sample.len() == 10 && sample.chars().nth(4) == Some('/') && sample.chars().nth(7) == Some('/') {
+        return "%Y/%m/%d";
+    }
+    "%Y-%m-%d"
 }
 
 fn from_doc(raw: Document) -> Option<Transaction> {
@@ -79,6 +115,99 @@ impl TransactionRepository {
             if let Some(t) = from_doc(raw) { list.push(t); }
         }
         Ok(list)
+    }
+
+    pub async fn get_by_record_id_filtered(
+        &self,
+        org_id: &ObjectId,
+        record_id: &ObjectId,
+        params: &TransactionFilterParams,
+    ) -> Result<(Vec<Transaction>, u64), MongoError> {
+        let mut filter = doc! { "organisationId": org_id, "recordId": record_id };
+
+        // Type filter — debit/credit fields are absent (not null) when not applicable
+        if let Some(ref t) = params.txn_type {
+            if t == "Credit" {
+                filter.insert("credit", doc! { "$exists": true, "$ne": mongodb::bson::Bson::Null });
+            } else if t == "Debit" {
+                filter.insert("debit", doc! { "$exists": true, "$ne": mongodb::bson::Bson::Null });
+            }
+        }
+
+        // Transaction category filter
+        if let Some(ref cat) = params.txn_category {
+            filter.insert("transaction_category", cat.as_str());
+        }
+
+        // Date range filter — sniff format from a sample doc, then apply adaptively
+        if params.date_from.is_some() || params.date_to.is_some() {
+            let sample_opts = mongodb::options::FindOneOptions::builder()
+                .projection(doc! { "date": 1 })
+                .build();
+            let base_filter = doc! { "organisationId": org_id, "recordId": record_id };
+            let date_fmt = if let Ok(Some(sample_doc)) = self.raw.find_one(base_filter, sample_opts).await {
+                detect_mongo_date_format(sample_doc.get_str("date").unwrap_or(""))
+            } else {
+                "%Y-%m-%d"
+            };
+
+            let mut and_conditions = vec![];
+            if let Some(ref from) = params.date_from {
+                let from_iso = format!("{}T00:00:00Z", from);
+                and_conditions.push(mongodb::bson::Bson::Document(doc! {
+                    "$expr": {
+                        "$gte": [
+                            { "$dateFromString": { "dateString": "$date", "format": date_fmt } },
+                            { "$dateFromString": { "dateString": from_iso.as_str() } }
+                        ]
+                    }
+                }));
+            }
+            if let Some(ref to) = params.date_to {
+                let to_iso = format!("{}T00:00:00Z", to);
+                and_conditions.push(mongodb::bson::Bson::Document(doc! {
+                    "$expr": {
+                        "$lte": [
+                            { "$dateFromString": { "dateString": "$date", "format": date_fmt } },
+                            { "$dateFromString": { "dateString": to_iso.as_str() } }
+                        ]
+                    }
+                }));
+            }
+            if !and_conditions.is_empty() {
+                filter.insert("$and", mongodb::bson::Bson::Array(and_conditions));
+            }
+        }
+
+        // Search filter (narration or reference)
+        if let Some(ref q) = params.search {
+            if !q.is_empty() {
+                filter.insert("$or", mongodb::bson::Bson::Array(vec![
+                    mongodb::bson::Bson::Document(doc! { "narration":    { "$regex": q.as_str(), "$options": "i" } }),
+                    mongodb::bson::Bson::Document(doc! { "description":  { "$regex": q.as_str(), "$options": "i" } }),
+                    mongodb::bson::Bson::Document(doc! { "reference":    { "$regex": q.as_str(), "$options": "i" } }),
+                ]));
+            }
+        }
+
+        let total = self.raw.count_documents(filter.clone(), None).await?;
+
+
+        let skip  = ((params.page.unwrap_or(1).max(1) - 1) * params.page_size.unwrap_or(10)) as u64;
+        let limit = params.page_size.unwrap_or(10) as i64;
+
+        let options = mongodb::options::FindOptions::builder()
+            .sort(doc! { "date": 1 })
+            .skip(skip)
+            .limit(limit)
+            .build();
+
+        let mut cursor = self.raw.find(filter, options).await?;
+        let mut list = Vec::new();
+        while let Some(raw) = cursor.try_next().await? {
+            if let Some(t) = from_doc(raw) { list.push(t); }
+        }
+        Ok((list, total))
     }
 
     pub async fn delete_by_record_id(&self, org_id: &ObjectId, record_id: &ObjectId) -> Result<u64, MongoError> {

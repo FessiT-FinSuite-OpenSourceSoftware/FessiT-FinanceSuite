@@ -173,10 +173,10 @@ export const fetchRecords = () => async (dispatch) => {
   }
 };
 
-export const fetchByRecord = (recordId) => async (dispatch) => {
+export const fetchByRecord = (recordId, params = {}) => async (dispatch) => {
   dispatch(setLoading(true));
   try {
-    const { data } = await axiosInstance.get(`/transactions/by-record/${recordId}`);
+    const { data } = await axiosInstance.get(`/transactions/by-record/${recordId}`, { params });
     dispatch(setEntries(data));
   } catch (err) {
     toast.error(errMsg(err, "Failed to fetch transactions"));

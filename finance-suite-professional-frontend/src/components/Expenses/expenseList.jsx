@@ -110,19 +110,19 @@ const toStoredDate = (yyyymmdd) => {
   return `${d}-${m}-${y}`;
 };
 
-// const TABS = [
-//   { key: "expenses", label: "Reimbursements" },
-//   { key: "incoming", label: "Invoices" },
-//   { key: "salary", label: "Salary" },
-//   { key: "others", label: "General" },
-// ];
-
 const TABS = [
-  { key: "expenses", label: "General" },
+  { key: "expenses", label: "Reimbursements" },
   { key: "incoming", label: "Invoices" },
   { key: "salary", label: "Salary" },
-  { key: "others", label: "Reimbursements" },
+  { key: "others", label: "General" },
 ];
+
+// const TABS = [
+//   { key: "expenses", label: "General" },
+//   { key: "incoming", label: "Invoices" },
+//   { key: "salary", label: "Salary" },
+//   { key: "others", label: "Reimbursements" },
+// ];
 
 export default function ExpenseList() {
   const location = useLocation();
