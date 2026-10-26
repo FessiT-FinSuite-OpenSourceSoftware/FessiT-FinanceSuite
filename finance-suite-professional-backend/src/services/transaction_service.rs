@@ -106,7 +106,7 @@ impl TransactionService {
         org_id: &ObjectId,
         record_id: &ObjectId,
         params: &TransactionFilterParams,
-    ) -> anyhow::Result<(Vec<Transaction>, u64)> {
+    ) -> anyhow::Result<(Vec<Transaction>, u64, Document)> {
         Ok(self.repo.get_by_record_id_filtered(org_id, record_id, params).await?)
     }
 

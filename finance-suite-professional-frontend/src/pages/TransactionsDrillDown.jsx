@@ -28,7 +28,7 @@ export default function TransactionsDrillDownPage() {
   const { recordId } = useParams();
   const navigate     = useNavigate();
   const dispatch     = useDispatch();
-  const { isLoading, isSaving, entries, total, records } = useSelector(transactionsSelector);
+  const { isLoading, isSaving, entries, total, totals, records } = useSelector(transactionsSelector);
   const { user } = useSelector(authSelector);
   const canWrite = checkCanWrite(user, Module.Transactions);
 
@@ -79,6 +79,7 @@ export default function TransactionsDrillDownPage() {
         title={record?.title ?? recordId}
         entries={entries}
         total={total}
+        totals={totals}
         isLoading={isLoading}
         search={search}
         typeFilter={typeFilter}

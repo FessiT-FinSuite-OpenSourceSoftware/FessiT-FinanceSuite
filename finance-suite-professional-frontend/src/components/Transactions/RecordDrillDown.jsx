@@ -9,7 +9,7 @@ import { fmt, fmtDate, getTransactionType } from "./helpers";
 import { SavedRowWrapper, buildTxnColumns, renderTxnExpanded } from "./SavedRow";
 
 export default function RecordDrillDown({
-  title, entries, total, isLoading,
+  title, entries, total, totals, isLoading,
   search, typeFilter, txnCategoryFilter, periodFilter, customFrom, customTo,
   currentPage, pageSize,
   dispatch, setDeleteConfirm,
@@ -26,8 +26,14 @@ export default function RecordDrillDown({
     stateMap.current[id] = state;
   }, []);
 
-  // entries are already paginated/filtered by backend — compute stats from current page
+  // Use backend-aggregated totals across all filtered docs; fall back to page-level compute only if totals not yet loaded
   const { totalCredits, totalDebits, debtTaken, debtRepaid } = useMemo(() => {
+    if (totals) return {
+      totalCredits: totals.total_credits ?? 0,
+      totalDebits:  totals.total_debits  ?? 0,
+      debtTaken:    totals.debt_taken    ?? 0,
+      debtRepaid:   totals.debt_repaid   ?? 0,
+    };
     let credits = 0, debits = 0, debtTaken = 0, debtRepaid = 0;
     for (const t of entries) {
       const type   = getTransactionType(t);
@@ -41,7 +47,7 @@ export default function RecordDrillDown({
       if (txnCat === "Debt Repaid") debtRepaid += amt;
     }
     return { totalCredits: credits, totalDebits: debits, debtTaken, debtRepaid };
-  }, [entries]);
+  }, [totals, entries]);
 
   const totalPages = Math.max(1, Math.ceil((total ?? entries.length) / pageSize));
   const netFlow    = totalCredits - totalDebits;

@@ -1,5 +1,7 @@
-export const fmt = (n) =>
-  "₹ " + Math.abs(parseFloat(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const fmt = (n) => {
+  const v = parseFloat(n) || 0;
+  return (v < 0 ? "-₹ " : "₹ ") + Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 export const fmtDate = (d) => {
   if (!d) return "-";

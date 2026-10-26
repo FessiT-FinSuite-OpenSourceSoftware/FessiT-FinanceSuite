@@ -97,8 +97,9 @@ const transactionsSlice = createSlice({
     uploadStage:   null,
     uploadError:   null,
     entries:       [],
-    records:       [],   // [{ title, count, total_debit, total_credit, from_date, to_date }]
+    records:       [],
     total:         0,
+    totals:        null,
     extracted:     [],
     statementMeta: null,
     debtStats:     null, // { debt_taken, debt_repaid, net_debt }
@@ -120,6 +121,7 @@ const transactionsSlice = createSlice({
       const arr = Array.isArray(payload) ? payload : (payload.data ?? payload.transactions ?? []);
       s.entries = arr;
       s.total   = payload.total ?? arr.length;
+      s.totals  = payload.totals ?? null;
     },
     setExtracted:   (s, { payload }) => {
       s.isUploading = false;

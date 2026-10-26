@@ -122,7 +122,7 @@ impl TransactionRepository {
         org_id: &ObjectId,
         record_id: &ObjectId,
         params: &TransactionFilterParams,
-    ) -> Result<(Vec<Transaction>, u64), MongoError> {
+    ) -> Result<(Vec<Transaction>, u64, Document), MongoError> {
         let mut filter = doc! { "organisationId": org_id, "recordId": record_id };
 
         // Type filter — debit/credit fields are absent (not null) when not applicable
@@ -192,6 +192,25 @@ impl TransactionRepository {
 
         let total = self.raw.count_documents(filter.clone(), None).await?;
 
+        // Aggregate totals across ALL filtered docs (not just current page)
+        let agg_pipeline = vec![
+            doc! { "$match": filter.clone() },
+            doc! { "$group": {
+                "_id": null,
+                "total_credits": { "$sum": { "$ifNull": ["$credit", 0.0] } },
+                "total_debits":  { "$sum": { "$ifNull": ["$debit",  0.0] } },
+                "debt_taken":  { "$sum": { "$cond": [{ "$eq": ["$transaction_category", "Debt Taken"]  }, { "$ifNull": ["$debit",  { "$ifNull": ["$credit", 0.0] }] }, 0.0] } },
+                "debt_repaid": { "$sum": { "$cond": [{ "$eq": ["$transaction_category", "Debt Repaid"] }, { "$ifNull": ["$debit",  { "$ifNull": ["$credit", 0.0] }] }, 0.0] } },
+            }},
+        ];
+        let mut agg_cursor = self.raw.aggregate(agg_pipeline, None).await?;
+        let agg_doc = agg_cursor.try_next().await?.unwrap_or_default();
+        let totals = doc! {
+            "total_credits": agg_doc.get_f64("total_credits").unwrap_or(0.0),
+            "total_debits":  agg_doc.get_f64("total_debits").unwrap_or(0.0),
+            "debt_taken":    agg_doc.get_f64("debt_taken").unwrap_or(0.0),
+            "debt_repaid":   agg_doc.get_f64("debt_repaid").unwrap_or(0.0),
+        };
 
         let skip  = ((params.page.unwrap_or(1).max(1) - 1) * params.page_size.unwrap_or(10)) as u64;
         let limit = params.page_size.unwrap_or(10) as i64;
@@ -207,7 +226,7 @@ impl TransactionRepository {
         while let Some(raw) = cursor.try_next().await? {
             if let Some(t) = from_doc(raw) { list.push(t); }
         }
-        Ok((list, total))
+        Ok((list, total, totals))
     }
 
     pub async fn delete_by_record_id(&self, org_id: &ObjectId, record_id: &ObjectId) -> Result<u64, MongoError> {

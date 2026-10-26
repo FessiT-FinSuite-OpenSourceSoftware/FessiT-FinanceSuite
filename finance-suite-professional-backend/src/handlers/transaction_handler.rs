@@ -59,12 +59,9 @@ pub async fn list_by_record(
     let rid = parse_oid(&record_id.into_inner())
         .ok_or_else(|| actix_web::error::ErrorBadRequest("Invalid record id"))?;
     let params = query.into_inner();
-    eprintln!("[TXN] record={} type={:?} cat={:?} from={:?} to={:?} search={:?} page={:?} size={:?}",
-        rid, params.txn_type, params.txn_category, params.date_from, params.date_to,
-        params.search, params.page, params.page_size);
-    let (items, total) = service.list_by_record_filtered(&org_id, &rid, &params).await
+    let (items, total, totals) = service.list_by_record_filtered(&org_id, &rid, &params).await
         .map_err(actix_web::error::ErrorInternalServerError)?;
-    Ok(HttpResponse::Ok().json(json!({ "data": items, "total": total })))
+    Ok(HttpResponse::Ok().json(json!({ "data": items, "total": total, "totals": totals })))
 }
 
 /// GET /api/v1/transactions
