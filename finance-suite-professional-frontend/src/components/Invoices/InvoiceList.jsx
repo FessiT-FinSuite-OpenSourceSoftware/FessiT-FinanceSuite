@@ -124,6 +124,94 @@ const positiveRate = (value) => {
   return Number.isFinite(n) && n > 0 ? n : 0;
 };
 
+const fmtAmt = (n, currency = "INR") =>
+  `${getCurrencySymbol(currency)} ${formatNumber(n, currency)}`;
+
+function InvoiceJournal({ invoice }) {
+  const isDomestic = invoice.invoice_type !== "international";
+  const isInternational = !isDomestic;
+
+  const rate = isInternational
+    ? parseFloat(invoice.conversionRate) || parseFloat(invoice.approxconversionRate) || parseFloat(invoice.tempconversionRate) || 1
+    : 1;
+
+  const inr = (n) => `₹ ${formatNumber((parseFloat(n) || 0) * rate, "INR")}`;
+
+  const subTotal = invoice.subTotal ?? invoice.sub_total ?? 0;
+  const cgst     = invoice.totalcgst  ?? invoice.total_cgst  ?? 0;
+  const sgst     = invoice.totalsgst  ?? invoice.total_sgst  ?? 0;
+  const igst     = invoice.totaligst  ?? invoice.total_igst  ?? 0;
+  const total    = invoice.total ?? 0;
+
+  const subTotalN = parseFloat(subTotal) || 0;
+  const cgstN     = parseFloat(cgst)     || 0;
+  const sgstN     = parseFloat(sgst)     || 0;
+  const igstN     = parseFloat(igst)     || 0;
+  const totalN    = parseFloat(total)    || 0;
+
+  const taxN          = isDomestic ? cgstN + sgstN : igstN;
+  const otherCharges  = parseFloat((totalN - subTotalN - taxN).toFixed(2));
+
+  const rows = isDomestic
+    ? [
+        { account: "Output CGST",         debit: 0,      credit: cgstN },
+        { account: "Output SGST",         debit: 0,      credit: sgstN },
+        { account: "Accounts Receivable", debit: totalN, credit: 0 },
+        { account: "General Income",      debit: 0,      credit: subTotalN },
+        ...(otherCharges !== 0 ? [{ account: "Other Charges", debit: otherCharges < 0 ? Math.abs(otherCharges) : 0, credit: otherCharges > 0 ? otherCharges : 0 }] : []),
+      ]
+    : [
+        { account: "Output IGST",         debit: 0,      credit: igstN },
+        { account: "Accounts Receivable", debit: totalN, credit: 0 },
+        { account: "General Income",      debit: 0,      credit: subTotalN },
+        ...(otherCharges !== 0 ? [{ account: "Other Charges", debit: otherCharges < 0 ? Math.abs(otherCharges) : 0, credit: otherCharges > 0 ? otherCharges : 0 }] : []),
+      ];
+
+  const totalDebit  = rows.reduce((s, r) => s + r.debit,  0);
+  const totalCredit = rows.reduce((s, r) => s + r.credit, 0);
+
+  return (
+    <div className="bg-gray-100 py-4">
+      <div className="bg-white mx-auto border-x border-b border-gray-400 px-4 pt-5 pb-6" style={{ maxWidth: "800px" }}>
+      <p className="text-base font-semibold text-gray-800 mb-4">More Information</p>
+      <div className="border-b border-gray-200 mb-4">
+        <span className="inline-block text-sm font-semibold text-indigo-600 border-b-2 border-indigo-600 pb-1.5 mr-4">Journal</span>
+      </div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs text-gray-500">Amount is displayed in your base currency</span>
+        <span className="text-xs font-bold bg-green-600 text-white px-2 py-0.5 rounded">INR</span>
+      </div>
+      <p className="text-sm font-semibold text-gray-800 mb-2">Invoice</p>
+      <table className="w-full text-xs border border-gray-400 border-collapse">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="border border-gray-400 px-3 py-1.5 text-left font-semibold text-gray-700">Account</th>
+            <th className="border border-gray-400 px-3 py-1.5 text-right font-semibold text-gray-700 w-36">Debit</th>
+            <th className="border border-gray-400 px-3 py-1.5 text-right font-semibold text-gray-700 w-36">Credit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.account}>
+              <td className="border border-gray-400 px-3 py-1.5 text-gray-800">{row.account}</td>
+              <td className="border border-gray-400 px-3 py-1.5 text-right text-gray-800">{row.debit  > 0 ? inr(row.debit)  : "0.00"}</td>
+              <td className="border border-gray-400 px-3 py-1.5 text-right text-gray-800">{row.credit > 0 ? inr(row.credit) : "0.00"}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="bg-gray-100 font-semibold">
+            <td className="border border-gray-400 px-3 py-1.5" />
+            <td className="border border-gray-400 px-3 py-1.5 text-right">{inr(totalDebit)}</td>
+            <td className="border border-gray-400 px-3 py-1.5 text-right">{inr(totalCredit)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    </div>
+  );
+}
+
 export default function InvoiceList() {
   const nav = useNavigate();
   const dispatch = useDispatch();
@@ -434,8 +522,15 @@ export default function InvoiceList() {
       label: "Invoice No",
       render: (invoice) => {
         const id = getInvoiceId(invoice);
-        return <span className="text-blue-600 font-medium cursor-pointer" onClick={() => {
-           !isAccountant ? nav(`/invoices/editInvoice/${id}`) : null}}>{invoice.invoice_number || "-"}</span>;
+        const isIssued = ["Issued", "Re Issued", "Paid"].includes(invoice.status);
+        return (
+          <span
+            className="text-blue-600 font-medium cursor-pointer hover:underline"
+            onClick={() => isIssued ? openPreview(invoice) : hasWrite && nav(`/invoices/editInvoice/${id}`)}
+          >
+            {invoice.invoice_number || "-"}
+          </span>
+        );
       },
     },
     {
@@ -763,6 +858,7 @@ export default function InvoiceList() {
                 onBack={closePreview}
                 initialTemplate={previewInvoice.template_id || "classic"}
               />
+              <InvoiceJournal invoice={previewInvoice} />
             </div>
           </div>
         </div>,

@@ -349,7 +349,22 @@ export const updateTransactionNotes = (id, notes, status) => async (dispatch) =>
 export const updateTransaction = (id, payload) => async (dispatch) => {
   dispatch(patchEntry({ id, changes: { transaction_category: payload.transaction_category, narration: payload.narration, reference: payload.reference, date: payload.date, debit: payload.debit, credit: payload.credit, balance: payload.balance } }));
   try {
-    const { data } = await axiosInstance.put(`/transactions/${id}`, payload);
+    const body = {
+      date:                 payload.date,
+      description:          payload.narration ?? payload.description ?? "",
+      narration:            payload.narration ?? "",
+      reference:            payload.reference ?? "",
+      category:             payload.category ?? "",
+      transaction_category: payload.transaction_category ?? "General",
+      type:                 payload.type ?? "",
+      amount:               payload.amount ?? 0,
+      balance:              payload.balance ?? null,
+      debit:                payload.debit  ?? null,
+      credit:               payload.credit ?? null,
+      status:               payload.status ?? "pending",
+      notes:                payload.notes  ?? "",
+    };
+    const { data } = await axiosInstance.put(`/transactions/${id}`, body);
     dispatch(upsertEntry(data.transaction ?? data));
     toast.success("Transaction updated");
   } catch (err) {

@@ -18,6 +18,7 @@ pub enum Module {
     Customers,
     CostCenter,
     Products,
+    Transactions,
 }
 
 impl Module {
@@ -31,6 +32,7 @@ impl Module {
             Module::Customers => "customers",
             Module::CostCenter => "cost_center",
             Module::Products => "products",
+            Module::Transactions => "transactions",
         }
     }
 }
@@ -87,6 +89,11 @@ pub fn check_permission(
             PermissionAction::Read => permissions.products.read,
             PermissionAction::Write => permissions.products.write,
             PermissionAction::Delete => permissions.products.delete,
+        },
+        Module::Transactions => match action {
+            PermissionAction::Read => permissions.transactions.read,
+            PermissionAction::Write => permissions.transactions.write,
+            PermissionAction::Delete => permissions.transactions.delete,
         },
     };
 

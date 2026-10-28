@@ -20,6 +20,7 @@ const initialUser = {
     purchaseOrders: { read: false, write: false, delete: false },
     customers: { read: false, write: false, delete: false },
     products: { read: false, write: false, delete: false },
+    transactions: { read: false, write: false, delete: false },
   },
 };
 
@@ -95,6 +96,7 @@ export default function UserCreation() {
           purchaseOrders: { read: true, write: true, delete: true },
           customers: { read: true, write: true, delete: true },
           products: { read: true, write: true, delete: true },
+          transactions: { read: true, write: true, delete: true },
         }
         : initialUser.permissions,
     });
@@ -257,7 +259,9 @@ export default function UserCreation() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.keys(user.permissions).map((module) => {
                 // Format module names for display
-                const displayName = module === 'purchaseOrders' ? 'Purchase Orders' :
+                const displayName =
+                  module === 'purchaseOrders' ? 'Purchase Orders' :
+                  module === 'transactions' ? 'Transactions' :
                   module.charAt(0).toUpperCase() + module.slice(1);
 
                 return (

@@ -18,6 +18,7 @@ export const TRANSACTION_CATEGORIES = [
   "Debt Taken",
   "Debt Repaid",
   "General",
+  "Expenses"
 ];
 // export const CATEGORY_COLORS = {
 //   General:       "bg-slate-100 text-slate-700 dark:bg-slate-900/40 dark:text-slate-300",

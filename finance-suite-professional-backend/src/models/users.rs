@@ -38,6 +38,9 @@ pub struct UserPermissions {
 
     #[serde(default)]
     pub products: Permission,
+
+    #[serde(default)]
+    pub transactions: Permission,
 }
 
 /// The User document stored in MongoDB

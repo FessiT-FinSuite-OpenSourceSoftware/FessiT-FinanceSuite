@@ -4,6 +4,17 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { updateUser, fetchOneUser, userSelector } from "../../ReduxApi/user";
 
+const DEFAULT_PERMISSIONS = {
+  organisation:   { read: false, write: false, delete: false },
+  invoice:        { read: false, write: false, delete: false },
+  expenses:       { read: false, write: false, delete: false },
+  users:          { read: false, write: false, delete: false },
+  purchaseOrders: { read: false, write: false, delete: false },
+  customers:      { read: false, write: false, delete: false },
+  products:       { read: false, write: false, delete: false },
+  transactions:   { read: false, write: false, delete: false },
+};
+
 export default function EditUser() {
   const { id } = useParams();
   const { currentUser, isLoading } = useSelector(userSelector);
@@ -16,13 +27,15 @@ export default function EditUser() {
     is_accountant: false,
     is_active: true,
     permissions: {
-      organisation: { read: false, write: false, delete: false },
-      invoice: { read: false, write: false, delete: false },
-      expenses: { read: false, write: false, delete: false },
-      users: { read: false, write: false, delete: false },
+      ...DEFAULT_PERMISSIONS,
+      organisation:   { read: false, write: false, delete: false },
+      invoice:        { read: false, write: false, delete: false },
+      expenses:       { read: false, write: false, delete: false },
+      users:          { read: false, write: false, delete: false },
       purchaseOrders: { read: false, write: false, delete: false },
-      customers: { read: false, write: false, delete: false },
-      products: { read: false, write: false, delete: false },
+      customers:      { read: false, write: false, delete: false },
+      products:       { read: false, write: false, delete: false },
+      transactions:   { read: false, write: false, delete: false },
     },
   });
   const [inputErrors, setInputErrors] = useState({});
@@ -44,15 +57,7 @@ export default function EditUser() {
         is_admin: currentUser.is_admin || false,
         is_accountant: currentUser.is_accountant || false,
         is_active: currentUser.is_active !== undefined ? currentUser.is_active : true,
-        permissions: currentUser.permissions || {
-          organisation: { read: false, write: false, delete: false },
-          invoice: { read: false, write: false, delete: false },
-          expenses: { read: false, write: false, delete: false },
-          users: { read: false, write: false, delete: false },
-          purchaseOrders: { read: false, write: false, delete: false },
-          customers: { read: false, write: false, delete: false },
-          products: { read: false, write: false, delete: false },
-        },
+        permissions: { ...DEFAULT_PERMISSIONS, ...currentUser.permissions },
       });
     }
   }, [currentUser]);
@@ -121,6 +126,7 @@ export default function EditUser() {
             purchaseOrders: { read: true, write: true, delete: true },
             customers: { read: true, write: true, delete: true },
             products: { read: true, write: true, delete: true },
+            transactions: { read: true, write: true, delete: true },
           }
         : user.permissions,
     });
@@ -215,7 +221,7 @@ export default function EditUser() {
           </div>
 
           <div className="relative">
-            <label className="block text-gray-700 font-medium mb-1">Password (Leave blank to keep current)</label>
+            <label className="block text-gray-700 font-medium mb-1">Password</label>
             <input
               type="password"
               name="password"
@@ -287,8 +293,10 @@ export default function EditUser() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.keys(user.permissions).map((module) => {
                 // Format module names for display
-                const displayName = module === 'purchaseOrders' ? 'Purchase Orders' : 
-                                  module.charAt(0).toUpperCase() + module.slice(1);
+                const displayName =
+                  module === 'purchaseOrders' ? 'Purchase Orders' :
+                  module === 'transactions' ? 'Transactions' :
+                  module.charAt(0).toUpperCase() + module.slice(1);
                 
                 return (
                   <div key={module} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
